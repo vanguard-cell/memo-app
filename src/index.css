@@ -133,6 +133,64 @@ main {
   font-weight: 600;
 }
 
+.sync-bad {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--red);
+  background: var(--red-bg);
+  padding: 2px 7px;
+  border-radius: 6px;
+  vertical-align: 2px;
+}
+
+.tab-logout {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.login-wrap {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 26px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-brand {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.login-desc {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.login-btn {
+  padding: 10px;
+}
+
+.login-error {
+  font-size: 13px;
+  color: var(--red);
+  margin: 0;
+}
+
 .nag-badge {
   display: inline-block;
   margin-left: 5px;
