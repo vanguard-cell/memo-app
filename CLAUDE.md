@@ -34,7 +34,7 @@
 - 2단계 (완료): Supabase 연동 — 기기 간 데이터 동기화.
   - 프로젝트: vfnwworlsricfxyxditc (ap-northeast-2), 연결 정보는 src/supabase.js (anon key는 공개 안전).
   - 테이블: memos(id, user_id, data jsonb, updated_at), app_state(user_id, day_order). 둘 다 RLS로 본인 것만 접근.
-  - 로그인: 이메일 매직링크 (비밀번호 없음). 사용자 계정: vpfldh87@gmail.com.
+  - 로그인: 구글 로그인(기본) + 이메일 매직링크(보조). 사용자 계정: vpfldh87@gmail.com. 구글 OAuth 클라이언트는 사용자의 Google Cloud "My First Project"에 있음.
   - 동기화: 로컬(localStorage) 즉시 반영 + 서버 upsert. 로그인 시 updatedAt 기준 병합. 실패 시 헤더에 "동기화 안 됨" 표시.
   - 배포 주소: https://vanguard-cell.github.io/memo-app/ (main 푸시 시 Actions 자동 배포).
 - 3단계 (예정): PWA 폰 푸시 알림, 필요 시 멀티유저.
