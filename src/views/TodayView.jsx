@@ -1,11 +1,19 @@
 import { useState } from 'react'
 import { buildNags, fmtDate } from '../derive'
-import { completeMemo, updateMemo } from '../store'
+import { completeMemo, updateMemo, setDayOrder } from '../store'
 import { todayStr, addDays } from '../parser'
 
-function Row({ m, tag, tagCls, desc, onOpen, snoozable }) {
+function Row({ m, tag, tagCls, desc, onOpen, snoozable, drag }) {
   return (
-    <div className="nag-row" onClick={() => onOpen(m.id)}>
+    <div
+      className={'nag-row' + (drag ? drag.dropCls : '')}
+      draggable={!!drag}
+      onDragStart={drag && drag.onDragStart}
+      onDragOver={drag && drag.onDragOver}
+      onDragLeave={drag && drag.onDragLeave}
+      onDrop={drag && drag.onDrop}
+      onClick={() => onOpen(m.id)}
+    >
       <span className={'nag-tag ' + tagCls}>{tag}</span>
       <span className="nag-title">
         {m.title}
@@ -48,13 +56,58 @@ export default function TodayView({ memos, dayOrder, onOpen }) {
   const { overdue, dueToday, upcoming, dateless } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [showDateless, setShowDateless] = useState(false)
+  const [rowDrop, setRowDrop] = useState(null)
+  const today = todayStr()
 
-  const order = (dayOrder && dayOrder[todayStr()]) || []
-  const orderIdx = (id) => {
+  const idxFor = (date, id) => {
+    const order = (dayOrder && dayOrder[date]) || []
     const i = order.indexOf(id)
     return i === -1 ? Number.MAX_SAFE_INTEGER : i
   }
-  dueToday.sort((a, b) => orderIdx(a.m.id) - orderIdx(b.m.id))
+  const dateOf = (it) => (it.kind === 'end' ? it.m.period.end : it.m.due)
+
+  dueToday.sort((a, b) => idxFor(today, a.m.id) - idxFor(today, b.m.id))
+  upcoming.sort((a, b) => a.dd - b.dd || idxFor(dateOf(a), a.m.id) - idxFor(dateOf(b), b.m.id))
+
+  function reorder(date, group, draggedId, targetId, after) {
+    const ids = [...new Set(group.map((it) => it.m.id))].filter((id) => id !== draggedId)
+    let pos = ids.indexOf(targetId)
+    if (pos === -1) pos = ids.length
+    else if (after) pos += 1
+    ids.splice(pos, 0, draggedId)
+    setDayOrder(date, ids)
+  }
+
+  function dragFor(item, list) {
+    const date = dateOf(item)
+    const key = item.m.id + item.kind
+    return {
+      dropCls: rowDrop && rowDrop.key === key ? (rowDrop.after ? ' drop-below' : ' drop-above') : '',
+      onDragStart: (ev) => {
+        ev.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'nag-reorder', id: item.m.id, date }))
+        ev.dataTransfer.effectAllowed = 'move'
+      },
+      onDragOver: (ev) => {
+        ev.preventDefault()
+        const r = ev.currentTarget.getBoundingClientRect()
+        setRowDrop({ key, after: ev.clientY > r.top + r.height / 2 })
+      },
+      onDragLeave: () => setRowDrop((cur) => (cur && cur.key === key ? null : cur)),
+      onDrop: (ev) => {
+        ev.preventDefault()
+        const cur = rowDrop
+        setRowDrop(null)
+        let data
+        try {
+          data = JSON.parse(ev.dataTransfer.getData('text/plain'))
+        } catch {
+          return
+        }
+        if (data.kind !== 'nag-reorder' || data.date !== date || data.id === item.m.id) return
+        reorder(date, list.filter((it) => dateOf(it) === date), data.id, item.m.id, cur ? cur.after : false)
+      },
+    }
+  }
 
   return (
     <div className="view">
@@ -75,29 +128,31 @@ export default function TodayView({ memos, dayOrder, onOpen }) {
       )}
       {dueToday.length > 0 && (
         <Section title="오늘 할 일" cls="sec-amber">
-          {dueToday.map(({ m, kind }) => (
+          {dueToday.map((it) => (
             <Row
-              key={m.id + kind}
-              m={m}
+              key={it.m.id + it.kind}
+              m={it.m}
               tag="오늘"
               tagCls="t-amber"
-              desc={kind === 'end' ? '오늘 만기' : null}
+              desc={it.kind === 'end' ? '오늘 만기' : null}
               onOpen={onOpen}
               snoozable
+              drag={dragFor(it, dueToday)}
             />
           ))}
         </Section>
       )}
       {upcoming.length > 0 && (
         <Section title="다가오는 일정 · 만기" cls="sec-blue">
-          {upcoming.map(({ m, dd, kind }) => (
+          {upcoming.map((it) => (
             <Row
-              key={m.id + kind}
-              m={m}
-              tag={`D-${dd}`}
+              key={it.m.id + it.kind}
+              m={it.m}
+              tag={`D-${it.dd}`}
               tagCls="t-blue"
-              desc={kind === 'end' ? `만기 ${fmtDate(m.period.end)}` : `기한 ${fmtDate(m.due)}`}
+              desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)}` : `기한 ${fmtDate(it.m.due)}`}
               onOpen={onOpen}
+              drag={dragFor(it, upcoming)}
             />
           ))}
         </Section>

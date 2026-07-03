@@ -412,6 +412,14 @@ main {
   border-left-color: inherit;
 }
 
+.nag-row.drop-above {
+  box-shadow: 0 -3px 0 var(--blue-strong);
+}
+
+.nag-row.drop-below {
+  box-shadow: 0 3px 0 var(--blue-strong);
+}
+
 .sec-red .nag-row {
   border-left-color: var(--red-strong);
 }
