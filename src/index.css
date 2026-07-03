@@ -441,10 +441,6 @@ main {
   border-left-color: var(--teal-strong);
 }
 
-.nag-work {
-  cursor: default;
-}
-
 .t-teal {
   color: var(--teal);
 }

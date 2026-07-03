@@ -65,7 +65,15 @@ export default function App() {
       <InputBar memos={memos} onOpen={setOpenId} />
       <div className="layout">
         <main>
-          {tab === 'today' && <TodayView memos={memos} works={works} dayOrder={dayOrder} onOpen={setOpenId} />}
+          {tab === 'today' && (
+            <TodayView
+              memos={memos}
+              works={works}
+              dayOrder={dayOrder}
+              onOpen={setOpenId}
+              onGoWork={() => setTab('work')}
+            />
+          )}
           {tab === 'calendar' && <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} />}
           {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} />}
           {tab === 'work' && <WorkView works={works} />}

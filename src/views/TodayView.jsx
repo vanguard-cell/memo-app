@@ -53,10 +53,9 @@ function Section({ title, cls, children }) {
   )
 }
 
-export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
+export default function TodayView({ memos, works = [], dayOrder, onOpen, onGoWork }) {
   const { overdue, dueToday, upcoming, dateless } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
-  const [showDateless, setShowDateless] = useState(false)
   const [rowDrop, setRowDrop] = useState(null)
   const today = todayStr()
 
@@ -171,7 +170,7 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
           cls="sec-teal"
         >
           {openWorks.map((w) => (
-            <div key={w.id} className="nag-row nag-work">
+            <div key={w.id} className="nag-row" onClick={onGoWork} title="누르면 점검 표로 이동">
               <span className="nag-tag t-teal">{w.area || '점검'}</span>
               <span className="nag-title">
                 {w.title}
@@ -202,13 +201,11 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
         </div>
       )}
       {dateless.length > 0 && (
-        <div className="sec sec-gray">
-          <button className="sec-toggle" onClick={() => setShowDateless((v) => !v)}>
-            기한 없는 메모 {dateless.length}건 {showDateless ? '▾' : '▸'}
-          </button>
-          {showDateless &&
-            dateless.map((m) => <Row key={m.id} m={m} tag="메모" tagCls="t-gray" onOpen={onOpen} />)}
-        </div>
+        <Section title={`기한 없는 메모 · ${dateless.length}건`} cls="sec-gray">
+          {dateless.map((m) => (
+            <Row key={m.id} m={m} tag="메모" tagCls="t-gray" onOpen={onOpen} />
+          ))}
+        </Section>
       )}
     </div>
   )
