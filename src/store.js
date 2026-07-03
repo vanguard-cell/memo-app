@@ -226,6 +226,36 @@ export function addHistory(id, text, date) {
   remoteUpsert(id)
 }
 
+export function updateHistory(id, index, patch) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      m.id === id
+        ? {
+            ...m,
+            history: m.history.map((h, i) => (i === index ? { ...h, ...patch } : h)),
+            updatedAt: now,
+          }
+        : m
+    ),
+  })
+  remoteUpsert(id)
+}
+
+export function removeHistory(id, index) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      m.id === id
+        ? { ...m, history: m.history.filter((_, i) => i !== index), updatedAt: now }
+        : m
+    ),
+  })
+  remoteUpsert(id)
+}
+
 export function toggleHistory(id, index) {
   const now = new Date().toISOString()
   commit({

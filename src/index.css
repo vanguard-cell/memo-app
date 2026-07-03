@@ -972,6 +972,47 @@ main {
   word-break: break-all;
 }
 
+.tl-editable {
+  cursor: text;
+}
+
+.tl-editable:hover {
+  text-decoration: underline dotted var(--faint);
+  text-underline-offset: 3px;
+}
+
+.tl-x {
+  visibility: hidden;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+
+.tl-item:hover .tl-x {
+  visibility: visible;
+}
+
+.tl-x:hover {
+  color: var(--red);
+}
+
+.tl-editing {
+  gap: 6px;
+  align-items: center;
+}
+
+.tl-editing button {
+  font-size: 12.5px;
+  padding: 5px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .tl-add {
   display: flex;
   gap: 6px;

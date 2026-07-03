@@ -55,7 +55,7 @@ export default function App() {
           {tab === 'calendar' && <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} />}
           {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} />}
         </main>
-        {open && <MemoDetail memo={open} onClose={() => setOpenId(null)} />}
+        {open && <MemoDetail key={open.id} memo={open} onClose={() => setOpenId(null)} />}
       </div>
     </div>
   )
