@@ -338,6 +338,7 @@ export function addWork(fields) {
     months: fields.months || [],
     risk: !!fields.risk,
     runs: {},
+    history: [],
     order: state.works.length ? Math.max(...state.works.map((w) => w.order ?? 0)) + 1 : 0,
     createdAt: now,
     updatedAt: now,
@@ -376,6 +377,33 @@ export function toggleWorkRun(id, ym) {
   remoteUpsert(id)
 }
 
+function patchWorkHistory(id, fn) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    works: state.works.map((w) =>
+      w.id === id ? { ...w, history: fn(w.history || []), updatedAt: now } : w
+    ),
+  })
+  remoteUpsert(id)
+}
+
+export function addWorkHistory(id, text, date) {
+  patchWorkHistory(id, (h) => [...h, { date: date || todayStr(), text, ts: Date.now(), done: false }])
+}
+
+export function toggleWorkHistory(id, index) {
+  patchWorkHistory(id, (h) => h.map((x, i) => (i === index ? { ...x, done: !x.done } : x)))
+}
+
+export function updateWorkHistory(id, index, patch) {
+  patchWorkHistory(id, (h) => h.map((x, i) => (i === index ? { ...x, ...patch } : x)))
+}
+
+export function removeWorkHistory(id, index) {
+  patchWorkHistory(id, (h) => h.filter((_, i) => i !== index))
+}
+
 export function seedWorks(rows) {
   const now = new Date().toISOString()
   const works = rows.map((r, i) => ({
@@ -389,6 +417,7 @@ export function seedWorks(rows) {
     months: r.months,
     risk: !!r.risk,
     runs: {},
+    history: [],
     order: i,
     createdAt: now,
     updatedAt: now,

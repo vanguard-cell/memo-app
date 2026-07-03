@@ -53,7 +53,7 @@ function Section({ title, cls, children }) {
   )
 }
 
-export default function TodayView({ memos, works = [], dayOrder, onOpen, onGoWork }) {
+export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
   const { overdue, dueToday, upcoming, dateless } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [rowDrop, setRowDrop] = useState(null)
@@ -170,7 +170,7 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, onGoWor
           cls="sec-teal"
         >
           {openWorks.map((w) => (
-            <div key={w.id} className="nag-row" onClick={onGoWork} title="누르면 점검 표로 이동">
+            <div key={w.id} className="nag-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
               <span className="nag-tag t-teal">{w.area || '점검'}</span>
               <span className="nag-title">
                 {w.title}

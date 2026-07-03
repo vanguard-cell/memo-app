@@ -4,6 +4,7 @@ import { hasSupabase } from './supabase'
 import { nagCount } from './derive'
 import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
+import WorkDetail from './components/WorkDetail'
 import Login from './components/Login'
 import TodayView from './views/TodayView'
 import CalendarView from './views/CalendarView'
@@ -34,6 +35,7 @@ export default function App() {
   const [tab, setTab] = useState('today')
   const [openId, setOpenId] = useState(null)
   const open = memos.find((m) => m.id === openId)
+  const openWork = works.find((w) => w.id === openId)
   const nags = nagCount(memos)
   const workNags = openWorkCount(works)
 
@@ -41,7 +43,7 @@ export default function App() {
   if (hasSupabase && !auth.loggedIn) return <Login />
 
   return (
-    <div className={'app' + (open ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '')}>
+    <div className={'app' + (open || openWork ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '')}>
       <header className="topbar">
         <div className="brand">
           내 기록
@@ -71,14 +73,14 @@ export default function App() {
               works={works}
               dayOrder={dayOrder}
               onOpen={setOpenId}
-              onGoWork={() => setTab('work')}
             />
           )}
           {tab === 'calendar' && <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} />}
           {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} />}
-          {tab === 'work' && <WorkView works={works} />}
+          {tab === 'work' && <WorkView works={works} onOpen={setOpenId} />}
         </main>
         {open && <MemoDetail key={open.id} memo={open} onClose={() => setOpenId(null)} />}
+        {openWork && <WorkDetail key={openWork.id} work={openWork} onClose={() => setOpenId(null)} />}
       </div>
     </div>
   )

@@ -74,7 +74,7 @@ function WorkForm({ initial, onSave, onCancel }) {
   )
 }
 
-export default function WorkView({ works }) {
+export default function WorkView({ works, onOpen }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [editId, setEditId] = useState(null) // work id | 'new' | null
@@ -154,11 +154,14 @@ export default function WorkView({ works }) {
                   </td>
                 </tr>
               ) : (
-                <tr key={w.id}>
+                <tr key={w.id} className="wt-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
                   <td><span className="work-area">{w.area}</span></td>
                   <td className="wt-title">
                     {w.title}
                     {w.risk && <b className="t-red"> ★</b>}
+                    {(w.history || []).length > 0 && (
+                      <span className="wt-histcount"> 기록 {(w.history || []).length}</span>
+                    )}
                   </td>
                   <td className="wt-sub">{w.cycle}</td>
                   <td className="wt-sub">{w.owner}</td>
@@ -174,7 +177,10 @@ export default function WorkView({ works }) {
                         <button
                           className={'wt-cell' + (done ? ' c-done' : overdue ? ' c-over' : '')}
                           title={done ? `완료 (${w.runs[ym].at || ''}) — 누르면 취소` : overdue ? '지남 — 누르면 완료' : '예정 — 누르면 완료'}
-                          onClick={() => toggleWorkRun(w.id, ym)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleWorkRun(w.id, ym)
+                          }}
                         >
                           {done ? '✓' : overdue ? '!' : 'O'}
                         </button>
@@ -182,10 +188,19 @@ export default function WorkView({ works }) {
                     )
                   })}
                   <td className="wt-edit">
-                    <button className="wt-mini" onClick={() => setEditId(w.id)}>수정</button>
+                    <button
+                      className="wt-mini"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditId(w.id)
+                      }}
+                    >
+                      수정
+                    </button>
                     <button
                       className="wt-mini t-red"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         if (window.confirm(`"${w.title}" 업무를 삭제할까요? (완료 기록도 함께 삭제)`)) deleteWork(w.id)
                       }}
                     >
@@ -211,15 +226,24 @@ export default function WorkView({ works }) {
                 onCancel={() => setEditId(null)}
               />
             ) : (
-              <div key={w.id} className="work-row">
+              <div key={w.id} className="work-row wt-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
                 <span className="work-area">{w.area}</span>
                 <span>{w.title}{w.risk && <b className="t-red"> ★</b>}</span>
                 <span className="wt-sub">{w.cycle} · {w.evidence}</span>
                 <span className="wt-edit">
-                  <button className="wt-mini" onClick={() => setEditId(w.id)}>수정</button>
+                  <button
+                    className="wt-mini"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditId(w.id)
+                    }}
+                  >
+                    수정
+                  </button>
                   <button
                     className="wt-mini t-red"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       if (window.confirm(`"${w.title}" 업무를 삭제할까요?`)) deleteWork(w.id)
                     }}
                   >

@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr } from '../parser'
+import Timeline from './Timeline'
 
 export default function MemoDetail({ memo, onClose }) {
-  const [line, setLine] = useState('')
-  const [lineDate, setLineDate] = useState(todayStr())
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
   const st = memoStatus(memo)
@@ -30,29 +29,6 @@ export default function MemoDetail({ memo, onClose }) {
       period: form.start && form.end ? { start: form.start, end: form.end } : null,
     })
     setEditing(false)
-  }
-
-  function submitLine() {
-    const t = line.trim()
-    if (!t) return
-    addHistory(memo.id, t, lineDate || today)
-    setLine('')
-  }
-
-  const [editIdx, setEditIdx] = useState(null)
-  const [editText, setEditText] = useState('')
-  const [editDate, setEditDate] = useState('')
-
-  function startLineEdit(i, h) {
-    setEditIdx(i)
-    setEditText(h.text)
-    setEditDate(h.date)
-  }
-
-  function saveLineEdit() {
-    const t = editText.trim()
-    if (t) updateHistory(memo.id, editIdx, { text: t, date: editDate || today })
-    setEditIdx(null)
   }
 
   const dday = memo.period?.end && memo.status !== 'done' ? diffDays(memo.period.end, today) : null
@@ -136,85 +112,13 @@ export default function MemoDetail({ memo, onClose }) {
             <button className="btn-done" onClick={saveEdit}>저장</button>
           </div>
         )}
-        <div className="timeline">
-          <div className="tl-title">
-            진행 기록
-            {(() => {
-              const items = memo.history.filter((h) => h.type !== 'log')
-              const done = items.filter((h) => h.done).length
-              return items.length > 0 ? <span className="tl-progress"> · 체크 {done}/{items.length}</span> : null
-            })()}
-          </div>
-          {memo.history.length === 0 && (
-            <div className="empty small">아직 진행 기록이 없습니다. 아래에 한 줄씩 남기세요.</div>
-          )}
-          {memo.history.map((h, i) =>
-            editIdx === i ? (
-              <div key={i} className="tl-item tl-editing">
-                <input
-                  type="date"
-                  className="tl-date-input"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                />
-                <input
-                  className="tl-input"
-                  value={editText}
-                  autoFocus
-                  onChange={(e) => setEditText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveLineEdit()
-                    if (e.key === 'Escape') setEditIdx(null)
-                  }}
-                />
-                <button onClick={saveLineEdit}>저장</button>
-                <button onClick={() => setEditIdx(null)}>취소</button>
-              </div>
-            ) : (
-              <div key={i} className={'tl-item' + (h.done ? ' tl-done' : '')}>
-                {h.type === 'log' ? (
-                  <span className="tl-check tl-log">·</span>
-                ) : (
-                  <input
-                    type="checkbox"
-                    className="tl-check"
-                    checked={!!h.done}
-                    onChange={() => toggleHistory(memo.id, i)}
-                  />
-                )}
-                <span className="tl-date">{fmtDate(h.date)}</span>
-                <span className="tl-text tl-editable" title="누르면 수정" onClick={() => startLineEdit(i, h)}>
-                  {h.text}
-                </span>
-                <button
-                  className="tl-x"
-                  aria-label="이 줄 삭제"
-                  onClick={() => {
-                    if (window.confirm('이 진행기록 한 줄을 삭제할까요?\n"' + h.text + '"')) {
-                      removeHistory(memo.id, i)
-                      if (editIdx !== null) setEditIdx(null)
-                    }
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            )
-          )}
-          <div className="tl-add">
-            <input type="date" className="tl-date-input" value={lineDate} onChange={(e) => setLineDate(e.target.value)} />
-            <input
-              className="tl-input"
-              value={line}
-              placeholder="진행사항 한 줄 추가 (Enter)"
-              onChange={(e) => setLine(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitLine()
-              }}
-            />
-            <button onClick={submitLine}>추가</button>
-          </div>
-        </div>
+        <Timeline
+          history={memo.history}
+          onAdd={(t, d) => addHistory(memo.id, t, d)}
+          onToggle={(i) => toggleHistory(memo.id, i)}
+          onUpdate={(i, p) => updateHistory(memo.id, i, p)}
+          onRemove={(i) => removeHistory(memo.id, i)}
+        />
         <div className="panel-foot">
           작성 {fmtDate(memo.createdAt.slice(0, 10))}
           {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
