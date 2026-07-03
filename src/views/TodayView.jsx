@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { buildNags, fmtDate } from '../derive'
-import { completeMemo, updateMemo, setDayOrder } from '../store'
+import { completeMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
 import { todayStr, addDays } from '../parser'
+import { ymOf } from './WorkView'
 
 function Row({ m, tag, tagCls, desc, onOpen, snoozable, drag }) {
   return (
@@ -52,12 +53,19 @@ function Section({ title, cls, children }) {
   )
 }
 
-export default function TodayView({ memos, dayOrder, onOpen }) {
+export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
   const { overdue, dueToday, upcoming, dateless } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [showDateless, setShowDateless] = useState(false)
   const [rowDrop, setRowDrop] = useState(null)
   const today = todayStr()
+
+  // 이번 달 시행하는 점검 업무 (점검 탭과 동일 데이터)
+  const now = new Date()
+  const curMonth = now.getMonth() + 1
+  const curYm = ymOf(now.getFullYear(), curMonth)
+  const monthWorks = works.filter((w) => (w.months || []).includes(curMonth))
+  const openWorks = monthWorks.filter((w) => !(w.runs && w.runs[curYm] && w.runs[curYm].done))
 
   const idxFor = (date, id) => {
     const order = (dayOrder && dayOrder[date]) || []
@@ -155,6 +163,36 @@ export default function TodayView({ memos, dayOrder, onOpen }) {
               drag={dragFor(it, upcoming)}
             />
           ))}
+        </Section>
+      )}
+      {monthWorks.length > 0 && (
+        <Section
+          title={`이번 달 점검 (${curMonth}월) · ${monthWorks.length - openWorks.length}/${monthWorks.length} 완료`}
+          cls="sec-teal"
+        >
+          {openWorks.map((w) => (
+            <div key={w.id} className="nag-row nag-work">
+              <span className="nag-tag t-teal">{w.area || '점검'}</span>
+              <span className="nag-title">
+                {w.title}
+                {w.risk && <b className="t-red"> ★</b>}
+                {w.evidence && <span className="nag-desc"> · {w.evidence}</span>}
+              </span>
+              <span className="nag-actions">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleWorkRun(w.id, curYm)
+                  }}
+                >
+                  완료
+                </button>
+              </span>
+            </div>
+          ))}
+          {openWorks.length === 0 && (
+            <div className="empty small">이번 달 점검을 전부 마쳤습니다.</div>
+          )}
         </Section>
       )}
       {quiet && (

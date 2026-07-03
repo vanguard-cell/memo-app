@@ -13,6 +13,7 @@
   --blue-strong: #378add;
   --teal-bg: #e1f5ee;
   --teal: #0f6e56;
+  --teal-strong: #1d9e75;
   --amber-bg: #faeeda;
   --amber: #854f0b;
   --amber-strong: #ef9f27;
@@ -430,6 +431,18 @@ main {
 
 .sec-blue .nag-row {
   border-left-color: var(--blue-strong);
+}
+
+.sec-teal .nag-row {
+  border-left-color: var(--teal-strong);
+}
+
+.nag-work {
+  cursor: default;
+}
+
+.t-teal {
+  color: var(--teal);
 }
 
 .nag-tag {
@@ -1032,6 +1045,245 @@ main {
   min-width: 0;
   font-size: 14px;
   padding: 7px 9px;
+}
+
+/* ---------- 점검 (안전관리 캘린더) ---------- */
+
+.work-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.work-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.work-year {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.work-year button {
+  padding: 2px 8px;
+}
+
+.work-legend {
+  font-size: 12px;
+  color: var(--faint);
+  margin-left: auto;
+}
+
+.work-scroll {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.work-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.work-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--border);
+  background: #fafaf7;
+  white-space: nowrap;
+}
+
+.work-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0efe9;
+  vertical-align: middle;
+}
+
+.work-table tr:last-child td {
+  border-bottom: none;
+}
+
+.wt-title {
+  min-width: 170px;
+}
+
+.wt-sub {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-m {
+  text-align: center;
+  width: 30px;
+  padding: 4px 1px !important;
+}
+
+.wt-now {
+  background: var(--blue-bg);
+}
+
+.wt-cell {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--faint);
+  border-color: var(--border);
+}
+
+.wt-cell.c-done {
+  background: var(--teal-bg);
+  color: var(--teal);
+  border-color: transparent;
+}
+
+.wt-cell.c-over {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: transparent;
+}
+
+.wt-edit {
+  white-space: nowrap;
+}
+
+.wt-mini {
+  font-size: 11.5px;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: var(--faint);
+}
+
+.wt-mini:hover {
+  background: none;
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.work-area {
+  display: inline-block;
+  background: var(--purple-bg);
+  color: var(--purple);
+  font-size: 11.5px;
+  border-radius: 10px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.work-asneeded {
+  margin-top: 16px;
+}
+
+.work-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.work-row .wt-edit {
+  margin-left: auto;
+}
+
+.work-form {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.work-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.work-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.work-form-grid input {
+  font-size: 14px;
+  padding: 6px 8px;
+}
+
+.wf-wide {
+  grid-column: span 2;
+}
+
+.work-form-months {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.wf-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.wf-month {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.wf-month.on {
+  background: var(--blue-bg);
+  border-color: var(--blue-strong);
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.wf-risk {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-left: 10px;
+}
+
+.work-form-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.seed-btn {
+  margin: 10px 4px 0;
 }
 
 .panel-foot {

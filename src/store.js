@@ -30,13 +30,17 @@ function load() {
     if (raw) {
       const data = JSON.parse(raw)
       if (Array.isArray(data.memos)) {
-        return { memos: migrate(data.memos), dayOrder: data.dayOrder || {} }
+        return {
+          memos: migrate(data.memos),
+          works: Array.isArray(data.works) ? data.works : [],
+          dayOrder: data.dayOrder || {},
+        }
       }
     }
   } catch (e) {
     console.error('저장 데이터를 읽지 못했습니다', e)
   }
-  return { memos: [], dayOrder: {} }
+  return { memos: [], works: [], dayOrder: {} }
 }
 
 let state = load()
@@ -66,6 +70,7 @@ export function subscribe(fn) {
 }
 
 export const getMemos = () => state.memos
+export const getWorks = () => state.works
 export const getDayOrder = () => state.dayOrder
 export const getAuth = () => authSnap
 
@@ -79,7 +84,7 @@ async function pushMemoRows(memos) {
 
 function remoteUpsert(id) {
   if (!hasSupabase || !session) return
-  const memo = state.memos.find((m) => m.id === id)
+  const memo = state.memos.find((m) => m.id === id) || state.works.find((w) => w.id === id)
   if (!memo) return
   pushMemoRows([memo])
     .then(() => setAuth({ syncError: false }))
@@ -117,29 +122,40 @@ async function syncFromServer() {
     const { data: rows, error } = await supabase.from('memos').select('id,data,updated_at')
     if (error) throw error
     const serverById = new Map(rows.map((r) => [r.id, r]))
-    const merged = []
     const toPush = []
-    for (const local of state.memos) {
-      const srv = serverById.get(local.id)
-      if (!srv) {
-        merged.push(local)
-        toPush.push(local)
-      } else {
-        serverById.delete(local.id)
-        if ((srv.data.updatedAt || '') >= (local.updatedAt || '')) {
-          merged.push(migrate([srv.data])[0])
-        } else {
+    // 로컬 목록과 서버를 updatedAt 기준 병합. isWork에 따라 memos/works로 나뉜다.
+    const mergeList = (locals, isWork) => {
+      const merged = []
+      for (const local of locals) {
+        const srv = serverById.get(local.id)
+        if (!srv) {
           merged.push(local)
           toPush.push(local)
+        } else {
+          serverById.delete(local.id)
+          if ((srv.data.updatedAt || '') >= (local.updatedAt || '')) {
+            merged.push(isWork ? srv.data : migrate([srv.data])[0])
+          } else {
+            merged.push(local)
+            toPush.push(local)
+          }
         }
       }
+      return merged
     }
-    for (const [, srv] of serverById) merged.push(migrate([srv.data])[0])
+    const memos = mergeList(state.memos, false)
+    const works = mergeList(state.works, true)
+    // 서버에만 있는 행
+    for (const [, srv] of serverById) {
+      if (srv.data && srv.data.type === 'work') works.push(srv.data)
+      else memos.push(migrate([srv.data])[0])
+    }
+    works.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     const { data: st } = await supabase.from('app_state').select('day_order').maybeSingle()
     const dayOrder = { ...((st && st.day_order) || {}), ...state.dayOrder }
 
-    commit({ memos: merged, dayOrder })
+    commit({ memos, works, dayOrder })
     if (toPush.length) await pushMemoRows(toPush)
     remotePushState()
     setAuth({ syncError: false })
@@ -303,4 +319,85 @@ export function deleteMemo(id) {
 export function setDayOrder(date, ids) {
   commit({ ...state, dayOrder: { ...state.dayOrder, [date]: ids } })
   remotePushState()
+}
+
+// ---------- 점검(안전관리 캘린더) ----------
+// work = { id, type:'work', area, title, cycle, owner, evidence, months:[1..12], risk,
+//          runs: { '2026-07': { done, note } }, order, createdAt, updatedAt }
+
+export function addWork(fields) {
+  const now = new Date().toISOString()
+  const work = {
+    id: crypto.randomUUID(),
+    type: 'work',
+    area: fields.area || '',
+    title: fields.title,
+    cycle: fields.cycle || '',
+    owner: fields.owner || '',
+    evidence: fields.evidence || '',
+    months: fields.months || [],
+    risk: !!fields.risk,
+    runs: {},
+    order: state.works.length ? Math.max(...state.works.map((w) => w.order ?? 0)) + 1 : 0,
+    createdAt: now,
+    updatedAt: now,
+  }
+  commit({ ...state, works: [...state.works, work] })
+  remoteUpsert(work.id)
+  return work
+}
+
+export function updateWork(id, patch) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    works: state.works.map((w) => (w.id === id ? { ...w, ...patch, updatedAt: now } : w)),
+  })
+  remoteUpsert(id)
+}
+
+export function deleteWork(id) {
+  commit({ ...state, works: state.works.filter((w) => w.id !== id) })
+  remoteDelete(id)
+}
+
+export function toggleWorkRun(id, ym) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    works: state.works.map((w) => {
+      if (w.id !== id) return w
+      const runs = { ...(w.runs || {}) }
+      if (runs[ym] && runs[ym].done) delete runs[ym]
+      else runs[ym] = { done: true, at: now.slice(0, 10) }
+      return { ...w, runs, updatedAt: now }
+    }),
+  })
+  remoteUpsert(id)
+}
+
+export function seedWorks(rows) {
+  const now = new Date().toISOString()
+  const works = rows.map((r, i) => ({
+    id: crypto.randomUUID(),
+    type: 'work',
+    area: r.area,
+    title: r.title,
+    cycle: r.cycle,
+    owner: r.owner,
+    evidence: r.evidence,
+    months: r.months,
+    risk: !!r.risk,
+    runs: {},
+    order: i,
+    createdAt: now,
+    updatedAt: now,
+  }))
+  commit({ ...state, works })
+  if (hasSupabase && session) {
+    pushMemoRows(works).catch((e) => {
+      console.error('동기화 실패', e)
+      setAuth({ syncError: true })
+    })
+  }
 }
