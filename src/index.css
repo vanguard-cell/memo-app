@@ -72,6 +72,10 @@ input:focus {
   padding: 14px 14px 90px;
 }
 
+.app.app-wide {
+  max-width: 1360px;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1121,7 +1125,7 @@ main {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
-  max-width: 130px;
+  max-width: 170px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

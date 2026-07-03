@@ -41,7 +41,7 @@ export default function App() {
   if (hasSupabase && !auth.loggedIn) return <Login />
 
   return (
-    <div className={'app' + (open ? ' with-detail' : '')}>
+    <div className={'app' + (open ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '')}>
       <header className="topbar">
         <div className="brand">
           내 기록
