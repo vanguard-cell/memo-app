@@ -51,7 +51,14 @@ export default function App() {
         </div>
         <nav className="tabs">
           {TABS.map((t) => (
-            <button key={t.id} className={'tab' + (tab === t.id ? ' on' : '')} onClick={() => setTab(t.id)}>
+            <button
+              key={t.id}
+              className={'tab' + (tab === t.id ? ' on' : '')}
+              onClick={() => {
+                setTab(t.id)
+                if (t.id !== tab) setOpenId(null)
+              }}
+            >
               {t.label}
               {t.id === 'today' && nags > 0 && <span className="nag-badge">{nags}</span>}
               {t.id === 'work' && workNags > 0 && <span className="nag-badge">{workNags}</span>}
