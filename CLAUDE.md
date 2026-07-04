@@ -37,6 +37,7 @@
   - 로그인: 구글 로그인(기본) + 이메일 매직링크(보조). 사용자 계정: vpfldh87@gmail.com. 구글 OAuth 클라이언트는 사용자의 Google Cloud "My First Project"에 있음.
   - 동기화: 로컬(localStorage) 즉시 반영 + 서버 upsert. 로그인 시 updatedAt 기준 병합. 실패 시 헤더에 "동기화 안 됨" 표시.
   - 배포 주소: https://vanguard-cell.github.io/memo-app/ (main 푸시 시 Actions 자동 배포).
+  - 파일 첨부: Storage 버킷 'files' (비공개, 경로 {user_id}/{uuid}.{확장자} — 한글 파일명은 키로 못 쓰므로 uuid 경로 + 원본 이름은 메타데이터에). 메모·점검 공용 FileSection 컴포넌트, files 배열은 data jsonb에 포함되어 함께 동기화.
 - 3단계 (예정): PWA 폰 푸시 알림, 필요 시 멀티유저.
 
 ## 개발 메모

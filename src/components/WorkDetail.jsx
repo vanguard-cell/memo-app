@@ -1,6 +1,8 @@
-import { addWorkHistory, toggleWorkHistory, updateWorkHistory, removeWorkHistory } from '../store'
+import { addWorkHistory, toggleWorkHistory, updateWorkHistory, removeWorkHistory, attachFile, detachFile } from '../store'
 import { fmtDate } from '../derive'
+import { hasSupabase } from '../supabase'
 import Timeline from './Timeline'
+import FileSection from './FileSection'
 
 export default function WorkDetail({ work, onClose }) {
   const meta = [work.cycle, work.owner, work.evidence && `증빙: ${work.evidence}`]
@@ -26,6 +28,13 @@ export default function WorkDetail({ work, onClose }) {
         onUpdate={(i, p) => updateWorkHistory(work.id, i, p)}
         onRemove={(i) => removeWorkHistory(work.id, i)}
       />
+      {hasSupabase && (
+        <FileSection
+          files={work.files || []}
+          onAttach={(f) => attachFile(work.id, f)}
+          onRemove={(p) => detachFile(work.id, p)}
+        />
+      )}
       <div className="panel-foot">
         월별 완료 체크는 점검 표에서 · 여기는 과정 기록
         {work.createdAt && ` · 등록 ${fmtDate(work.createdAt.slice(0, 10))}`}
