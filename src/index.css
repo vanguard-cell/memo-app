@@ -1301,6 +1301,11 @@ main {
   margin: 10px 4px 0;
 }
 
+.with-detail .work-table .wt-sub,
+.with-detail .work-asneeded .wt-sub {
+  display: none;
+}
+
 .work-dropping {
   outline: 2px dashed var(--blue-strong);
   outline-offset: 4px;

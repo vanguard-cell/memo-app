@@ -189,9 +189,9 @@ export default function WorkView({ works, onOpen }) {
             <tr>
               <th>분야</th>
               <th className="wt-title">업무</th>
-              <th>주기</th>
-              <th>담당</th>
-              <th>증빙</th>
+              <th className="wt-sub">주기</th>
+              <th className="wt-sub">담당</th>
+              <th className="wt-sub">증빙</th>
               {MONTHS.map((m) => (
                 <th key={m} className={'wt-m' + (ymOf(year, m) === curYm ? ' wt-now' : '')}>{m}</th>
               ))}
