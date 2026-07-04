@@ -57,7 +57,7 @@ function WorkForm({ initial, onSave, onCancel }) {
         ))}
         <label className="wf-risk">
           <input type="checkbox" checked={f.risk} onChange={(e) => set('risk', e.target.checked)} />
-          ★ 과태료 리스크
+          ★ 법정 필수 (미이행 시 과태료)
         </label>
       </div>
       <div className="work-form-actions">
@@ -165,7 +165,7 @@ export default function WorkView({ works, onOpen }) {
         <button className={'pill' + (byArea ? ' on' : '')} onClick={() => setByArea(!byArea)}>
           분야별
         </button>
-        <span className="work-legend">O 예정 · <b className="t-teal">✓ 완료</b> · <b className="t-red">! 지남</b> · <b className="t-red">★</b> 과태료</span>
+        <span className="work-legend">O 예정 · <b className="t-teal">✓ 완료</b> · <b className="t-red">! 지남</b> · <b className="t-red">★</b> 법정 필수</span>
         <button onClick={() => openReport(works, year)}>보고서</button>
         <button onClick={() => exportExcel(works, year)}>엑셀</button>
         <button onClick={() => setEditId('new')}>+ 업무 추가</button>

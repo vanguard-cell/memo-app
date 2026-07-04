@@ -27,7 +27,7 @@ export function exportExcel(works, year) {
   const scheduled = works.filter((w) => (w.months || []).length > 0)
   const asNeeded = works.filter((w) => (w.months || []).length === 0)
 
-  const header = ['분야', '업무', '주기', '담당', '증빙자료', ...MONTHS.map((m) => `${m}월`), '계획', '완료', '이행률', '과태료']
+  const header = ['분야', '업무', '주기', '담당', '증빙자료', ...MONTHS.map((m) => `${m}월`), '계획', '완료', '이행률', '법정필수']
   const rows = scheduled.map((w) => {
     const { planned, done } = stats(w, year)
     return [
@@ -142,11 +142,11 @@ export function openReport(works, year) {
   <div class="card"><div class="k">연간 계획</div><div class="v">${totPlanned}회</div></div>
   <div class="card"><div class="k">완료</div><div class="v">${totDone}회</div></div>
   <div class="card"><div class="k">이행률</div><div class="v">${rate}%</div></div>
-  ${riskRate !== null ? `<div class="card"><div class="k">★ 과태료 리스크 이행률</div><div class="v">${riskRate}%</div></div>` : ''}
+  ${riskRate !== null ? `<div class="card"><div class="k">법정 필수(★) 이행률</div><div class="v">${riskRate}%</div></div>` : ''}
 </div>
 <h2>분야별 이행 현황</h2>
 <table class="rep"><thead><tr><th>분야</th><th>업무</th><th>주기</th><th>담당</th><th>증빙자료</th>${MONTHS.map((m) => `<th>${m}</th>`).join('')}<th>완료/계획</th></tr></thead><tbody>${bodyRows}</tbody></table>
-<div class="legend">✓ 완료 · ✕ 미이행 · ○ 예정(미도래) · ★ 과태료 리스크</div>
+<div class="legend">✓ 완료 · ✕ 미이행 · ○ 예정(미도래) · ★ 법정 필수 (미이행 시 과태료)</div>
 ${asNeededHtml}
 </body></html>`
 
