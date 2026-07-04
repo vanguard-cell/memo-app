@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { addWork, updateWork, deleteWork, toggleWorkRun, seedWorks } from '../store'
+import { addWork, updateWork, deleteWork, toggleWorkRun, seedWorks, attachFile } from '../store'
 import { WORK_SEED } from '../workSeed'
+import { uploadFile } from '../files'
+import { exportExcel, openReport } from '../report'
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
@@ -78,10 +80,56 @@ export default function WorkView({ works, onOpen }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [editId, setEditId] = useState(null) // work id | 'new' | null
+  const [byArea, setByArea] = useState(false)
+  const [dropping, setDropping] = useState(false)
+  const [uploadNote, setUploadNote] = useState(null)
   const curYm = ymOf(now.getFullYear(), now.getMonth() + 1)
 
-  const scheduled = works.filter((w) => (w.months || []).length > 0)
+  const scheduledRaw = works.filter((w) => (w.months || []).length > 0)
+  const scheduled = byArea
+    ? [...scheduledRaw].sort(
+        (a, b) => (a.area || '').localeCompare(b.area || '', 'ko') || (a.order ?? 0) - (b.order ?? 0)
+      )
+    : scheduledRaw
   const asNeeded = works.filter((w) => (w.months || []).length === 0)
+
+  async function onDropFiles(e) {
+    e.preventDefault()
+    setDropping(false)
+    const files = [...e.dataTransfer.files]
+    if (!files.length) return
+    let lastId = null
+    for (const f of files) {
+      const title = f.name.replace(/\.[^.]+$/, '')
+      const w = addWork({ title, area: '', cycle: '', owner: '', evidence: '', months: [] })
+      lastId = w.id
+      try {
+        const meta = await uploadFile(f)
+        if (meta) attachFile(w.id, meta)
+        setUploadNote(null)
+      } catch (err) {
+        console.error('업로드 실패', err)
+        setUploadNote(`"${f.name}" 파일 업로드에 실패했습니다 — 행은 만들어졌으니 패널에서 다시 올려주세요`)
+      }
+    }
+    if (lastId) {
+      setEditId(lastId)
+      onOpen(lastId)
+    }
+  }
+
+  const dropProps = {
+    onDragOver: (e) => {
+      if ([...e.dataTransfer.types].includes('Files')) {
+        e.preventDefault()
+        setDropping(true)
+      }
+    },
+    onDragLeave: (e) => {
+      if (e.currentTarget === e.target) setDropping(false)
+    },
+    onDrop: onDropFiles,
+  }
 
   if (works.length === 0) {
     return (
@@ -106,7 +154,7 @@ export default function WorkView({ works, onOpen }) {
   }
 
   return (
-    <div className="view">
+    <div className={'view' + (dropping ? ' work-dropping' : '')} {...dropProps}>
       <div className="work-head">
         <span className="work-title">안전관리 점검 캘린더</span>
         <span className="work-year">
@@ -114,9 +162,18 @@ export default function WorkView({ works, onOpen }) {
           <b>{year}년</b>
           <button onClick={() => setYear(year + 1)}>›</button>
         </span>
+        <button className={'pill' + (byArea ? ' on' : '')} onClick={() => setByArea(!byArea)}>
+          분야별
+        </button>
         <span className="work-legend">O 예정 · <b className="t-teal">✓ 완료</b> · <b className="t-red">! 지남</b> · <b className="t-red">★</b> 과태료</span>
+        <button onClick={() => openReport(works, year)}>보고서</button>
+        <button onClick={() => exportExcel(works, year)}>엑셀</button>
         <button onClick={() => setEditId('new')}>+ 업무 추가</button>
       </div>
+      <div className="work-drophint">
+        계약서·견적서 파일을 이 화면에 끌어다 놓으면 새 업무로 등록됩니다 (파일 첨부 포함)
+      </div>
+      {uploadNote && <div className="login-error">{uploadNote}</div>}
 
       {editId === 'new' && (
         <WorkForm

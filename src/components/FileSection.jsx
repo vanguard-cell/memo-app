@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../supabase'
+import { uploadFile } from '../files'
 
 const fmtSize = (n) =>
   n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'
@@ -14,16 +15,9 @@ export default function FileSection({ files = [], onAttach, onRemove }) {
     setError(null)
     setBusy(true)
     try {
-      const { data } = await supabase.auth.getUser()
-      const uid = data.user.id
       for (const f of fileList) {
-        const ext = (f.name.split('.').pop() || 'bin').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'bin'
-        const path = `${uid}/${crypto.randomUUID()}.${ext}`
-        const { error: err } = await supabase.storage
-          .from('files')
-          .upload(path, f, { contentType: f.type || 'application/octet-stream' })
-        if (err) throw err
-        onAttach({ name: f.name, path, size: f.size, ts: Date.now() })
+        const meta = await uploadFile(f)
+        if (meta) onAttach(meta)
       }
     } catch (e) {
       console.error('업로드 실패', e)
