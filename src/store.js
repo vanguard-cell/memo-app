@@ -20,6 +20,10 @@ function migrate(memos) {
     if ((m.due || m.period) && p.cleaned && p.cleaned !== m.title) {
       m.title = p.cleaned
     }
+    // 날짜 없는 미완료 메모는 오늘 기한으로 — 완료 전까지 오늘 화면에서 괴롭힌다
+    if (!m.due && !m.period && m.status !== 'done') {
+      m.due = todayStr()
+    }
     return m
   })
 }

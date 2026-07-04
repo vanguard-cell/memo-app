@@ -10,7 +10,6 @@ const TYPE = {
   start: ['시작', 'ev-start'],
   end: ['만기', 'ev-end'],
   span: ['기간', 'ev-span'],
-  note: ['메모', 'ev-hist'],
 }
 
 export default function CalendarView({ memos, dayOrder, onOpen }) {
@@ -52,7 +51,7 @@ export default function CalendarView({ memos, dayOrder, onOpen }) {
     }
     const m = memos.find((x) => x.id === data.id)
     if (!m || targetDate === data.date) return
-    if (data.type === 'due' || data.type === 'note') {
+    if (data.type === 'due') {
       updateMemo(m.id, { due: targetDate })
     } else if (data.type === 'start' && m.period) {
       const [start, end] = targetDate <= m.period.end ? [targetDate, m.period.end] : [m.period.end, targetDate]
@@ -99,9 +98,6 @@ export default function CalendarView({ memos, dayOrder, onOpen }) {
             d = addDays(d, 1)
           }
         }
-      }
-      if (!m.due && !m.period) {
-        push(m.createdAt.slice(0, 10), { m, type: 'note', text: m.title })
       }
     }
     return map

@@ -53,7 +53,9 @@ export default function InputBar({ memos, onOpen }) {
     if (!t) return
     const dateAccepted = (parsed.period && !removed.period) || (parsed.due && !removed.due)
     const title = dateAccepted && parsed.cleaned ? parsed.cleaned : t
-    addMemo({ title, ...eff })
+    // 날짜가 없으면 오늘 기한으로 — 던진 순간부터 오늘 할 일로 들어간다
+    const due = eff.due || (eff.period ? null : todayStr())
+    addMemo({ title, ...eff, due })
     reset()
     say('새 메모로 저장했습니다')
   }
@@ -118,7 +120,7 @@ export default function InputBar({ memos, onOpen }) {
           {eff.company && (
             <Chip cls="chip-co" label={`업체 ${eff.company}`} onX={() => setRemoved((r) => ({ ...r, company: true }))} />
           )}
-          {nothing && <span className="chips-none">날짜·업체 자동 인식 없음 — 그냥 메모로 저장됩니다</span>}
+          {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
         </div>
       )}
       {confirming && candidate && (

@@ -28,7 +28,6 @@ export function buildNags(memos) {
   const overdue = []
   const dueToday = []
   const upcoming = []
-  const dateless = []
   for (const m of memos) {
     if (m.status === 'done') continue
     const snoozed = m.snoozeUntil && m.snoozeUntil > today
@@ -44,11 +43,10 @@ export function buildNags(memos) {
       else if (dd === 0 && !snoozed) dueToday.push({ m, kind: 'end' })
       else if (dd > 0 && dd <= 60) upcoming.push({ m, dd, kind: 'end' })
     }
-    if (!m.due && !m.period) dateless.push(m)
   }
   overdue.sort((a, b) => b.days - a.days)
   upcoming.sort((a, b) => a.dd - b.dd)
-  return { overdue, dueToday, upcoming, dateless }
+  return { overdue, dueToday, upcoming }
 }
 
 export function nagCount(memos) {

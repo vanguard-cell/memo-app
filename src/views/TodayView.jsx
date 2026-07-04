@@ -54,7 +54,7 @@ function Section({ title, cls, children }) {
 }
 
 export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
-  const { overdue, dueToday, upcoming, dateless } = buildNags(memos)
+  const { overdue, dueToday, upcoming } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [rowDrop, setRowDrop] = useState(null)
   const today = todayStr()
@@ -199,13 +199,6 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
           지금 괴롭힐 일이 없습니다.
           <br />위 입력창에 던져두면 잊지 않고 여기서 챙겨드립니다.
         </div>
-      )}
-      {dateless.length > 0 && (
-        <Section title={`기한 없는 메모 · ${dateless.length}건`} cls="sec-gray">
-          {dateless.map((m) => (
-            <Row key={m.id} m={m} tag="메모" tagCls="t-gray" onOpen={onOpen} />
-          ))}
-        </Section>
       )}
     </div>
   )
