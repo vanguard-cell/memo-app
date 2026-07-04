@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
+    "exceljs": "^4.4.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "xlsx": "^0.18.5"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 const ymOf = (y, m) => `${y}-${String(m).padStart(2, '0')}`
@@ -22,42 +22,152 @@ function cellMark(w, year, m, curYm) {
   return { mark: '○', cls: 'plan' }
 }
 
-export function exportExcel(works, year) {
+const THIN = { style: 'thin', color: { argb: 'FFC8C7C0' } }
+const BORDER = { top: THIN, bottom: THIN, left: THIN, right: THIN }
+const CELL_STYLE = {
+  ok: { fill: 'FFE1F5EE', color: 'FF0F6E56' },
+  miss: { fill: 'FFFCEBEB', color: 'FFA32D2D' },
+  plan: { fill: null, color: 'FFB4B2A9' },
+}
+
+export async function exportExcel(works, year) {
   const curYm = ymOf(new Date().getFullYear(), new Date().getMonth() + 1)
-  const scheduled = works.filter((w) => (w.months || []).length > 0)
+  const scheduled = [...works.filter((w) => (w.months || []).length > 0)].sort(
+    (a, b) => (a.area || '').localeCompare(b.area || '', 'ko') || (a.order ?? 0) - (b.order ?? 0)
+  )
   const asNeeded = works.filter((w) => (w.months || []).length === 0)
 
-  const header = ['분야', '업무', '주기', '담당', '증빙자료', ...MONTHS.map((m) => `${m}월`), '계획', '완료', '이행률', '법정필수']
-  const rows = scheduled.map((w) => {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet(`${year}년`, { views: [{ state: 'frozen', ySplit: 2 }] })
+  const COLS = 21
+
+  ws.columns = [
+    { width: 9 },
+    { width: 30 },
+    { width: 13 },
+    { width: 17 },
+    { width: 19 },
+    ...MONTHS.map(() => ({ width: 4.5 })),
+    { width: 6 },
+    { width: 6 },
+    { width: 8 },
+    { width: 9 },
+  ]
+
+  ws.mergeCells(1, 1, 1, COLS)
+  const title = ws.getCell(1, 1)
+  title.value = `${year}년 안전관리 점검 캘린더`
+  title.font = { bold: true, size: 14 }
+  ws.getRow(1).height = 26
+
+  const header = ['분야', '업무', '주기', '담당', '증빙자료', ...MONTHS.map((m) => `${m}`), '계획', '완료', '이행률', '법정필수']
+  const hr = ws.getRow(2)
+  hr.values = header
+  hr.height = 20
+  hr.eachCell((c) => {
+    c.font = { bold: true, size: 10 }
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F2ED' } }
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    c.border = BORDER
+  })
+
+  let r = 3
+  let areaStart = 3
+  let prevArea = null
+  const closeAreaMerge = (endRow) => {
+    if (prevArea !== null && endRow > areaStart) ws.mergeCells(areaStart, 1, endRow, 1)
+  }
+  for (const w of scheduled) {
+    const area = w.area || '기타'
+    if (area !== prevArea) {
+      closeAreaMerge(r - 1)
+      prevArea = area
+      areaStart = r
+    }
     const { planned, done } = stats(w, year)
-    return [
-      w.area || '',
+    const row = ws.getRow(r)
+    row.values = [
+      area,
       w.title,
       w.cycle || '',
       w.owner || '',
       w.evidence || '',
       ...MONTHS.map((m) => {
         const c = cellMark(w, year, m, curYm)
-        if (!c) return ''
-        if (c.cls === 'ok') return `완료(${(w.runs[ymOf(year, m)].at || '').slice(5)})`
-        return c.cls === 'miss' ? '미이행' : '예정'
+        return c ? c.mark : ''
       }),
       planned,
       done,
-      planned ? Math.round((done / planned) * 100) + '%' : '',
+      planned ? Math.round((done / planned) * 100) / 100 : '',
       w.risk ? '★' : '',
     ]
-  })
-  const aoa = [[`${year}년 안전관리 점검 캘린더`], [], header, ...rows]
-  if (asNeeded.length) {
-    aoa.push([], ['수시·조건부 업무'], ['분야', '업무', '주기', '담당', '증빙자료'])
-    for (const w of asNeeded) aoa.push([w.area || '', w.title, w.cycle || '', w.owner || '', w.evidence || ''])
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      if (col > COLS) return
+      cell.border = BORDER
+      cell.font = { size: 10 }
+      if (col === 1) cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (col >= 6 && col <= 17) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' }
+        const m = MONTHS[col - 6]
+        const c = cellMark(w, year, m, curYm)
+        if (c) {
+          const st = CELL_STYLE[c.cls]
+          cell.font = { size: 10, bold: c.cls !== 'plan', color: { argb: st.color } }
+          if (st.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: st.fill } }
+        }
+      }
+      if (col >= 18) cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (col === 20 && cell.value !== '') cell.numFmt = '0%'
+      if (col === 21 && cell.value === '★') cell.font = { size: 10, bold: true, color: { argb: 'FFA32D2D' } }
+    })
+    r++
   }
-  const ws = XLSX.utils.aoa_to_sheet(aoa)
-  ws['!cols'] = [{ wch: 8 }, { wch: 28 }, { wch: 12 }, { wch: 16 }, { wch: 18 }, ...MONTHS.map(() => ({ wch: 11 })), { wch: 5 }, { wch: 5 }, { wch: 7 }, { wch: 5 }]
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, `${year}년`)
-  XLSX.writeFile(wb, `안전관리점검_${year}.xlsx`)
+  closeAreaMerge(r - 1)
+
+  const legend = ws.getRow(r)
+  ws.mergeCells(r, 1, r, COLS)
+  legend.getCell(1).value = '✓ 완료 · ✕ 미이행 · ○ 예정(미도래) · ★ 법정 필수 (미이행 시 과태료)'
+  legend.getCell(1).font = { size: 9, color: { argb: 'FF75736B' } }
+  r += 2
+
+  if (asNeeded.length) {
+    ws.mergeCells(r, 1, r, COLS)
+    const st = ws.getCell(r, 1)
+    st.value = '수시·조건부 업무'
+    st.font = { bold: true, size: 11 }
+    r++
+    const h2 = ws.getRow(r)
+    h2.values = ['분야', '업무', '주기', '담당', '증빙자료']
+    for (let col = 1; col <= 5; col++) {
+      const c = h2.getCell(col)
+      c.font = { bold: true, size: 10 }
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F2ED' } }
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      c.border = BORDER
+    }
+    r++
+    for (const w of asNeeded) {
+      const row = ws.getRow(r)
+      row.values = [w.area || '', w.title, w.cycle || '', w.owner || '', w.evidence || '']
+      for (let col = 1; col <= 5; col++) {
+        const c = row.getCell(col)
+        c.border = BORDER
+        c.font = { size: 10 }
+        if (col === 1) c.alignment = { horizontal: 'center' }
+      }
+      r++
+    }
+  }
+
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `안전관리점검_${year}.xlsx`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 export function openReport(works, year) {
