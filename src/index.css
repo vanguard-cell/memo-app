@@ -1383,6 +1383,43 @@ main {
   color: var(--faint);
 }
 
+.runhist,
+.linked {
+  margin-top: 14px;
+  border-top: 1px solid #f0efe9;
+  padding-top: 12px;
+}
+
+.linked .row {
+  padding: 7px 10px;
+}
+
+.run-note {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font-size: 13.5px;
+  color: var(--text);
+  text-align: left;
+}
+
+.run-note:hover {
+  background: none;
+  color: var(--blue);
+}
+
+.run-note.faint {
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.run-note-input {
+  font-size: 13px;
+  padding: 3px 7px;
+  margin-left: 6px;
+  width: 200px;
+}
+
 .panel-foot {
   margin-top: 14px;
   font-size: 12px;

@@ -6,7 +6,8 @@ import { hasSupabase } from '../supabase'
 import Timeline from './Timeline'
 import FileSection from './FileSection'
 
-export default function MemoDetail({ memo, onClose }) {
+export default function MemoDetail({ memo, works = [], onOpen, onClose }) {
+  const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
   const st = memoStatus(memo)
@@ -66,6 +67,11 @@ export default function MemoDetail({ memo, onClose }) {
                 </b>
               )}
             </span>
+          )}
+          {linkedWork && onOpen && (
+            <button className="linkish" onClick={() => onOpen(linkedWork.id)} title="연결된 점검 열기">
+              점검: {linkedWork.title}
+            </button>
           )}
         </div>
         <div className="panel-actions">

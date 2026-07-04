@@ -200,7 +200,7 @@ export async function signOut() {
 
 // ---------- 메모 조작 ----------
 
-export function addMemo({ title, company, due, period }) {
+export function addMemo({ title, company, due, period, fromWork }) {
   const now = new Date().toISOString()
   const memo = {
     id: crypto.randomUUID(),
@@ -210,6 +210,7 @@ export function addMemo({ title, company, due, period }) {
     due: due || null,
     period: period || null,
     history: [],
+    fromWork: fromWork || null,
     createdAt: now,
     updatedAt: now,
     completedAt: null,
@@ -401,6 +402,19 @@ export function toggleWorkRun(id, ym) {
       const runs = { ...(w.runs || {}) }
       if (runs[ym] && runs[ym].done) delete runs[ym]
       else runs[ym] = { done: true, at: now.slice(0, 10) }
+      return { ...w, runs, updatedAt: now }
+    }),
+  })
+  remoteUpsert(id)
+}
+
+export function setWorkRunNote(id, ym, note) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    works: state.works.map((w) => {
+      if (w.id !== id || !w.runs || !w.runs[ym]) return w
+      const runs = { ...w.runs, [ym]: { ...w.runs[ym], note: note.trim() || undefined } }
       return { ...w, runs, updatedAt: now }
     }),
   })

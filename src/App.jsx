@@ -86,8 +86,18 @@ export default function App() {
           {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} />}
           {tab === 'work' && <WorkView works={works} onOpen={setOpenId} />}
         </main>
-        {open && <MemoDetail key={open.id} memo={open} onClose={() => setOpenId(null)} />}
-        {openWork && <WorkDetail key={openWork.id} work={openWork} onClose={() => setOpenId(null)} />}
+        {open && (
+          <MemoDetail key={open.id} memo={open} works={works} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+        )}
+        {openWork && (
+          <WorkDetail
+            key={openWork.id}
+            work={openWork}
+            memos={memos}
+            onOpen={setOpenId}
+            onClose={() => setOpenId(null)}
+          />
+        )}
       </div>
     </div>
   )
