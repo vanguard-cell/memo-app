@@ -32,6 +32,10 @@ export default function MemosView({ memos, onOpen }) {
     .slice()
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
 
+  // 진행 중인 것 먼저, 완료는 아래로 분리
+  const openList = list.filter((m) => memoStatus(m) !== 'done')
+  const doneList = list.filter((m) => memoStatus(m) === 'done')
+
   return (
     <div className="view">
       <input
@@ -55,17 +59,19 @@ export default function MemosView({ memos, onOpen }) {
         <span className="count">{list.length}건</span>
       </div>
       {list.length === 0 && <div className="empty">해당하는 메모가 없습니다.</div>}
-      {list.map((m) => {
+      {[...openList, ...doneList].map((m, i) => {
         const matched = words.length
           ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
           : []
+        const firstDone = st === 'all' && doneList.length > 0 && i === openList.length
         return (
           <div key={m.id}>
+            {firstDone && <div className="done-divider">완료 · {doneList.length}건</div>}
             <MemoRow memo={m} onOpen={onOpen} />
             {matched.length > 0 && (
               <div className="hit-lines">
-                {matched.map((h, i) => (
-                  <div key={i} className="hit-line">
+                {matched.map((h, i2) => (
+                  <div key={i2} className="hit-line">
                     <span>{fmtDate(h.date)}</span> {h.text}
                   </div>
                 ))}

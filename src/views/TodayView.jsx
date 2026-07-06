@@ -4,7 +4,7 @@ import { completeMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
 import { todayStr, addDays } from '../parser'
 import { ymOf } from './WorkView'
 
-function Row({ m, tag, tagCls, desc, onOpen, snoozable, drag }) {
+function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, drag }) {
   return (
     <div
       className={'nag-row' + (drag ? drag.dropCls : '')}
@@ -29,11 +29,11 @@ function Row({ m, tag, tagCls, desc, onOpen, snoozable, drag }) {
         >
           완료
         </button>
-        {snoozable && (
+        {onTomorrow && (
           <button
             onClick={(e) => {
               e.stopPropagation()
-              updateMemo(m.id, { snoozeUntil: addDays(todayStr(), 1) })
+              onTomorrow()
             }}
           >
             내일로
@@ -58,13 +58,21 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [rowDrop, setRowDrop] = useState(null)
   const today = todayStr()
+  const tomorrow = addDays(today, 1)
+
+  // 내일로: 기한이 있는 메모는 기한 자체를 내일로 옮긴다 (달력도 함께 이동).
+  // 기간 만기 알림은 만기일을 건드리면 안 되므로 하루 숨김(snooze)으로 처리.
+  const tomorrowFor = (it) => () => {
+    if (it.kind === 'end') updateMemo(it.m.id, { snoozeUntil: tomorrow })
+    else updateMemo(it.m.id, { due: tomorrow })
+  }
 
   // 이번 달 시행하는 점검 업무 (점검 탭과 동일 데이터)
   const now = new Date()
   const curMonth = now.getMonth() + 1
   const curYm = ymOf(now.getFullYear(), curMonth)
+  const worksKey = `works-${curYm}`
   const monthWorks = works.filter((w) => (w.months || []).includes(curMonth))
-  const openWorks = monthWorks.filter((w) => !(w.runs && w.runs[curYm] && w.runs[curYm].done))
 
   const idxFor = (date, id) => {
     const order = (dayOrder && dayOrder[date]) || []
@@ -76,8 +84,12 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
   dueToday.sort((a, b) => idxFor(today, a.m.id) - idxFor(today, b.m.id))
   upcoming.sort((a, b) => a.dd - b.dd || idxFor(dateOf(a), a.m.id) - idxFor(dateOf(b), b.m.id))
 
-  function reorder(date, group, draggedId, targetId, after) {
-    const ids = [...new Set(group.map((it) => it.m.id))].filter((id) => id !== draggedId)
+  const openWorks = monthWorks
+    .filter((w) => !(w.runs && w.runs[curYm] && w.runs[curYm].done))
+    .sort((a, b) => idxFor(worksKey, a.id) - idxFor(worksKey, b.id) || (a.order ?? 0) - (b.order ?? 0))
+
+  function reorder(date, ids0, draggedId, targetId, after) {
+    const ids = [...new Set(ids0)].filter((id) => id !== draggedId)
     let pos = ids.indexOf(targetId)
     if (pos === -1) pos = ids.length
     else if (after) pos += 1
@@ -85,13 +97,11 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
     setDayOrder(date, ids)
   }
 
-  function dragFor(item, list) {
-    const date = dateOf(item)
-    const key = item.m.id + item.kind
+  function makeDrag(key, orderKey, itemId, listIds) {
     return {
       dropCls: rowDrop && rowDrop.key === key ? (rowDrop.after ? ' drop-below' : ' drop-above') : '',
       onDragStart: (ev) => {
-        ev.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'nag-reorder', id: item.m.id, date }))
+        ev.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'nag-reorder', id: itemId, date: orderKey }))
         ev.dataTransfer.effectAllowed = 'move'
       },
       onDragOver: (ev) => {
@@ -110,25 +120,35 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
         } catch {
           return
         }
-        if (data.kind !== 'nag-reorder' || data.date !== date || data.id === item.m.id) return
-        reorder(date, list.filter((it) => dateOf(it) === date), data.id, item.m.id, cur ? cur.after : false)
+        if (data.kind !== 'nag-reorder' || data.date !== orderKey || data.id === itemId) return
+        reorder(orderKey, listIds(), data.id, itemId, cur ? cur.after : false)
       },
     }
   }
+
+  const dragFor = (item, list) => {
+    const date = dateOf(item)
+    return makeDrag(item.m.id + item.kind, date, item.m.id, () =>
+      list.filter((it) => dateOf(it) === date).map((it) => it.m.id)
+    )
+  }
+
+  const dragForWork = (w) =>
+    makeDrag('work-' + w.id, worksKey, w.id, () => openWorks.map((x) => x.id))
 
   return (
     <div className="view">
       {overdue.length > 0 && (
         <Section title="미루고 있는 일" cls="sec-red">
-          {overdue.map(({ m, days, kind }) => (
+          {overdue.map((it) => (
             <Row
-              key={m.id + kind}
-              m={m}
-              tag={`${days}일째`}
+              key={it.m.id + it.kind}
+              m={it.m}
+              tag={`${it.days}일째`}
               tagCls="t-red"
-              desc={kind === 'end' ? `만기 ${fmtDate(m.period.end)} 지남` : null}
+              desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)} 지남` : null}
               onOpen={onOpen}
-              snoozable
+              onTomorrow={tomorrowFor(it)}
             />
           ))}
         </Section>
@@ -143,7 +163,7 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
               tagCls="t-amber"
               desc={it.kind === 'end' ? '오늘 만기' : null}
               onOpen={onOpen}
-              snoozable
+              onTomorrow={tomorrowFor(it)}
               drag={dragFor(it, dueToday)}
             />
           ))}
@@ -169,26 +189,39 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
           title={`이번 달 점검 (${curMonth}월) · ${monthWorks.length - openWorks.length}/${monthWorks.length} 완료`}
           cls="sec-teal"
         >
-          {openWorks.map((w) => (
-            <div key={w.id} className="nag-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
-              <span className="nag-tag t-teal">{w.area || '점검'}</span>
-              <span className="nag-title">
-                {w.title}
-                {w.risk && <b className="t-red"> ★</b>}
-                {w.evidence && <span className="nag-desc"> · {w.evidence}</span>}
-              </span>
-              <span className="nag-actions">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleWorkRun(w.id, curYm)
-                  }}
-                >
-                  완료
-                </button>
-              </span>
-            </div>
-          ))}
+          {openWorks.map((w) => {
+            const drag = dragForWork(w)
+            return (
+              <div
+                key={w.id}
+                className={'nag-row' + drag.dropCls}
+                draggable
+                onDragStart={drag.onDragStart}
+                onDragOver={drag.onDragOver}
+                onDragLeave={drag.onDragLeave}
+                onDrop={drag.onDrop}
+                onClick={() => onOpen(w.id)}
+                title="누르면 이력 패널이 열립니다"
+              >
+                <span className="nag-tag t-teal">{w.area || '점검'}</span>
+                <span className="nag-title">
+                  {w.title}
+                  {w.risk && <b className="t-red"> ★</b>}
+                  {w.evidence && <span className="nag-desc"> · {w.evidence}</span>}
+                </span>
+                <span className="nag-actions">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleWorkRun(w.id, curYm)
+                    }}
+                  >
+                    완료
+                  </button>
+                </span>
+              </div>
+            )
+          })}
           {openWorks.length === 0 && (
             <div className="empty small">이번 달 점검을 전부 마쳤습니다.</div>
           )}
