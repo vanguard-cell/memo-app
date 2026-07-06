@@ -169,13 +169,31 @@ async function syncFromServer() {
   }
 }
 
+// 탭에 다시 돌아오거나 인터넷이 재연결되면 서버와 다시 맞춘다.
+// (로그인 순간에만 받아오면, 열어둔 탭이 다른 기기의 변경을 영영 못 봄)
+let lastSyncAt = 0
+function requestSync() {
+  if (!hasSupabase || !session) return
+  if (Date.now() - lastSyncAt < 15000) return // 과도한 재요청 방지
+  lastSyncAt = Date.now()
+  syncFromServer()
+}
+
 if (hasSupabase) {
   supabase.auth.onAuthStateChange((_event, s) => {
     const wasLoggedIn = !!session
     session = s
     setAuth({ ready: true, loggedIn: !!s, email: s ? s.user.email : null })
-    if (s && !wasLoggedIn) syncFromServer()
+    if (s && !wasLoggedIn) {
+      lastSyncAt = Date.now()
+      syncFromServer()
+    }
   })
+  window.addEventListener('focus', requestSync)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestSync()
+  })
+  window.addEventListener('online', requestSync)
 }
 
 export async function signInWithGoogle() {
