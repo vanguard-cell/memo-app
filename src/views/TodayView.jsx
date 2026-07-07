@@ -74,6 +74,12 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
   const worksKey = `works-${curYm}`
   const monthWorks = works.filter((w) => (w.months || []).includes(curMonth))
 
+  // 기간 메모에 오늘 날짜의 진행기록 줄이 있으면 줄 설명에 보여준다 (예: 오늘의 식단)
+  const lineToday = (m) => {
+    const h = (m.history || []).find((x) => x.date === today && x.text)
+    return h ? h.text : null
+  }
+
   const idxFor = (date, id) => {
     const order = (dayOrder && dayOrder[date]) || []
     const i = order.indexOf(id)
@@ -163,7 +169,11 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                 m={it.m}
                 tag="오늘"
                 tagCls="t-amber"
-                desc={it.kind === 'end' ? '오늘 만기' : null}
+                desc={
+                  it.kind === 'end'
+                    ? '오늘 만기' + (lineToday(it.m) ? ` · ${lineToday(it.m)}` : '')
+                    : lineToday(it.m)
+                }
                 onOpen={onOpen}
                 onTomorrow={tomorrowFor(it)}
                 drag={dragFor(it, dueToday)}
@@ -181,7 +191,10 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                 m={it.m}
                 tag={`D-${it.dd}`}
                 tagCls="t-blue"
-                desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)}` : `기한 ${fmtDate(it.m.due)}`}
+                desc={
+                  (it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)}` : `기한 ${fmtDate(it.m.due)}`) +
+                  (lineToday(it.m) ? ` · ${lineToday(it.m)}` : '')
+                }
                 onOpen={onOpen}
                 drag={dragFor(it, upcoming)}
               />

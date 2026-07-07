@@ -85,16 +85,23 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
       if (!date) return
       ;(map[date] = map[date] || []).push(e)
     }
+    // 기간 메모: 그 날짜의 진행기록 줄이 있으면 제목 대신 그 내용을 칸에 보여준다
+    // (예: 주간 식당 메뉴 — 월요일 칸엔 월요일 메뉴)
+    const dayLine = (m, date) => {
+      const h = (m.history || []).find((x) => x.date === date && x.text)
+      return h ? h.text : null
+    }
     for (const m of memos) {
       if (m.due) push(m.due, { m, type: 'due', text: m.title })
       if (m.period && m.period.start && m.period.end) {
-        push(m.period.start, { m, type: 'start', text: m.title })
-        if (m.period.end !== m.period.start) push(m.period.end, { m, type: 'end', text: m.title })
+        push(m.period.start, { m, type: 'start', text: dayLine(m, m.period.start) || m.title })
+        if (m.period.end !== m.period.start)
+          push(m.period.end, { m, type: 'end', text: dayLine(m, m.period.end) || m.title })
         const len = diffDays(m.period.end, m.period.start)
         if (len > 1 && len <= 31) {
           let d = addDays(m.period.start, 1)
           while (d < m.period.end) {
-            push(d, { m, type: 'span', text: m.title })
+            push(d, { m, type: 'span', text: dayLine(m, d) || m.title })
             d = addDays(d, 1)
           }
         }
