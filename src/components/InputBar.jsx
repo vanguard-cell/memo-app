@@ -19,6 +19,18 @@ const truncate = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s)
 // 캡처 붙여넣기의 기본 파일명(image.png 등)이면 제목으로 쓰기엔 무의미
 const GENERIC_NAME = /^(image|img|screenshot|clipboard|스크린샷|캡처|photo|kakaotalk)/i
 
+// 이번 주 월~금 (주말에 던지면 다음 주 월~금)
+function thisWeekPeriod() {
+  const t = new Date()
+  const day = t.getDay() // 0=일
+  const mon = new Date(t)
+  mon.setDate(t.getDate() - ((day + 6) % 7) + (day === 0 || day === 6 ? 7 : 0))
+  const fri = new Date(mon)
+  fri.setDate(mon.getDate() + 4)
+  const s = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return { start: s(mon), end: s(fri) }
+}
+
 export default function InputBar({ memos, onOpen }) {
   const [text, setText] = useState('')
   const [removed, setRemoved] = useState({})
@@ -26,15 +38,17 @@ export default function InputBar({ memos, onOpen }) {
   const [flash, setFlash] = useState('')
   const [files, setFiles] = useState([]) // { file, url(이미지 미리보기) }
   const [dropping, setDropping] = useState(false)
+  const [weekOn, setWeekOn] = useState(false)
   const fileInput = useRef(null)
 
   const known = useMemo(() => companies(memos), [memos])
   const parsed = useMemo(() => parse(text, known), [text, known])
   const eff = {
     due: removed.due ? null : parsed.due,
-    period: removed.period ? null : parsed.period,
+    period: removed.period ? null : parsed.period || (weekOn ? thisWeekPeriod() : null),
     company: removed.company ? null : parsed.company,
   }
+  if (eff.period) eff.due = null
 
   const candidate = useMemo(() => {
     if (!eff.company) return null
@@ -68,6 +82,7 @@ export default function InputBar({ memos, onOpen }) {
     setText('')
     setRemoved({})
     setConfirming(false)
+    setWeekOn(false)
     files.forEach((f) => f.url && URL.revokeObjectURL(f.url))
     setFiles([])
   }
@@ -110,6 +125,7 @@ export default function InputBar({ memos, onOpen }) {
     setText('')
     setRemoved({})
     setConfirming(false)
+    setWeekOn(false)
     setFiles([])
     if (pending.length) {
       say(`저장 — 파일 ${pending.length}개 올리는 중…`)
@@ -133,6 +149,7 @@ export default function InputBar({ memos, onOpen }) {
     setText('')
     setRemoved({})
     setConfirming(false)
+    setWeekOn(false)
     setFiles([])
     if (pending.length) {
       say(await uploadTo(id, pending))
@@ -227,6 +244,20 @@ export default function InputBar({ memos, onOpen }) {
               <button className="chip-x" onClick={() => removeFile(i)} aria-label="첨부 제거">×</button>
             </span>
           ))}
+          {weekOn && eff.period && !text.trim() && (
+            <Chip cls="chip-date" label={`기간 ${fmtPeriod(eff.period)}`} onX={() => setWeekOn(false)} />
+          )}
+          {!eff.period && !eff.due && (
+            <button
+              className="pill"
+              onClick={() => {
+                setWeekOn(true)
+                setRemoved((r) => ({ ...r, period: false }))
+              }}
+            >
+              이번 주 월~금에 넣기
+            </button>
+          )}
           {!text.trim() && (
             <span className="chips-none">제목 없이 저장하면 "{defaultTitle()}"로 저장됩니다</span>
           )}
@@ -243,6 +274,17 @@ export default function InputBar({ memos, onOpen }) {
           )}
           {eff.company && (
             <Chip cls="chip-co" label={`업체 ${eff.company}`} onX={() => setRemoved((r) => ({ ...r, company: true }))} />
+          )}
+          {!eff.period && !eff.due && files.length === 0 && (
+            <button
+              className="pill"
+              onClick={() => {
+                setWeekOn(true)
+                setRemoved((r) => ({ ...r, period: false }))
+              }}
+            >
+              이번 주 월~금에 넣기
+            </button>
           )}
           {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
         </div>
