@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { addWork, updateWork, deleteWork, toggleWorkRun, seedWorks, attachFile } from '../store'
 import { WORK_SEED } from '../workSeed'
 import { uploadFile } from '../files'
@@ -76,7 +76,7 @@ function WorkForm({ initial, onSave, onCancel }) {
   )
 }
 
-export default function WorkView({ works, onOpen }) {
+export default function WorkView({ works, onOpen, renderDetail }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [editId, setEditId] = useState(null) // work id | 'new' | null
@@ -199,19 +199,24 @@ export default function WorkView({ works, onOpen }) {
             </tr>
           </thead>
           <tbody>
-            {scheduled.map((w) =>
-              editId === w.id ? (
-                <tr key={w.id}>
-                  <td colSpan={18}>
-                    <WorkForm
-                      initial={{ area: w.area, title: w.title, cycle: w.cycle, owner: w.owner, evidence: w.evidence, risk: w.risk, months: w.months || [] }}
-                      onSave={(f) => { updateWork(w.id, f); setEditId(null) }}
-                      onCancel={() => setEditId(null)}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                <tr key={w.id} className="wt-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
+            {scheduled.map((w) => {
+              if (editId === w.id) {
+                return (
+                  <tr key={w.id}>
+                    <td colSpan={18}>
+                      <WorkForm
+                        initial={{ area: w.area, title: w.title, cycle: w.cycle, owner: w.owner, evidence: w.evidence, risk: w.risk, months: w.months || [] }}
+                        onSave={(f) => { updateWork(w.id, f); setEditId(null) }}
+                        onCancel={() => setEditId(null)}
+                      />
+                    </td>
+                  </tr>
+                )
+              }
+              const det = renderDetail && renderDetail(w.id)
+              return (
+                <Fragment key={w.id}>
+                <tr className="wt-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
                   <td><span className="work-area">{w.area}</span></td>
                   <td className="wt-title">
                     {w.title}
@@ -265,8 +270,14 @@ export default function WorkView({ works, onOpen }) {
                     </button>
                   </td>
                 </tr>
+                {det && (
+                  <tr className="wt-inline">
+                    <td colSpan={18}>{det}</td>
+                  </tr>
+                )}
+                </Fragment>
               )
-            )}
+            })}
           </tbody>
         </table>
       </div>
@@ -283,7 +294,8 @@ export default function WorkView({ works, onOpen }) {
                 onCancel={() => setEditId(null)}
               />
             ) : (
-              <div key={w.id} className="work-row wt-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
+              <Fragment key={w.id}>
+              <div className="work-row wt-row" onClick={() => onOpen(w.id)} title="누르면 이력 패널이 열립니다">
                 <span className="work-area">{w.area}</span>
                 <span>{w.title}{w.risk && <b className="t-red"> ★</b>}</span>
                 <span className="wt-sub">{w.cycle} · {w.evidence}</span>
@@ -308,6 +320,8 @@ export default function WorkView({ works, onOpen }) {
                   </button>
                 </span>
               </div>
+              {renderDetail && renderDetail(w.id)}
+              </Fragment>
             )
           )}
         </div>

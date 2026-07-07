@@ -82,7 +82,7 @@ function RunHistory({ work }) {
   )
 }
 
-export default function WorkDetail({ work, memos = [], onOpen, onClose }) {
+export default function WorkDetail({ work, memos = [], onOpen, onClose, inline }) {
   const meta = [work.cycle, work.owner, work.evidence && `증빙: ${work.evidence}`]
     .filter(Boolean)
     .join(' · ')
@@ -94,7 +94,7 @@ export default function WorkDetail({ work, memos = [], onOpen, onClose }) {
   }
 
   return (
-    <aside className="detail">
+    <aside className={'detail' + (inline ? ' detail-inline' : '')} onClick={(e) => e.stopPropagation()}>
       <div className="panel-head">
         <span className="work-area">{work.area || '점검'}</span>
         <span className="panel-title">

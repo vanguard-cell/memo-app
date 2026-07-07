@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { buildNags, fmtDate } from '../derive'
 import { completeMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
 import { todayStr, addDays } from '../parser'
@@ -53,7 +53,7 @@ function Section({ title, cls, children }) {
   )
 }
 
-export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
+export default function TodayView({ memos, works = [], dayOrder, onOpen, renderDetail }) {
   const { overdue, dueToday, upcoming } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [rowDrop, setRowDrop] = useState(null)
@@ -141,46 +141,52 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
       {overdue.length > 0 && (
         <Section title="미루고 있는 일" cls="sec-red">
           {overdue.map((it) => (
-            <Row
-              key={it.m.id + it.kind}
-              m={it.m}
-              tag={`${it.days}일째`}
-              tagCls="t-red"
-              desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)} 지남` : null}
-              onOpen={onOpen}
-              onTomorrow={tomorrowFor(it)}
-            />
+            <Fragment key={it.m.id + it.kind}>
+              <Row
+                m={it.m}
+                tag={`${it.days}일째`}
+                tagCls="t-red"
+                desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)} 지남` : null}
+                onOpen={onOpen}
+                onTomorrow={tomorrowFor(it)}
+              />
+              {renderDetail && renderDetail(it.m.id)}
+            </Fragment>
           ))}
         </Section>
       )}
       {dueToday.length > 0 && (
         <Section title="오늘 할 일" cls="sec-amber">
           {dueToday.map((it) => (
-            <Row
-              key={it.m.id + it.kind}
-              m={it.m}
-              tag="오늘"
-              tagCls="t-amber"
-              desc={it.kind === 'end' ? '오늘 만기' : null}
-              onOpen={onOpen}
-              onTomorrow={tomorrowFor(it)}
-              drag={dragFor(it, dueToday)}
-            />
+            <Fragment key={it.m.id + it.kind}>
+              <Row
+                m={it.m}
+                tag="오늘"
+                tagCls="t-amber"
+                desc={it.kind === 'end' ? '오늘 만기' : null}
+                onOpen={onOpen}
+                onTomorrow={tomorrowFor(it)}
+                drag={dragFor(it, dueToday)}
+              />
+              {renderDetail && renderDetail(it.m.id)}
+            </Fragment>
           ))}
         </Section>
       )}
       {upcoming.length > 0 && (
         <Section title="다가오는 일정 · 만기" cls="sec-blue">
           {upcoming.map((it) => (
-            <Row
-              key={it.m.id + it.kind}
-              m={it.m}
-              tag={`D-${it.dd}`}
-              tagCls="t-blue"
-              desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)}` : `기한 ${fmtDate(it.m.due)}`}
-              onOpen={onOpen}
-              drag={dragFor(it, upcoming)}
-            />
+            <Fragment key={it.m.id + it.kind}>
+              <Row
+                m={it.m}
+                tag={`D-${it.dd}`}
+                tagCls="t-blue"
+                desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)}` : `기한 ${fmtDate(it.m.due)}`}
+                onOpen={onOpen}
+                drag={dragFor(it, upcoming)}
+              />
+              {renderDetail && renderDetail(it.m.id)}
+            </Fragment>
           ))}
         </Section>
       )}
@@ -192,8 +198,8 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
           {openWorks.map((w) => {
             const drag = dragForWork(w)
             return (
+              <Fragment key={w.id}>
               <div
-                key={w.id}
                 className={'nag-row' + drag.dropCls}
                 draggable
                 onDragStart={drag.onDragStart}
@@ -220,6 +226,8 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen }) {
                   </button>
                 </span>
               </div>
+              {renderDetail && renderDetail(w.id)}
+              </Fragment>
             )
           })}
           {openWorks.length === 0 && (

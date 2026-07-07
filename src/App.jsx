@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { subscribe, getMemos, getWorks, getDayOrder, getAuth, signOut } from './store'
 import { hasSupabase } from './supabase'
 import { nagCount } from './derive'
@@ -27,6 +27,22 @@ export function openWorkCount(works) {
   ).length
 }
 
+// 화면이 좁으면(폰) 상세를 우측 패널 대신 누른 줄 아래에 펼친다
+function useIsNarrow() {
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 899px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 899px)')
+    const update = () => setNarrow(mq.matches)
+    mq.addEventListener('change', update)
+    window.addEventListener('resize', update)
+    return () => {
+      mq.removeEventListener('change', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return narrow
+}
+
 export default function App() {
   const memos = useSyncExternalStore(subscribe, getMemos)
   const works = useSyncExternalStore(subscribe, getWorks)
@@ -34,16 +50,35 @@ export default function App() {
   const auth = useSyncExternalStore(subscribe, getAuth)
   const [tab, setTab] = useState('today')
   const [openId, setOpenId] = useState(null)
+  const narrow = useIsNarrow()
   const open = memos.find((m) => m.id === openId)
   const openWork = works.find((w) => w.id === openId)
   const nags = nagCount(memos)
   const workNags = openWorkCount(works)
 
+  // 폰: 누른 줄 바로 아래에 상세를 펼침 (각 뷰가 자기 줄 밑에서 호출)
+  const renderDetail = (id) => {
+    if (!narrow || openId !== id) return null
+    if (open && open.id === id) {
+      return (
+        <MemoDetail key={open.id} inline memo={open} works={works} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+      )
+    }
+    if (openWork && openWork.id === id) {
+      return (
+        <WorkDetail key={openWork.id} inline work={openWork} memos={memos} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+      )
+    }
+    return null
+  }
+
   if (hasSupabase && !auth.ready) return null
   if (hasSupabase && !auth.loggedIn) return <Login />
 
+  const sidePanel = !narrow
+
   return (
-    <div className={'app' + (open || openWork ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '')}>
+    <div className={'app' + (sidePanel && (open || openWork) ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '')}>
       <header className="topbar">
         <div className="brand">
           내 기록
@@ -80,16 +115,19 @@ export default function App() {
               works={works}
               dayOrder={dayOrder}
               onOpen={setOpenId}
+              renderDetail={renderDetail}
             />
           )}
-          {tab === 'calendar' && <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} />}
-          {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} />}
-          {tab === 'work' && <WorkView works={works} onOpen={setOpenId} />}
+          {tab === 'calendar' && (
+            <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
+          )}
+          {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} renderDetail={renderDetail} />}
+          {tab === 'work' && <WorkView works={works} onOpen={setOpenId} renderDetail={renderDetail} />}
         </main>
-        {open && (
+        {sidePanel && open && (
           <MemoDetail key={open.id} memo={open} works={works} onOpen={setOpenId} onClose={() => setOpenId(null)} />
         )}
-        {openWork && (
+        {sidePanel && openWork && (
           <WorkDetail
             key={openWork.id}
             work={openWork}

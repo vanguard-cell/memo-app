@@ -6,7 +6,7 @@ import { hasSupabase } from '../supabase'
 import Timeline from './Timeline'
 import FileSection from './FileSection'
 
-export default function MemoDetail({ memo, works = [], onOpen, onClose }) {
+export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
@@ -38,7 +38,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose }) {
   const dueD = memo.due && memo.status !== 'done' ? diffDays(memo.due, today) : null
 
   return (
-    <aside className="detail">
+    <aside className={'detail' + (inline ? ' detail-inline' : '')} onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
           <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
           <span className="panel-title">{memo.title}</span>

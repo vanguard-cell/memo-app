@@ -821,6 +821,25 @@ main {
   }
 }
 
+/* 좁은 화면: 누른 줄 바로 아래에 펼쳐지는 인라인 상세 (덮는 창 아님) */
+.detail.detail-inline {
+  position: static;
+  width: auto;
+  max-height: none;
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  margin: 2px 0 12px;
+  padding: 14px;
+  z-index: auto;
+  cursor: default;
+}
+
+.wt-inline td {
+  padding: 6px 8px 10px;
+  background: #fafaf7;
+}
+
 .panel-head {
   display: flex;
   align-items: flex-start;

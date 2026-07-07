@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { fmtDate, memoStatus, STATUS_LABEL, diffDays, companies } from '../derive'
 import { todayStr, addDays, parse } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
@@ -12,7 +12,7 @@ const TYPE = {
   span: ['기간', 'ev-span'],
 }
 
-export default function CalendarView({ memos, dayOrder, onOpen }) {
+export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) {
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
@@ -201,8 +201,8 @@ export default function CalendarView({ memos, dayOrder, onOpen }) {
           </div>
           {(events[sel] || []).length === 0 && <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>}
           {orderedEvents(sel, events[sel] || []).map((e) => (
+            <Fragment key={e.m.id + e.type}>
             <div
-              key={e.m.id + e.type}
               className={
                 'row' +
                 (rowDrop && rowDrop.id === e.m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : '')
@@ -237,6 +237,8 @@ export default function CalendarView({ memos, dayOrder, onOpen }) {
               <span className="row-title">{e.text}</span>
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
             </div>
+            {renderDetail && renderDetail(e.m.id)}
+            </Fragment>
           ))}
         </div>
       )}

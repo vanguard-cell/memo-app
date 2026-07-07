@@ -9,7 +9,7 @@ const STATUS = [
   ['done', '완료'],
 ]
 
-export default function MemosView({ memos, onOpen }) {
+export default function MemosView({ memos, onOpen, renderDetail }) {
   const [q, setQ] = useState('')
   const [st, setSt] = useState('all')
   const [co, setCo] = useState(null)
@@ -68,6 +68,7 @@ export default function MemosView({ memos, onOpen }) {
           <div key={m.id}>
             {firstDone && <div className="done-divider">완료 · {doneList.length}건</div>}
             <MemoRow memo={m} onOpen={onOpen} />
+            {renderDetail && renderDetail(m.id)}
             {matched.length > 0 && (
               <div className="hit-lines">
                 {matched.map((h, i2) => (
