@@ -1,10 +1,41 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { buildNags, fmtDate } from '../derive'
 import { completeMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
 import { todayStr, addDays } from '../parser'
 import { ymOf } from './WorkView'
 
-function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, drag }) {
+// "날짜로" 버튼: 숨긴 date input의 달력을 열어 고른 날짜를 onPick으로 넘긴다.
+function SendToDateBtn({ min, onPick }) {
+  const ref = useRef(null)
+  return (
+    <span className="nag-datewrap" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => {
+          const el = ref.current
+          if (!el) return
+          el.value = ''
+          try {
+            el.showPicker()
+          } catch {
+            el.focus()
+          }
+        }}
+      >
+        날짜로
+      </button>
+      <input
+        ref={ref}
+        type="date"
+        min={min}
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => e.target.value && onPick(e.target.value)}
+      />
+    </span>
+  )
+}
+
+function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, onSendTo, minDate, drag }) {
   return (
     <div
       className={'nag-row' + (drag ? drag.dropCls : '')}
@@ -39,6 +70,7 @@ function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, drag }) {
             내일로
           </button>
         )}
+        {onSendTo && <SendToDateBtn min={minDate} onPick={onSendTo} />}
       </span>
     </div>
   )
@@ -65,6 +97,12 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
   const tomorrowFor = (it) => () => {
     if (it.kind === 'end') updateMemo(it.m.id, { snoozeUntil: tomorrow })
     else updateMemo(it.m.id, { due: tomorrow })
+  }
+
+  // 날짜로: 고른 날짜로 기한 이동. 만기 알림은 그날까지 숨김(만기일은 그대로).
+  const sendToFor = (it) => (d) => {
+    if (it.kind === 'end') updateMemo(it.m.id, { snoozeUntil: d })
+    else updateMemo(it.m.id, { due: d })
   }
 
   // 이번 달 시행하는 점검 업무 (점검 탭과 동일 데이터)
@@ -155,6 +193,8 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                 desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)} 지남` : null}
                 onOpen={onOpen}
                 onTomorrow={tomorrowFor(it)}
+                onSendTo={sendToFor(it)}
+                minDate={today}
               />
               {renderDetail && renderDetail(it.m.id)}
             </Fragment>
@@ -176,6 +216,8 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                 }
                 onOpen={onOpen}
                 onTomorrow={tomorrowFor(it)}
+                onSendTo={sendToFor(it)}
+                minDate={tomorrow}
                 drag={dragFor(it, dueToday)}
               />
               {renderDetail && renderDetail(it.m.id)}

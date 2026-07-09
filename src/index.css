@@ -490,6 +490,24 @@ main {
   white-space: nowrap;
 }
 
+/* "날짜로" 버튼: date input은 달력을 띄우는 용도로만 쓰므로 보이지 않게 겹쳐둔다 */
+.nag-datewrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.nag-datewrap input[type='date'] {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
 .empty {
   background: var(--card);
   border: 1px dashed var(--border);
