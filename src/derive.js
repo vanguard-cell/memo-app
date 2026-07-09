@@ -31,16 +31,17 @@ export function buildNags(memos) {
   for (const m of memos) {
     if (m.status === 'done') continue
     const snoozed = m.snoozeUntil && m.snoozeUntil > today
+    if (snoozed) continue
     if (m.due) {
       const dd = diffDays(m.due, today)
-      if (dd < 0 && !snoozed) overdue.push({ m, days: -dd, kind: 'due' })
-      else if (dd === 0 && !snoozed) dueToday.push({ m, kind: 'due' })
+      if (dd < 0) overdue.push({ m, days: -dd, kind: 'due' })
+      else if (dd === 0) dueToday.push({ m, kind: 'due' })
       else if (dd > 0 && dd <= 7) upcoming.push({ m, dd, kind: 'due' })
     }
     if (m.period && m.period.end) {
       const dd = diffDays(m.period.end, today)
-      if (dd < 0 && !snoozed) overdue.push({ m, days: -dd, kind: 'end' })
-      else if (dd === 0 && !snoozed) dueToday.push({ m, kind: 'end' })
+      if (dd < 0) overdue.push({ m, days: -dd, kind: 'end' })
+      else if (dd === 0) dueToday.push({ m, kind: 'end' })
       else if (dd > 0 && dd <= 60) upcoming.push({ m, dd, kind: 'end' })
     }
   }

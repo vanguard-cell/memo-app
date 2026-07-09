@@ -1,6 +1,25 @@
 import { useMemo, useState } from 'react'
 import MemoRow from '../components/MemoRow'
 import { memoStatus, companies, fmtDate } from '../derive'
+import { getWorks, getDayOrder } from '../store'
+import { todayStr } from '../parser'
+
+// 전체 백업 — 메모·점검·순서를 JSON 파일로 내려받는다 (복원은 이 파일로 가능)
+function downloadBackup(memos) {
+  const data = {
+    app: '내 기록',
+    exportedAt: new Date().toISOString(),
+    memos,
+    works: getWorks(),
+    dayOrder: getDayOrder(),
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `내기록-백업-${todayStr()}.json`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 
 const STATUS = [
   ['all', '전체'],
@@ -57,6 +76,9 @@ export default function MemosView({ memos, onOpen, renderDetail }) {
           </button>
         ))}
         <span className="count">{list.length}건</span>
+        <button className="pill pill-backup" title="메모·점검 전체를 JSON 파일로 저장" onClick={() => downloadBackup(memos)}>
+          백업
+        </button>
       </div>
       {list.length === 0 && <div className="empty">해당하는 메모가 없습니다.</div>}
       {[...openList, ...doneList].map((m, i) => {

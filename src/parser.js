@@ -23,6 +23,15 @@ function toISO(y, m, d) {
   return todayStr(dt)
 }
 
+// 연도 없이 쓴 날짜가 이미 지난 날이면 다음 해로 해석
+// (하반기에 "1/20 보안교육"을 던지면 내년 1월이지 올해 1월이 아니다)
+function toISOFuture(m, d) {
+  const y = new Date().getFullYear()
+  const iso = toISO(y, m, d)
+  if (iso && iso < todayStr()) return toISO(y + 1, m, d) || iso
+  return iso
+}
+
 const RANGE_RE = /(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})\s*[~〜∼-]\s*(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})/
 const SHORT_RANGE_RE = /(?<!\d)(\d{1,2})[./](\d{1,2})\s*[~〜∼-]\s*(\d{1,2})[./](\d{1,2})(?!\d)/
 const FULL_RE = /(?<!\d)(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})(?!\d)/
@@ -55,9 +64,17 @@ export function parse(text, knownCompanies = []) {
     const sr = SHORT_RANGE_RE.exec(rest)
     if (sr) {
       const y = new Date().getFullYear()
-      const start = toISO(y, sr[1], sr[2])
+      let start = toISO(y, sr[1], sr[2])
       let end = toISO(y, sr[3], sr[4])
       if (start && end && end < start) end = toISO(y + 1, sr[3], sr[4])
+      if (start && end && end < todayStr()) {
+        const ns = toISO(Number(start.slice(0, 4)) + 1, sr[1], sr[2])
+        const ne = toISO(Number(end.slice(0, 4)) + 1, sr[3], sr[4])
+        if (ns && ne) {
+          start = ns
+          end = ne
+        }
+      }
       if (start && end) {
         result.period = { start, end }
         rest = rest.replace(sr[0], ' ')
@@ -66,7 +83,6 @@ export function parse(text, knownCompanies = []) {
   }
 
   if (!result.period) {
-    const now = new Date()
     let m = FULL_RE.exec(rest)
     if (m) {
       const iso = toISO(m[1], m[2], m[3])
@@ -78,7 +94,7 @@ export function parse(text, knownCompanies = []) {
     if (!result.due) {
       m = KOR_RE.exec(rest)
       if (m) {
-        const iso = toISO(now.getFullYear(), m[1], m[2])
+        const iso = toISOFuture(m[1], m[2])
         if (iso) {
           result.due = iso
           rest = rest.replace(m[0], ' ')
@@ -88,7 +104,7 @@ export function parse(text, knownCompanies = []) {
     if (!result.due) {
       m = SHORT_RE.exec(rest)
       if (m) {
-        const iso = toISO(now.getFullYear(), m[1], m[2])
+        const iso = toISOFuture(m[1], m[2])
         if (iso) {
           result.due = iso
           rest = rest.replace(m[0], ' ')

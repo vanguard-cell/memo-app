@@ -2,6 +2,25 @@ import { Fragment, useMemo, useState } from 'react'
 import { fmtDate, memoStatus, STATUS_LABEL, diffDays, companies } from '../derive'
 import { todayStr, addDays, parse } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
+import SendToDateBtn from '../components/SendToDateBtn'
+
+// 메모 조각을 다른 날짜로 — 드래그와 "이동" 버튼이 같이 쓴다.
+// 기한→기한 이동 / 시작·만기 조각→그쪽 끝만 / 중간(기간) 조각→기간 전체 평행이동
+function moveEvent(m, type, fromDate, targetDate) {
+  if (!m || targetDate === fromDate) return
+  if (type === 'due') {
+    updateMemo(m.id, { due: targetDate })
+  } else if (type === 'start' && m.period) {
+    const [start, end] = targetDate <= m.period.end ? [targetDate, m.period.end] : [m.period.end, targetDate]
+    updateMemo(m.id, { period: { start, end } })
+  } else if (type === 'end' && m.period) {
+    const [start, end] = targetDate >= m.period.start ? [m.period.start, targetDate] : [targetDate, m.period.start]
+    updateMemo(m.id, { period: { start, end } })
+  } else if (type === 'span' && m.period) {
+    const delta = diffDays(targetDate, fromDate)
+    updateMemo(m.id, { period: { start: addDays(m.period.start, delta), end: addDays(m.period.end, delta) } })
+  }
+}
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -50,19 +69,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
       return
     }
     const m = memos.find((x) => x.id === data.id)
-    if (!m || targetDate === data.date) return
-    if (data.type === 'due') {
-      updateMemo(m.id, { due: targetDate })
-    } else if (data.type === 'start' && m.period) {
-      const [start, end] = targetDate <= m.period.end ? [targetDate, m.period.end] : [m.period.end, targetDate]
-      updateMemo(m.id, { period: { start, end } })
-    } else if (data.type === 'end' && m.period) {
-      const [start, end] = targetDate >= m.period.start ? [m.period.start, targetDate] : [targetDate, m.period.start]
-      updateMemo(m.id, { period: { start, end } })
-    } else if (data.type === 'span' && m.period) {
-      const delta = diffDays(targetDate, data.date)
-      updateMemo(m.id, { period: { start: addDays(m.period.start, delta), end: addDays(m.period.end, delta) } })
-    }
+    moveEvent(m, data.type, data.date, targetDate)
   }
 
   function quickAdd() {
@@ -242,6 +249,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
             >
               <span className={'badge ' + TYPE[e.type][1]}>{TYPE[e.type][0]}</span>
               <span className="row-title">{e.text}</span>
+              <SendToDateBtn label="이동" onPick={(d) => moveEvent(e.m, e.type, sel, d)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
             </div>
             {renderDetail && renderDetail(e.m.id)}

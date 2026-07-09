@@ -508,6 +508,58 @@ main {
   pointer-events: none;
 }
 
+/* 달력 상세 줄의 "이동" 버튼 */
+.row .nag-datewrap button {
+  font-size: 12px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* 완료 직후 하단에 몇 초간 뜨는 되돌리기 바 */
+.undo-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  background: #2b2b28;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font-size: 13.5px;
+  z-index: 60;
+}
+
+.undo-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-bar button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #8ec5ff;
+  font-weight: 700;
+  font-size: 13.5px;
+  flex-shrink: 0;
+}
+
+.undo-bar button:hover {
+  background: transparent;
+  color: #b5d9ff;
+}
+
+/* 메모탭 백업 버튼 — 필터 줄 오른쪽 끝 */
+.pill-backup {
+  margin-left: auto;
+}
+
 .empty {
   background: var(--card);
   border: 1px dashed var(--border);

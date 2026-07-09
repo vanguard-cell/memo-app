@@ -1,41 +1,11 @@
 import { Fragment, useRef, useState } from 'react'
 import { buildNags, fmtDate } from '../derive'
-import { completeMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
+import { completeMemo, reopenMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
 import { todayStr, addDays } from '../parser'
 import { ymOf } from './WorkView'
+import SendToDateBtn from '../components/SendToDateBtn'
 
-// "날짜로" 버튼: 숨긴 date input의 달력을 열어 고른 날짜를 onPick으로 넘긴다.
-function SendToDateBtn({ min, onPick }) {
-  const ref = useRef(null)
-  return (
-    <span className="nag-datewrap" onClick={(e) => e.stopPropagation()}>
-      <button
-        onClick={() => {
-          const el = ref.current
-          if (!el) return
-          el.value = ''
-          try {
-            el.showPicker()
-          } catch {
-            el.focus()
-          }
-        }}
-      >
-        날짜로
-      </button>
-      <input
-        ref={ref}
-        type="date"
-        min={min}
-        tabIndex={-1}
-        aria-hidden="true"
-        onChange={(e) => e.target.value && onPick(e.target.value)}
-      />
-    </span>
-  )
-}
-
-function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, onSendTo, minDate, drag }) {
+function Row({ m, tag, tagCls, desc, onOpen, onComplete, onTomorrow, onSendTo, minDate, maxDate, drag }) {
   return (
     <div
       className={'nag-row' + (drag ? drag.dropCls : '')}
@@ -55,7 +25,7 @@ function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, onSendTo, minDate, drag
         <button
           onClick={(e) => {
             e.stopPropagation()
-            completeMemo(m.id)
+            onComplete()
           }}
         >
           완료
@@ -70,7 +40,7 @@ function Row({ m, tag, tagCls, desc, onOpen, onTomorrow, onSendTo, minDate, drag
             내일로
           </button>
         )}
-        {onSendTo && <SendToDateBtn min={minDate} onPick={onSendTo} />}
+        {onSendTo && <SendToDateBtn min={minDate} max={maxDate} onPick={onSendTo} />}
       </span>
     </div>
   )
@@ -89,8 +59,22 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
   const { overdue, dueToday, upcoming } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [rowDrop, setRowDrop] = useState(null)
+  const [undo, setUndo] = useState(null)
+  const undoTimer = useRef(null)
   const today = todayStr()
   const tomorrow = addDays(today, 1)
+
+  // 완료 직후 몇 초간 하단에 "되돌리기"를 보여준다 — 실수로 눌러도 복구 가능
+  function showUndo(label, fn) {
+    clearTimeout(undoTimer.current)
+    setUndo({ label, fn })
+    undoTimer.current = setTimeout(() => setUndo(null), 6000)
+  }
+
+  const completeFor = (m) => () => {
+    completeMemo(m.id)
+    showUndo(`'${m.title}' 완료`, () => reopenMemo(m.id))
+  }
 
   // 내일로: 기한이 있는 메모는 기한 자체를 내일로 옮긴다 (달력도 함께 이동).
   // 기간 만기 알림은 만기일을 건드리면 안 되므로 하루 숨김(snooze)으로 처리.
@@ -192,6 +176,7 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                 tagCls="t-red"
                 desc={it.kind === 'end' ? `만기 ${fmtDate(it.m.period.end)} 지남` : null}
                 onOpen={onOpen}
+                onComplete={completeFor(it.m)}
                 onTomorrow={tomorrowFor(it)}
                 onSendTo={sendToFor(it)}
                 minDate={today}
@@ -215,6 +200,7 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                     : lineToday(it.m)
                 }
                 onOpen={onOpen}
+                onComplete={completeFor(it.m)}
                 onTomorrow={tomorrowFor(it)}
                 onSendTo={sendToFor(it)}
                 minDate={tomorrow}
@@ -238,6 +224,10 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                   (lineToday(it.m) ? ` · ${lineToday(it.m)}` : '')
                 }
                 onOpen={onOpen}
+                onComplete={completeFor(it.m)}
+                onSendTo={sendToFor(it)}
+                minDate={tomorrow}
+                maxDate={it.kind === 'end' ? it.m.period.end : undefined}
                 drag={dragFor(it, upcoming)}
               />
               {renderDetail && renderDetail(it.m.id)}
@@ -275,6 +265,7 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
                     onClick={(e) => {
                       e.stopPropagation()
                       toggleWorkRun(w.id, curYm)
+                      showUndo(`'${w.title}' 완료`, () => toggleWorkRun(w.id, curYm))
                     }}
                   >
                     완료
@@ -294,6 +285,20 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
         <div className="empty">
           지금 괴롭힐 일이 없습니다.
           <br />위 입력창에 던져두면 잊지 않고 여기서 챙겨드립니다.
+        </div>
+      )}
+      {undo && (
+        <div className="undo-bar">
+          <span>{undo.label}</span>
+          <button
+            onClick={() => {
+              undo.fn()
+              clearTimeout(undoTimer.current)
+              setUndo(null)
+            }}
+          >
+            되돌리기
+          </button>
         </div>
       )}
     </div>
