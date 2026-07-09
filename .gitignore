@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# 회사 양식·제출본 — 저장소가 public이므로 절대 커밋하지 않는다 (README만 공유)
+양식/*
+!양식/README.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
