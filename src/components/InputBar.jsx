@@ -14,30 +14,17 @@ function Chip({ cls, label, onX }) {
 
 const truncate = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s)
 
-// 이번 주 월~금 (주말에 던지면 다음 주 월~금)
-function thisWeekPeriod() {
-  const t = new Date()
-  const day = t.getDay() // 0=일
-  const mon = new Date(t)
-  mon.setDate(t.getDate() - ((day + 6) % 7) + (day === 0 || day === 6 ? 7 : 0))
-  const fri = new Date(mon)
-  fri.setDate(mon.getDate() + 4)
-  const s = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  return { start: s(mon), end: s(fri) }
-}
-
 export default function InputBar({ memos, onOpen }) {
   const [text, setText] = useState('')
   const [removed, setRemoved] = useState({})
   const [confirming, setConfirming] = useState(false)
   const [flash, setFlash] = useState('')
-  const [weekOn, setWeekOn] = useState(false)
 
   const known = useMemo(() => companies(memos), [memos])
   const parsed = useMemo(() => parse(text, known), [text, known])
   const eff = {
     due: removed.due ? null : parsed.due,
-    period: removed.period ? null : parsed.period || (weekOn ? thisWeekPeriod() : null),
+    period: removed.period ? null : parsed.period,
     company: removed.company ? null : parsed.company,
   }
   if (eff.period) eff.due = null
@@ -55,7 +42,6 @@ export default function InputBar({ memos, onOpen }) {
     setText('')
     setRemoved({})
     setConfirming(false)
-    setWeekOn(false)
   }
 
   function say(msg) {
@@ -134,15 +120,12 @@ export default function InputBar({ memos, onOpen }) {
       </div>
       {text.trim() && (
         <div className="chips">
-          <span className="chips-label">인식됨</span>
+          {!nothing && <span className="chips-label">인식됨</span>}
           {eff.period && (
             <Chip
               cls="chip-date"
               label={`기간 ${fmtPeriod(eff.period)}`}
-              onX={() => {
-                setWeekOn(false)
-                setRemoved((r) => ({ ...r, period: true }))
-              }}
+              onX={() => setRemoved((r) => ({ ...r, period: true }))}
             />
           )}
           {eff.due && (
@@ -151,21 +134,10 @@ export default function InputBar({ memos, onOpen }) {
           {eff.company && (
             <Chip cls="chip-co" label={`업체 ${eff.company}`} onX={() => setRemoved((r) => ({ ...r, company: true }))} />
           )}
-          {!eff.period && !eff.due && (
-            <button
-              className="pill"
-              onClick={() => {
-                setWeekOn(true)
-                setRemoved((r) => ({ ...r, period: false }))
-              }}
-            >
-              이번 주 월~금에 넣기
-            </button>
-          )}
-          <button className="pill" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
+          {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
+          <button className="pill pill-keep" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
             보관함에 넣기
           </button>
-          {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
         </div>
       )}
       {confirming && candidate && (

@@ -329,6 +329,22 @@ main {
   color: var(--faint);
 }
 
+/* 보관함 버튼 — 칩 줄 오른쪽 끝, 보관 배지와 같은 보라 톤 */
+.pill-keep {
+  margin-left: auto;
+  font-size: 12px;
+  padding: 3px 11px;
+  background: #ece9f7;
+  border-color: #ece9f7;
+  color: #6b5cb8;
+  font-weight: 600;
+}
+
+.pill-keep:hover {
+  background: #e2ddf3;
+  border-color: #cfc6ec;
+}
+
 .attach-bar {
   display: flex;
   gap: 8px;
