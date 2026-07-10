@@ -647,6 +647,11 @@ main {
   color: var(--amber);
 }
 
+.st-keep {
+  background: #ece9f7;
+  color: #6b5cb8;
+}
+
 .filters {
   display: flex;
   gap: 6px;

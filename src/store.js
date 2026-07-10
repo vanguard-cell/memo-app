@@ -21,7 +21,8 @@ function migrate(memos) {
       m.title = p.cleaned
     }
     // 날짜 없는 미완료 메모는 오늘 기한으로 — 완료 전까지 오늘 화면에서 괴롭힌다
-    if (!m.due && !m.period && m.status !== 'done') {
+    // (보관 메모는 예외 — 괴롭히지 않고 검색으로만 꺼내본다)
+    if (!m.due && !m.period && m.status !== 'done' && !m.keep) {
       m.due = todayStr()
     }
     return m
@@ -218,15 +219,16 @@ export async function signOut() {
 
 // ---------- 메모 조작 ----------
 
-export function addMemo({ title, company, due, period, fromWork }) {
+export function addMemo({ title, company, due, period, fromWork, keep }) {
   const now = new Date().toISOString()
   const memo = {
     id: crypto.randomUUID(),
     title,
     company: company || null,
     status: 'open',
-    due: due || null,
-    period: period || null,
+    keep: !!keep,
+    due: keep ? null : due || null,
+    period: keep ? null : period || null,
     history: [],
     fromWork: fromWork || null,
     createdAt: now,

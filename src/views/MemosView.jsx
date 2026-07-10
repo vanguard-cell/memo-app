@@ -51,8 +51,9 @@ export default function MemosView({ memos, onOpen, renderDetail }) {
     .slice()
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
 
-  // 진행 중인 것 먼저, 완료는 아래로 분리
-  const openList = list.filter((m) => memoStatus(m) !== 'done')
+  // 진행 중인 것 먼저, 보관·완료는 구분선 아래로 분리
+  const openList = list.filter((m) => !['done', 'keep'].includes(memoStatus(m)))
+  const keepList = list.filter((m) => memoStatus(m) === 'keep')
   const doneList = list.filter((m) => memoStatus(m) === 'done')
 
   return (
@@ -81,13 +82,15 @@ export default function MemosView({ memos, onOpen, renderDetail }) {
         </button>
       </div>
       {list.length === 0 && <div className="empty">해당하는 메모가 없습니다.</div>}
-      {[...openList, ...doneList].map((m, i) => {
+      {[...openList, ...keepList, ...doneList].map((m, i) => {
         const matched = words.length
           ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
           : []
-        const firstDone = st === 'all' && doneList.length > 0 && i === openList.length
+        const firstKeep = st === 'all' && keepList.length > 0 && i === openList.length
+        const firstDone = st === 'all' && doneList.length > 0 && i === openList.length + keepList.length
         return (
           <div key={m.id}>
+            {firstKeep && <div className="done-divider">보관 · {keepList.length}건</div>}
             {firstDone && <div className="done-divider">완료 · {doneList.length}건</div>}
             <MemoRow memo={m} onOpen={onOpen} />
             {renderDetail && renderDetail(m.id)}

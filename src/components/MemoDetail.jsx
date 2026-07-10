@@ -76,7 +76,17 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
         </div>
         <div className="panel-actions">
           {memo.status !== 'done' ? (
-            <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
+            memo.keep ? (
+              <button
+                className="btn-done"
+                title="보관에서 꺼내 오늘 할 일로 보냅니다"
+                onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
+              >
+                오늘 할 일로 꺼내기
+              </button>
+            ) : (
+              <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
+            )
           ) : (
             <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
           )}

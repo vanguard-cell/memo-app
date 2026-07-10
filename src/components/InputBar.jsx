@@ -75,6 +75,15 @@ export default function InputBar({ memos, onOpen }) {
     say('새 메모로 저장했습니다')
   }
 
+  // 보관: 기한 없이 저장 — 오늘·달력에 안 뜨고 메모탭 검색으로만 꺼내본다
+  function saveKeep() {
+    const t = text.trim()
+    if (!t) return
+    addMemo({ title: t, company: eff.company, keep: true })
+    reset()
+    say('보관함에 저장했습니다 — 필요할 때 메모탭에서 검색하세요')
+  }
+
   function attach() {
     const t = text.trim()
     if (!t || !candidate) return
@@ -153,6 +162,9 @@ export default function InputBar({ memos, onOpen }) {
               이번 주 월~금에 넣기
             </button>
           )}
+          <button className="pill" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
+            보관함에 넣기
+          </button>
           {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
         </div>
       )}

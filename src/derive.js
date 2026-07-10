@@ -16,10 +16,11 @@ export function diffDays(a, b) {
 
 export function memoStatus(m) {
   if (m.status === 'done') return 'done'
+  if (m.keep) return 'keep'
   return m.history.length > 0 ? 'active' : 'todo'
 }
 
-export const STATUS_LABEL = { done: '완료', active: '진행중', todo: '할일' }
+export const STATUS_LABEL = { done: '완료', active: '진행중', todo: '할일', keep: '보관' }
 
 export const companies = (memos) => [...new Set(memos.map((m) => m.company).filter(Boolean))]
 
@@ -29,7 +30,7 @@ export function buildNags(memos) {
   const dueToday = []
   const upcoming = []
   for (const m of memos) {
-    if (m.status === 'done') continue
+    if (m.status === 'done' || m.keep) continue
     const snoozed = m.snoozeUntil && m.snoozeUntil > today
     if (snoozed) continue
     if (m.due) {
