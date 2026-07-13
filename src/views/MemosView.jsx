@@ -30,7 +30,7 @@ function dueBadge(m, today) {
   const dd = diffDays(end, today)
   if (dd < 0) return ['b-red', `${-dd}일째`]
   if (dd === 0) return ['b-amber', '오늘']
-  return ['b-gray', `D-${dd}`]
+  return ['b-blue', `D-${dd}`]
 }
 
 function checkInfo(m) {
@@ -82,7 +82,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       {(badge || chk || m.company) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
-          {chk && <span className="kb-badge b-gray">{chk}</span>}
+          {chk && <span className="kb-badge b-teal">{chk}</span>}
           {m.company && <span className="chip chip-co">{m.company}</span>}
         </div>
       )}

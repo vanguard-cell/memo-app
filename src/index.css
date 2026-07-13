@@ -703,6 +703,16 @@ main {
   color: var(--muted);
 }
 
+.b-blue {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.b-teal {
+  background: var(--teal-bg);
+  color: var(--teal);
+}
+
 .kb-actions {
   display: flex;
   gap: 4px;
