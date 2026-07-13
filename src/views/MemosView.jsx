@@ -36,8 +36,12 @@ function dueBadge(m, today) {
 function checkInfo(m) {
   const items = (m.history || []).filter((h) => h.type !== 'log')
   if (!items.length) return null
-  return `체크 ${items.filter((h) => h.done).length}/${items.length}`
+  const done = items.filter((h) => h.done).length
+  return { label: `체크 ${done}/${items.length}`, complete: done === items.length }
 }
+
+// 체크 배지 색: 진행 중엔 초록, 완료된 메모는 회색 — 단 체크가 남은 채 완료된 건 노랑(놓친 건지 확인용)
+const checkCls = (st, chk) => (st === 'done' ? (chk.complete ? 'b-gray' : 'b-amber') : 'b-teal')
 
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
@@ -82,7 +86,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       {(badge || chk || m.company) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
-          {chk && <span className="kb-badge b-teal">{chk}</span>}
+          {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
           {m.company && <span className="chip chip-co">{m.company}</span>}
         </div>
       )}
@@ -260,7 +264,9 @@ function TableView({ memos, words, onOpen, renderDetail }) {
                     {m.period ? fmtPeriod(m.period) : m.due ? fmtDate(m.due) : ''}
                     {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
                   </td>
-                  <td className="mv-date">{chk || ''}</td>
+                  <td className="mv-date">
+                    {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
+                  </td>
                   <td className="mv-date">{fmtDate(m.createdAt.slice(0, 10))}</td>
                 </tr>
                 {matched.length > 0 && (
