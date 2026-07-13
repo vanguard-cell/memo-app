@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { memoStatus, companies, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
-import { completeMemo, reopenMemo, updateMemo, getWorks, getDayOrder } from '../store'
+import { completeMemo, reopenMemo, updateMemo, setDayOrder, getWorks, getDayOrder } from '../store'
 import { todayStr } from '../parser'
 
 const pad = (n) => String(n).padStart(2, '0')
@@ -61,18 +61,21 @@ const COLS = [
 ]
 const DONE_SHOWN = 8
 
-function Card({ m, today, onOpen }) {
+function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardDrop }) {
   const st = memoStatus(m)
   const badge = dueBadge(m, today)
   const chk = checkInfo(m)
   return (
     <div
-      className={'kb-card' + (st === 'done' ? ' kb-done' : '')}
+      className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
       draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'board', id: m.id }))
+        e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'board', id: m.id, st: col }))
         e.dataTransfer.effectAllowed = 'move'
       }}
+      onDragOver={onCardOver}
+      onDragLeave={onCardLeave}
+      onDrop={onCardDrop}
       onClick={() => onOpen(m.id)}
     >
       <div className="kb-title">{m.title}</div>
@@ -101,29 +104,70 @@ function Card({ m, today, onOpen }) {
   )
 }
 
-function BoardView({ memos, onOpen, renderDetail }) {
+function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
   const today = todayStr()
   const [over, setOver] = useState(null)
+  const [rowDrop, setRowDrop] = useState(null)
   const by = { todo: [], active: [], done: [] }
   for (const m of memos) {
     const st = memoStatus(m)
     if (by[st]) by[st].push(m)
   }
-  by.todo.sort(byUpdated)
-  by.active.sort(byUpdated)
-  by.done.sort(byUpdated)
 
-  function drop(col, e) {
+  // 기본 정렬 = 급한 순(밀린 것 → 오늘 → D-n). 드래그로 정한 순서가 있으면 그게 우선.
+  const idxFor = (col, id) => {
+    const order = (dayOrder && dayOrder['board-' + col]) || []
+    const i = order.indexOf(id)
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
+  }
+  const urgency = (m) => {
+    const end = m.due || (m.period && m.period.end)
+    return end ? diffDays(end, today) : Number.MAX_SAFE_INTEGER
+  }
+  const colSort = (col) => (a, b) =>
+    idxFor(col, a.id) - idxFor(col, b.id) || urgency(a) - urgency(b) || byUpdated(a, b)
+  by.todo.sort(colSort('todo'))
+  by.active.sort(colSort('active'))
+  by.done.sort((a, b) => idxFor('done', a.id) - idxFor('done', b.id) || byUpdated(a, b))
+
+  function reorderIn(col, draggedId, targetId, after) {
+    const ids = by[col].map((x) => x.id).filter((id) => id !== draggedId)
+    let pos = ids.indexOf(targetId)
+    if (pos === -1) pos = ids.length
+    else if (after) pos += 1
+    ids.splice(pos, 0, draggedId)
+    setDayOrder('board-' + col, ids)
+  }
+
+  function parseDrag(e) {
+    try {
+      const d = JSON.parse(e.dataTransfer.getData('text/plain'))
+      return d.kind === 'board' ? d : null
+    } catch {
+      return null
+    }
+  }
+
+  function dropOnCol(col, e) {
     e.preventDefault()
     setOver(null)
-    let data
-    try {
-      data = JSON.parse(e.dataTransfer.getData('text/plain'))
-    } catch {
-      return
-    }
-    if (data.kind !== 'board') return
+    setRowDrop(null)
+    const data = parseDrag(e)
+    if (!data) return
     moveTo(memos.find((m) => m.id === data.id), col)
+  }
+
+  // 카드 위에 놓으면: 같은 열이면 순서 바꾸기, 다른 열이면 그 자리로 이동
+  function dropOnCard(col, target, e) {
+    e.preventDefault()
+    e.stopPropagation()
+    const cur = rowDrop
+    setOver(null)
+    setRowDrop(null)
+    const data = parseDrag(e)
+    if (!data || data.id === target.id) return
+    if (data.st !== col) moveTo(memos.find((m) => m.id === data.id), col)
+    reorderIn(col, data.id, target.id, cur ? cur.after : false)
   }
 
   return (
@@ -140,14 +184,28 @@ function BoardView({ memos, onOpen, renderDetail }) {
                 setOver(id)
               }}
               onDragLeave={() => setOver((cur) => (cur === id ? null : cur))}
-              onDrop={(e) => drop(id, e)}
+              onDrop={(e) => dropOnCol(id, e)}
             >
               <div className="kb-head">
                 <span className={'badge st-' + id}>{label}</span>
                 <span className="kb-count">{by[id].length}</span>
               </div>
               {shown.map((m) => (
-                <Card key={m.id} m={m} today={today} onOpen={onOpen} />
+                <Card
+                  key={m.id}
+                  m={m}
+                  col={id}
+                  today={today}
+                  onOpen={onOpen}
+                  dropCls={rowDrop && rowDrop.id === m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : ''}
+                  onCardOver={(e) => {
+                    e.preventDefault()
+                    const r = e.currentTarget.getBoundingClientRect()
+                    setRowDrop({ id: m.id, after: e.clientY > r.top + r.height / 2 })
+                  }}
+                  onCardLeave={() => setRowDrop((cur) => (cur && cur.id === m.id ? null : cur))}
+                  onCardDrop={(e) => dropOnCard(id, m, e)}
+                />
               ))}
               {id === 'done' && by.done.length > DONE_SHOWN && (
                 <div className="kb-more">외 {by.done.length - DONE_SHOWN}건 — 표에서 전체 보기</div>
@@ -328,7 +386,7 @@ const VIEWS = [
   ['timeline', '타임라인'],
 ]
 
-export default function MemosView({ memos, onOpen, renderDetail }) {
+export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   const [q, setQ] = useState('')
   const [co, setCo] = useState(null)
   const [view, setView] = useState(() => localStorage.getItem('memo-view') || 'board')
@@ -387,7 +445,7 @@ export default function MemosView({ memos, onOpen, renderDetail }) {
           백업
         </button>
       </div>
-      {view === 'board' && <BoardView memos={list} onOpen={onOpen} renderDetail={renderDetail} />}
+      {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'table' && <TableView memos={list} words={words} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'timeline' && <TimelineView memos={list} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (

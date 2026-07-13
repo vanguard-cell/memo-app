@@ -259,8 +259,6 @@ export function addHistory(id, text, date) {
         ? {
             ...m,
             history: [...m.history, { date: date || todayStr(), text, ts: Date.now(), done: false }],
-            // 첫 기록이 생기면 진행중으로 — 보드에서 할일로 고정해둔 것도 풀어준다
-            stage: m.stage === 'todo' ? null : m.stage ?? null,
             updatedAt: now,
           }
         : m
@@ -308,6 +306,8 @@ export function toggleHistory(id, index) {
         ? {
             ...m,
             history: m.history.map((h, i) => (i === index ? { ...h, done: !h.done } : h)),
+            // 체크를 켜는 건 착수 — 보드에서 할일로 고정해둔 것도 풀어준다
+            stage: !m.history[index].done && m.stage === 'todo' ? null : m.stage ?? null,
             updatedAt: now,
           }
         : m

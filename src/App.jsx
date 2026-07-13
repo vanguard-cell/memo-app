@@ -121,7 +121,7 @@ export default function App() {
           {tab === 'calendar' && (
             <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
           )}
-          {tab === 'memos' && <MemosView memos={memos} onOpen={setOpenId} renderDetail={renderDetail} />}
+          {tab === 'memos' && <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />}
           {tab === 'work' && <WorkView works={works} onOpen={setOpenId} renderDetail={renderDetail} />}
         </main>
         {sidePanel && open && (

@@ -651,6 +651,14 @@ main {
   cursor: grabbing;
 }
 
+.kb-card.drop-above {
+  box-shadow: 0 -3px 0 var(--blue-strong);
+}
+
+.kb-card.drop-below {
+  box-shadow: 0 3px 0 var(--blue-strong);
+}
+
 .kb-card:hover {
   border-color: var(--border-hover);
 }
