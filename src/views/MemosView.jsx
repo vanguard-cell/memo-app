@@ -306,16 +306,31 @@ function TimelineView({ memos, onOpen, renderDetail }) {
   const dayOf = (s) => Number(s.slice(8, 10))
   const todayDay = today >= first && today <= last ? dayOf(today) : null
 
+  // 막대 구간: 기간 메모는 기간, 기록이 쌓인 메모는 실제 활동 구간
+  // (첫 기록 ~ 마지막 기록·완료일, 진행중이면 오늘까지), 기록 없으면 기한 자리에 점
+  const spanOf = (m) => {
+    if (m.period && m.period.start && m.period.end) return [m.period.start, m.period.end]
+    const dates = (m.history || []).map((h) => h.date).filter(Boolean)
+    if (!dates.length) return m.due ? [m.due, m.due] : null
+    let s = dates.reduce((a, b) => (a < b ? a : b))
+    let e = dates.reduce((a, b) => (a > b ? a : b))
+    if (m.status === 'done') {
+      const c = m.completedAt ? m.completedAt.slice(0, 10) : null
+      if (c && c > e) e = c
+    } else if (memoStatus(m) === 'active' && today > e) {
+      e = today
+    }
+    return [s, e]
+  }
+
   const items = memos
-    .filter((m) => {
-      if (m.keep) return false
-      const s = m.period ? m.period.start : m.due
-      const e = m.period ? m.period.end : m.due
-      return s && e && s <= last && e >= first
+    .filter((m) => !m.keep)
+    .map((m) => {
+      const sp = spanOf(m)
+      return sp && { m, s: sp[0], e: sp[1] }
     })
-    .sort((a, b) =>
-      (a.period ? a.period.start : a.due).localeCompare(b.period ? b.period.start : b.due)
-    )
+    .filter((x) => x && x.s <= last && x.e >= first)
+    .sort((a, b) => a.s.localeCompare(b.s))
 
   function move(n) {
     const d = new Date(y, mo + n, 1)
@@ -353,10 +368,8 @@ function TimelineView({ memos, onOpen, renderDetail }) {
               ))}
             </div>
           </div>
-          {items.map((m) => {
+          {items.map(({ m, s, e }) => {
             const st = memoStatus(m)
-            const s = m.period ? m.period.start : m.due
-            const e = m.period ? m.period.end : m.due
             const sd = s < first ? 1 : dayOf(s)
             const ed = e > last ? dim : dayOf(e)
             return (
@@ -379,7 +392,7 @@ function TimelineView({ memos, onOpen, renderDetail }) {
           {items.length === 0 && <div className="empty small">이 달에 걸린 메모가 없습니다.</div>}
         </div>
       </div>
-      {renderDetail && items.map((m) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
+      {renderDetail && items.map(({ m }) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
     </div>
   )
 }
