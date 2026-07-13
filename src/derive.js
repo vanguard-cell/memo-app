@@ -17,6 +17,8 @@ export function diffDays(a, b) {
 export function memoStatus(m) {
   if (m.status === 'done') return 'done'
   if (m.keep) return 'keep'
+  // stage = 보드에서 드래그로 정한 상태 (없으면 기록 유무로 자동 판정)
+  if (m.stage === 'todo' || m.stage === 'active') return m.stage
   return m.history.length > 0 ? 'active' : 'todo'
 }
 

@@ -259,6 +259,8 @@ export function addHistory(id, text, date) {
         ? {
             ...m,
             history: [...m.history, { date: date || todayStr(), text, ts: Date.now(), done: false }],
+            // 첫 기록이 생기면 진행중으로 — 보드에서 할일로 고정해둔 것도 풀어준다
+            stage: m.stage === 'todo' ? null : m.stage ?? null,
             updatedAt: now,
           }
         : m

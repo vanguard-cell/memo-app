@@ -576,6 +576,289 @@ main {
   margin-left: auto;
 }
 
+/* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
+
+.mv-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mv-search {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.mv-toggle {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 보드 */
+.kb-grid-wrap {
+  overflow-x: auto;
+}
+
+.kb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+.kb-col {
+  background: #f1f0ea;
+  border-radius: 10px;
+  padding: 8px;
+  min-height: 140px;
+}
+
+.kb-col.kb-over {
+  outline: 2px dashed var(--teal-strong);
+  outline-offset: -2px;
+  background: var(--teal-bg);
+}
+
+.kb-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 2px 8px;
+}
+
+.kb-count {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.kb-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  cursor: grab;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.kb-card:active {
+  cursor: grabbing;
+}
+
+.kb-card:hover {
+  border-color: var(--border-hover);
+}
+
+.kb-done {
+  opacity: 0.62;
+}
+
+.kb-title {
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.kb-meta {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.kb-badge {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.b-red {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.b-amber {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.b-gray {
+  background: #efeeea;
+  color: var(--muted);
+}
+
+.kb-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.kb-actions button {
+  font-size: 11.5px;
+  padding: 2px 8px;
+}
+
+.kb-empty {
+  font-size: 11.5px;
+  color: var(--faint);
+  text-align: center;
+  padding: 14px 4px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.kb-more {
+  font-size: 11.5px;
+  color: var(--faint);
+  text-align: center;
+  padding: 6px 4px;
+}
+
+.kb-keep {
+  margin-top: 4px;
+}
+
+/* 표 */
+.mv-table-wrap {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.mv-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.mv-table th {
+  font-size: 12px;
+  color: var(--faint);
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.mv-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0efe9;
+  vertical-align: top;
+}
+
+.mv-table tbody tr {
+  cursor: pointer;
+}
+
+.mv-table tbody tr:hover {
+  background: #fafaf7;
+}
+
+.mv-table .mv-title {
+  min-width: 160px;
+  word-break: break-word;
+}
+
+.mv-date {
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.mv-done td {
+  color: var(--faint);
+}
+
+.mv-hit td {
+  padding: 0 10px 8px;
+  cursor: default;
+}
+
+/* 타임라인 */
+.tlv-wrap {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.tlv {
+  min-width: 560px;
+}
+
+.tlv-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.tlv-label {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.tlv-hd span {
+  font-size: 10.5px;
+  color: var(--faint);
+  text-align: center;
+}
+
+.tlv-hd .tlv-today {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.tlv-days {
+  position: relative;
+  height: 18px;
+  background: #f7f6f1;
+  border-radius: 5px;
+}
+
+.tlv-guide {
+  grid-row: 1;
+  background: var(--blue-bg);
+}
+
+.tlv-bar {
+  grid-row: 1;
+  height: 12px;
+  margin: 3px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 6px;
+  z-index: 1;
+}
+
+.tlv-todo {
+  background: var(--amber-strong);
+}
+
+.tlv-active {
+  background: var(--teal-strong);
+}
+
+.tlv-done {
+  background: #c9c7bd;
+}
+
 .empty {
   background: var(--card);
   border: 1px dashed var(--border);
@@ -1566,6 +1849,14 @@ main {
   .nag-actions button {
     padding: 4px 7px;
     font-size: 12px;
+  }
+
+  .mv-top {
+    flex-wrap: wrap;
+  }
+
+  .mv-search {
+    flex-basis: 100%;
   }
 
   .cal-cell {
