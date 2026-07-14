@@ -295,10 +295,17 @@ function TableView({ memos, words, onOpen, renderDetail }) {
 
 // ---------- 타임라인 ----------
 
+const TLV_GROUPS = [
+  ['active', '진행중'],
+  ['todo', '할일'],
+  ['done', '완료'],
+]
+
 function TimelineView({ memos, onOpen, renderDetail }) {
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
+  const [showDone, setShowDone] = useState(false)
   const today = todayStr()
   const dim = new Date(y, mo + 1, 0).getDate()
   const first = `${y}-${pad(mo + 1)}-01`
@@ -321,6 +328,17 @@ function TimelineView({ memos, onOpen, renderDetail }) {
       e = today
     }
     return [s, e]
+  }
+
+  // 라벨 밑 요약 줄: "7.8 ~ 진행중 · 체크 4/7" — 같은 제목이 여럿이어도 구분된다
+  const md = (d) => `${Number(d.slice(5, 7))}.${Number(d.slice(8, 10))}`
+  const subOf = (m, s, e, st) => {
+    const chk = checkInfo(m)
+    let range
+    if (s === e) range = m.period ? md(s) : `기한 ${md(s)}`
+    else if (st === 'active' && e === today) range = `${md(s)} ~ 진행중`
+    else range = `${md(s)} ~ ${md(e)}`
+    return range + (chk ? ` · ${chk.label}` : '')
   }
 
   const items = memos
@@ -368,25 +386,49 @@ function TimelineView({ memos, onOpen, renderDetail }) {
               ))}
             </div>
           </div>
-          {items.map(({ m, s, e }) => {
-            const st = memoStatus(m)
-            const sd = s < first ? 1 : dayOf(s)
-            const ed = e > last ? dim : dayOf(e)
+          {TLV_GROUPS.map(([gid, glabel]) => {
+            const rows = items.filter((x) => memoStatus(x.m) === gid)
+            if (!rows.length) return null
+            const folded = gid === 'done' && !showDone
             return (
-              <div className="tlv-row" key={m.id}>
-                <div className="tlv-label" onClick={() => onOpen(m.id)} title={m.title}>
-                  {m.title}
-                </div>
-                <div className="tlv-days" style={cols}>
-                  {todayDay && <span className="tlv-guide" style={{ gridColumn: `${todayDay} / ${todayDay + 1}` }} />}
-                  <span
-                    className={'tlv-bar tlv-' + st}
-                    style={{ gridColumn: `${sd} / ${ed + 1}` }}
-                    onClick={() => onOpen(m.id)}
-                    title={`${m.title} (${fmtDate(s)}${s !== e ? ' ~ ' + fmtDate(e) : ''})`}
-                  />
-                </div>
-              </div>
+              <Fragment key={gid}>
+                {gid === 'done' ? (
+                  <button className="tlv-fold" onClick={() => setShowDone((v) => !v)}>
+                    완료 {rows.length}건 {showDone ? '접기 ▴' : '펼치기 ▾'}
+                  </button>
+                ) : (
+                  <div className="tlv-grp">
+                    <span className={'badge st-' + gid}>{glabel}</span>
+                    <span className="kb-count">{rows.length}</span>
+                  </div>
+                )}
+                {!folded &&
+                  rows.map(({ m, s, e }) => {
+                    const st = memoStatus(m)
+                    const sd = s < first ? 1 : dayOf(s)
+                    const ed = e > last ? dim : dayOf(e)
+                    return (
+                      <div className="tlv-row" key={m.id}>
+                        <div className="tlv-label" onClick={() => onOpen(m.id)} title={m.title}>
+                          <span className={'tlv-dot tlv-' + st} />
+                          <span className="tlv-lwrap">
+                            <span className="tlv-title">{m.title}</span>
+                            <span className="tlv-sub">{subOf(m, s, e, st)}</span>
+                          </span>
+                        </div>
+                        <div className="tlv-days" style={cols}>
+                          {todayDay && <span className="tlv-guide" style={{ gridColumn: `${todayDay} / ${todayDay + 1}` }} />}
+                          <span
+                            className={'tlv-bar tlv-' + st}
+                            style={{ gridColumn: `${sd} / ${ed + 1}` }}
+                            onClick={() => onOpen(m.id)}
+                            title={`${m.title} (${fmtDate(s)}${s !== e ? ' ~ ' + fmtDate(e) : ''})`}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+              </Fragment>
             )
           })}
           {items.length === 0 && <div className="empty small">이 달에 걸린 메모가 없습니다.</div>}
