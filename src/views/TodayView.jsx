@@ -1,8 +1,7 @@
 import { Fragment, useRef, useState } from 'react'
 import { buildNags, fmtDate } from '../derive'
-import { completeMemo, reopenMemo, updateMemo, setDayOrder, toggleWorkRun } from '../store'
+import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
 import { todayStr, addDays } from '../parser'
-import { ymOf } from './WorkView'
 import SendToDateBtn from '../components/SendToDateBtn'
 
 function Row({ m, tag, tagCls, desc, onOpen, onComplete, onTomorrow, onSendTo, minDate, maxDate, drag }) {
@@ -55,7 +54,7 @@ function Section({ title, cls, children }) {
   )
 }
 
-export default function TodayView({ memos, works = [], dayOrder, onOpen, renderDetail }) {
+export default function TodayView({ memos, dayOrder, onOpen, renderDetail }) {
   const { overdue, dueToday, upcoming } = buildNags(memos)
   const quiet = !overdue.length && !dueToday.length && !upcoming.length
   const [rowDrop, setRowDrop] = useState(null)
@@ -89,13 +88,6 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
     else updateMemo(it.m.id, { due: d })
   }
 
-  // 이번 달 시행하는 점검 업무 (점검 탭과 동일 데이터)
-  const now = new Date()
-  const curMonth = now.getMonth() + 1
-  const curYm = ymOf(now.getFullYear(), curMonth)
-  const worksKey = `works-${curYm}`
-  const monthWorks = works.filter((w) => (w.months || []).includes(curMonth))
-
   // 기간 메모에 오늘 날짜의 진행기록 줄이 있으면 줄 설명에 보여준다 (예: 오늘의 식단)
   const lineToday = (m) => {
     const h = (m.history || []).find((x) => x.date === today && x.text)
@@ -111,10 +103,6 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
 
   dueToday.sort((a, b) => idxFor(today, a.m.id) - idxFor(today, b.m.id))
   upcoming.sort((a, b) => a.dd - b.dd || idxFor(dateOf(a), a.m.id) - idxFor(dateOf(b), b.m.id))
-
-  const openWorks = monthWorks
-    .filter((w) => !(w.runs && w.runs[curYm] && w.runs[curYm].done))
-    .sort((a, b) => idxFor(worksKey, a.id) - idxFor(worksKey, b.id) || (a.order ?? 0) - (b.order ?? 0))
 
   function reorder(date, ids0, draggedId, targetId, after) {
     const ids = [...new Set(ids0)].filter((id) => id !== draggedId)
@@ -160,9 +148,6 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
       list.filter((it) => dateOf(it) === date).map((it) => it.m.id)
     )
   }
-
-  const dragForWork = (w) =>
-    makeDrag('work-' + w.id, worksKey, w.id, () => openWorks.map((x) => x.id))
 
   return (
     <div className="view">
@@ -233,52 +218,6 @@ export default function TodayView({ memos, works = [], dayOrder, onOpen, renderD
               {renderDetail && renderDetail(it.m.id)}
             </Fragment>
           ))}
-        </Section>
-      )}
-      {monthWorks.length > 0 && (
-        <Section
-          title={`이번 달 점검 (${curMonth}월) · ${monthWorks.length - openWorks.length}/${monthWorks.length} 완료`}
-          cls="sec-teal"
-        >
-          {openWorks.map((w) => {
-            const drag = dragForWork(w)
-            return (
-              <Fragment key={w.id}>
-              <div
-                className={'nag-row' + drag.dropCls}
-                draggable
-                onDragStart={drag.onDragStart}
-                onDragOver={drag.onDragOver}
-                onDragLeave={drag.onDragLeave}
-                onDrop={drag.onDrop}
-                onClick={() => onOpen(w.id)}
-                title="누르면 이력 패널이 열립니다"
-              >
-                <span className="nag-tag t-teal">{w.area || '점검'}</span>
-                <span className="nag-title">
-                  {w.title}
-                  {w.risk && <b className="t-red"> ★</b>}
-                  {w.evidence && <span className="nag-desc"> · {w.evidence}</span>}
-                </span>
-                <span className="nag-actions">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleWorkRun(w.id, curYm)
-                      showUndo(`'${w.title}' 완료`, () => toggleWorkRun(w.id, curYm))
-                    }}
-                  >
-                    완료
-                  </button>
-                </span>
-              </div>
-              {renderDetail && renderDetail(w.id)}
-              </Fragment>
-            )
-          })}
-          {openWorks.length === 0 && (
-            <div className="empty small">이번 달 점검을 전부 마쳤습니다.</div>
-          )}
         </Section>
       )}
       {quiet && (
