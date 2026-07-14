@@ -72,10 +72,6 @@ input:focus {
   padding: 14px 14px 90px;
 }
 
-.app.app-wide {
-  max-width: 1360px;
-}
-
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -87,14 +83,86 @@ main {
   min-width: 0;
 }
 
+.workarea {
+  min-width: 0;
+}
+
+/* PC: 왼쪽 사이드바 + 왼쪽 기준 고정 본문.
+   탭을 오가거나 패널이 열려도 본문의 시작 위치·폭이 변하지 않는다 */
 @media (min-width: 900px) {
-  .app.with-detail {
-    max-width: 1320px;
+  .app {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
   }
 
-  .with-detail .layout {
-    grid-template-columns: minmax(0, 1fr) 400px;
+  .workarea {
+    padding: 14px 22px 90px;
   }
+
+  .inputbar,
+  main {
+    max-width: 880px;
+  }
+
+  .app-mid .inputbar,
+  .app-mid main {
+    max-width: 1100px;
+  }
+
+  .app-wide .inputbar,
+  .app-wide main {
+    max-width: 1360px;
+  }
+}
+
+.sidenav {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 18px 12px 16px;
+  border-right: 1px solid var(--border);
+}
+
+.sidenav .brand {
+  padding: 0 8px 16px;
+}
+
+.stab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.stab:hover {
+  background: #efeee8;
+  border-color: transparent;
+}
+
+.stab.on {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.stab-logout {
+  margin-top: auto;
+  font-size: 12.5px;
+  color: var(--faint);
 }
 
 .topbar {
@@ -1198,10 +1266,20 @@ main {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 16px 18px;
-  position: sticky;
-  top: 14px;
-  max-height: calc(100vh - 28px);
   overflow-y: auto;
+}
+
+/* PC: 본문을 밀지 않는 고정 패널 — 오른쪽 여백 위에 뜬다 (좁은 화면에선 본문을 살짝 덮음) */
+@media (min-width: 900px) {
+  .detail {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    bottom: 14px;
+    width: 400px;
+    z-index: 40;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.14);
+  }
 }
 
 @media (max-width: 899px) {

@@ -77,65 +77,92 @@ export default function App() {
 
   const sidePanel = !narrow
 
+  const switchTab = (id) => {
+    setTab(id)
+    if (id !== tab) setOpenId(null)
+  }
+
+  const tabBadge = (t) => (
+    <>
+      {t.id === 'today' && nags > 0 && <span className="nag-badge">{nags}</span>}
+      {t.id === 'work' && workNags > 0 && <span className="nag-badge">{workNags}</span>}
+    </>
+  )
+
   return (
-    <div className={'app' + (sidePanel && (open || openWork) ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '')}>
-      <header className="topbar">
-        <div className="brand">
-          내 기록
-          {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
-        </div>
-        <nav className="tabs">
+    <div className={'app' + (sidePanel && (open || openWork) ? ' with-detail' : '') + (tab === 'work' ? ' app-wide' : '') + (tab === 'memos' ? ' app-mid' : '')}>
+      {!narrow && (
+        <aside className="sidenav">
+          <div className="brand">
+            내 기록
+            {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
+          </div>
           {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={'tab' + (tab === t.id ? ' on' : '')}
-              onClick={() => {
-                setTab(t.id)
-                if (t.id !== tab) setOpenId(null)
-              }}
-            >
+            <button key={t.id} className={'stab' + (tab === t.id ? ' on' : '')} onClick={() => switchTab(t.id)}>
               {t.label}
-              {t.id === 'today' && nags > 0 && <span className="nag-badge">{nags}</span>}
-              {t.id === 'work' && workNags > 0 && <span className="nag-badge">{workNags}</span>}
+              {tabBadge(t)}
             </button>
           ))}
           {hasSupabase && auth.loggedIn && (
-            <button className="tab tab-logout" title={auth.email} onClick={signOut}>
+            <button className="stab stab-logout" title={auth.email} onClick={signOut}>
               로그아웃
             </button>
           )}
-        </nav>
-      </header>
-      <InputBar memos={memos} onOpen={setOpenId} />
-      <div className="layout">
-        <main>
-          {tab === 'today' && (
-            <TodayView
+        </aside>
+      )}
+      <div className="workarea">
+        {narrow && (
+          <header className="topbar">
+            <div className="brand">
+              내 기록
+              {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
+            </div>
+            <nav className="tabs">
+              {TABS.map((t) => (
+                <button key={t.id} className={'tab' + (tab === t.id ? ' on' : '')} onClick={() => switchTab(t.id)}>
+                  {t.label}
+                  {tabBadge(t)}
+                </button>
+              ))}
+              {hasSupabase && auth.loggedIn && (
+                <button className="tab tab-logout" title={auth.email} onClick={signOut}>
+                  로그아웃
+                </button>
+              )}
+            </nav>
+          </header>
+        )}
+        <InputBar memos={memos} onOpen={setOpenId} />
+        <div className="layout">
+          <main>
+            {tab === 'today' && (
+              <TodayView
+                memos={memos}
+                works={works}
+                dayOrder={dayOrder}
+                onOpen={setOpenId}
+                renderDetail={renderDetail}
+              />
+            )}
+            {tab === 'calendar' && (
+              <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
+            )}
+            {tab === 'memos' && <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />}
+            {tab === 'work' && <WorkView works={works} onOpen={setOpenId} renderDetail={renderDetail} />}
+          </main>
+          {sidePanel && open && (
+            <MemoDetail key={open.id} memo={open} works={works} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+          )}
+          {sidePanel && openWork && (
+            <WorkDetail
+              key={openWork.id}
+              work={openWork}
               memos={memos}
-              works={works}
-              dayOrder={dayOrder}
               onOpen={setOpenId}
-              renderDetail={renderDetail}
+              onClose={() => setOpenId(null)}
             />
           )}
-          {tab === 'calendar' && (
-            <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
-          )}
-          {tab === 'memos' && <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />}
-          {tab === 'work' && <WorkView works={works} onOpen={setOpenId} renderDetail={renderDetail} />}
-        </main>
-        {sidePanel && open && (
-          <MemoDetail key={open.id} memo={open} works={works} onOpen={setOpenId} onClose={() => setOpenId(null)} />
-        )}
-        {sidePanel && openWork && (
-          <WorkDetail
-            key={openWork.id}
-            work={openWork}
-            memos={memos}
-            onOpen={setOpenId}
-            onClose={() => setOpenId(null)}
-          />
-        )}
+        </div>
       </div>
     </div>
   )
