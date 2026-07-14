@@ -45,6 +45,24 @@ const checkCls = (st, chk) => (st === 'done' ? (chk.complete ? 'b-gray' : 'b-amb
 
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
+// 공통 우선순위 정렬: 보드에서 드래그로 정한 순서 → 급한 순(밀림→오늘→D-n) → 최근 수정순.
+// 보드·표·타임라인이 전부 이 순서를 따른다 — 우선순위는 보드에서 한 번만 정하면 된다.
+const boardIdx = (dayOrder, col, id) => {
+  const order = (dayOrder && dayOrder['board-' + col]) || []
+  const i = order.indexOf(id)
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i
+}
+
+const urgency = (m, today) => {
+  const end = m.due || (m.period && m.period.end)
+  return end ? diffDays(end, today) : Number.MAX_SAFE_INTEGER
+}
+
+const prioSort = (dayOrder, col, today) => (a, b) =>
+  boardIdx(dayOrder, col, a.id) - boardIdx(dayOrder, col, b.id) ||
+  urgency(a, today) - urgency(b, today) ||
+  byUpdated(a, b)
+
 // 보드에서 열 이동: 완료 열이면 완료 처리, 아니면 stage 지정 (완료였던 건 다시 연다)
 function moveTo(m, col) {
   if (!m || memoStatus(m) === col) return
@@ -118,21 +136,9 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
     if (by[st]) by[st].push(m)
   }
 
-  // 기본 정렬 = 급한 순(밀린 것 → 오늘 → D-n). 드래그로 정한 순서가 있으면 그게 우선.
-  const idxFor = (col, id) => {
-    const order = (dayOrder && dayOrder['board-' + col]) || []
-    const i = order.indexOf(id)
-    return i === -1 ? Number.MAX_SAFE_INTEGER : i
-  }
-  const urgency = (m) => {
-    const end = m.due || (m.period && m.period.end)
-    return end ? diffDays(end, today) : Number.MAX_SAFE_INTEGER
-  }
-  const colSort = (col) => (a, b) =>
-    idxFor(col, a.id) - idxFor(col, b.id) || urgency(a) - urgency(b) || byUpdated(a, b)
-  by.todo.sort(colSort('todo'))
-  by.active.sort(colSort('active'))
-  by.done.sort((a, b) => idxFor('done', a.id) - idxFor('done', b.id) || byUpdated(a, b))
+  by.todo.sort(prioSort(dayOrder, 'todo', today))
+  by.active.sort(prioSort(dayOrder, 'active', today))
+  by.done.sort((a, b) => boardIdx(dayOrder, 'done', a.id) - boardIdx(dayOrder, 'done', b.id) || byUpdated(a, b))
 
   function reorderIn(col, draggedId, targetId, after) {
     const ids = by[col].map((x) => x.id).filter((id) => id !== draggedId)
@@ -226,13 +232,16 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
 
 // ---------- 표 ----------
 
-const ORDER = { active: 0, todo: 1, keep: 2, done: 3 }
-
-function TableView({ memos, words, onOpen, renderDetail }) {
+function TableView({ memos, dayOrder, words, onOpen, renderDetail }) {
   const today = todayStr()
-  const list = [...memos].sort(
-    (a, b) => ORDER[memoStatus(a)] - ORDER[memoStatus(b)] || byUpdated(a, b)
-  )
+  // 진행중 → 할일 → 보관 → 완료 순. 진행중·할일 안에서는 보드와 같은 우선순위.
+  const groups = { active: [], todo: [], keep: [], done: [] }
+  for (const m of memos) groups[memoStatus(m)].push(m)
+  groups.active.sort(prioSort(dayOrder, 'active', today))
+  groups.todo.sort(prioSort(dayOrder, 'todo', today))
+  groups.keep.sort(byUpdated)
+  groups.done.sort(byUpdated)
+  const list = [...groups.active, ...groups.todo, ...groups.keep, ...groups.done]
   return (
     <div className="mv-table-wrap">
       <table className="mv-table">
@@ -301,7 +310,7 @@ const TLV_GROUPS = [
   ['done', '완료'],
 ]
 
-function TimelineView({ memos, onOpen, renderDetail }) {
+function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
@@ -389,6 +398,12 @@ function TimelineView({ memos, onOpen, renderDetail }) {
           {TLV_GROUPS.map(([gid, glabel]) => {
             const rows = items.filter((x) => memoStatus(x.m) === gid)
             if (!rows.length) return null
+            // 진행중·할일은 보드와 같은 우선순위, 완료는 최근 완료순
+            const cmp =
+              gid === 'done'
+                ? (a, b) => byUpdated(a.m, b.m)
+                : (a, b) => prioSort(dayOrder, gid, today)(a.m, b.m)
+            rows.sort(cmp)
             const folded = gid === 'done' && !showDone
             return (
               <Fragment key={gid}>
@@ -507,8 +522,8 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
         </button>
       </div>
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
-      {view === 'table' && <TableView memos={list} words={words} onOpen={onOpen} renderDetail={renderDetail} />}
-      {view === 'timeline' && <TimelineView memos={list} onOpen={onOpen} renderDetail={renderDetail} />}
+      {view === 'table' && <TableView memos={list} dayOrder={dayOrder} words={words} onOpen={onOpen} renderDetail={renderDetail} />}
+      {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (
         <div className="kb-keep">
           <div className="done-divider">검색에 걸린 보관 메모 · {keepHits.length}건</div>
