@@ -341,6 +341,8 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
   const [showDone, setShowDone] = useState(false)
+  // 막대에 마우스를 올리면 진행기록이 작은 카드로 붙는다 (PC 전용)
+  const [hover, setHover] = useState(null)
   const today = todayStr()
   const dim = new Date(y, mo + 1, 0).getDate()
   const first = `${y}-${pad(mo + 1)}-01`
@@ -463,7 +465,8 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
                             className={'tlv-bar tlv-' + st}
                             style={{ gridColumn: `${sd} / ${ed + 1}` }}
                             onClick={() => onOpen(m.id)}
-                            title={`${m.title} (${fmtDate(s)}${s !== e ? ' ~ ' + fmtDate(e) : ''})`}
+                            onMouseEnter={(ev) => setHover({ m, s, e, x: ev.clientX, y: ev.clientY })}
+                            onMouseLeave={() => setHover(null)}
                           />
                         </div>
                       </div>
@@ -476,6 +479,37 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
         </div>
       </div>
       {renderDetail && items.map(({ m }) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
+      {hover && (() => {
+        const lines = hover.m.history || []
+        const shown = lines.slice(-8)
+        const chk = checkInfo(hover.m)
+        const below = hover.y < window.innerHeight * 0.55
+        return (
+          <div
+            className="tlv-tip"
+            style={{
+              left: Math.min(hover.x + 14, window.innerWidth - 350),
+              top: below ? hover.y + 16 : hover.y - 12,
+              transform: below ? 'none' : 'translateY(-100%)',
+            }}
+          >
+            <div className="tlv-tip-title">{hover.m.title}</div>
+            <div className="tlv-tip-sub">
+              {fmtDate(hover.s)}
+              {hover.s !== hover.e && ` ~ ${fmtDate(hover.e)}`}
+              {chk && ` · ${chk.label}`}
+            </div>
+            {shown.map((h, i) => (
+              <div key={i} className={'tlv-tip-line' + (h.done ? ' done' : '')}>
+                <span className="d">{fmtDate(h.date)}</span>
+                <span>{h.text}</span>
+              </div>
+            ))}
+            {lines.length > 8 && <div className="tlv-tip-more">위 {lines.length - 8}줄 생략 — 누르면 전체</div>}
+            {lines.length === 0 && <div className="tlv-tip-more">진행 기록 없음</div>}
+          </div>
+        )
+      })()}
     </div>
   )
 }
