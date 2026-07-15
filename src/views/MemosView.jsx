@@ -56,21 +56,12 @@ function dueInfo(m, today) {
   return { dd: diffDays(end, today), isEnd: !m.due && !!(m.period && m.period.end) }
 }
 
-const TILES = [
-  ['late', '밀림', 't-red'],
-  ['today', '오늘', 't-amber'],
-  ['week', '이번 주', 't-blue'],
-  ['end', '만기', 't-purple'],
-  ['active', '진행중', 't-teal'],
-]
-
+// 타일은 둘뿐: 오늘(밀림 포함 — 밀린 게 있으면 빨갛게 병기), 만기(계약 만기 D-60 레이더)
 function tileMatch(m, id, today) {
-  if (id === 'active') return memoStatus(m) === 'active'
   const info = dueInfo(m, today)
   if (!info) return false
   if (id === 'late') return info.dd < 0
   if (id === 'today') return info.dd <= 0
-  if (id === 'week') return info.dd <= 7
   if (id === 'end') return info.isEnd && info.dd >= 0 && info.dd <= 60
   return false
 }
@@ -311,16 +302,22 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
 
 // ---------- 표 ----------
 
-function TableView({ memos, dayOrder, words, onOpen, renderDetail }) {
+function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
   const today = todayStr()
-  // 진행중 → 할일 → 보관 → 완료 순. 진행중·할일 안에서는 보드와 같은 우선순위.
-  const groups = { active: [], todo: [], keep: [], done: [] }
-  for (const m of memos) groups[memoStatus(m)].push(m)
-  groups.active.sort(prioSort(dayOrder, 'active', today))
-  groups.todo.sort(prioSort(dayOrder, 'todo', today))
-  groups.keep.sort(byUpdated)
-  groups.done.sort(byUpdated)
-  const list = [...groups.active, ...groups.todo, ...groups.keep, ...groups.done]
+  let list
+  if (flat) {
+    // 만기 타일 등에서: 상태 구분 없이 가까운 날짜부터 촤르륵
+    list = [...memos].sort((a, b) => urgency(a, today) - urgency(b, today) || byUpdated(a, b))
+  } else {
+    // 진행중 → 할일 → 보관 → 완료 순. 진행중·할일 안에서는 보드와 같은 우선순위.
+    const groups = { active: [], todo: [], keep: [], done: [] }
+    for (const m of memos) groups[memoStatus(m)].push(m)
+    groups.active.sort(prioSort(dayOrder, 'active', today))
+    groups.todo.sort(prioSort(dayOrder, 'todo', today))
+    groups.keep.sort(byUpdated)
+    groups.done.sort(byUpdated)
+    list = [...groups.active, ...groups.todo, ...groups.keep, ...groups.done]
+  }
   return (
     <div className="mv-table-wrap">
       <table className="mv-table">
@@ -551,7 +548,9 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
 
   const counts = {}
-  for (const [id] of TILES) counts[id] = memos.filter((m) => tileMatch(m, id, today)).length
+  for (const id of ['late', 'today', 'end']) {
+    counts[id] = memos.filter((m) => tileMatch(m, id, today)).length
+  }
 
   const list = memos.filter((m) => {
     if (timeFilter && !tileMatch(m, timeFilter, today)) return false
@@ -570,7 +569,8 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
     localStorage.setItem('memo-view', v)
   }
 
-  const tileLabel = timeFilter && TILES.find(([id]) => id === timeFilter)[1]
+  const tileLabel = timeFilter === 'today' ? '오늘' : '만기'
+  const toggleTile = (id) => setTimeFilter((f) => (f === id ? null : id))
 
   // 보드에는 보관 메모가 안 나오므로, 검색 중이면 걸린 보관 메모를 아래에 따로 보여준다
   const keepHits = view === 'board' && words.length ? list.filter((m) => memoStatus(m) === 'keep') : []
@@ -578,16 +578,21 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   return (
     <div className="view">
       <div className="tiles">
-        {TILES.map(([id, label, cls]) => (
-          <button
-            key={id}
-            className={'tile ' + cls + (timeFilter === id ? ' on' : '')}
-            title={timeFilter === id ? '다시 누르면 전체 보기' : label + '만 모아 보기'}
-            onClick={() => setTimeFilter((f) => (f === id ? null : id))}
-          >
-            {label} <b>{counts[id]}</b>
-          </button>
-        ))}
+        <button
+          className={'tile t-amber' + (counts.late > 0 ? ' tile-late' : '') + (timeFilter === 'today' ? ' on' : '')}
+          title={timeFilter === 'today' ? '다시 누르면 전체 보기' : '오늘까지 해야 하는 것만 모아 보기'}
+          onClick={() => toggleTile('today')}
+        >
+          오늘 <b>{counts.today}</b>
+          {counts.late > 0 && <span className="tile-latebit">· 밀림 <b>{counts.late}</b></span>}
+        </button>
+        <button
+          className={'tile t-purple' + (timeFilter === 'end' ? ' on' : '')}
+          title={timeFilter === 'end' ? '다시 누르면 전체 보기' : '계약 만기(60일 안)를 가까운 순으로'}
+          onClick={() => toggleTile('end')}
+        >
+          만기 <b>{counts.end}</b>
+        </button>
       </div>
       {timeFilter && (
         <div className="cal-filter-note">
@@ -625,7 +630,9 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           filtered={words.length > 0}
         />
       )}
-      {view === 'table' && <TableView memos={list} dayOrder={dayOrder} words={words} onOpen={onOpen} renderDetail={renderDetail} />}
+      {view === 'table' && (
+        <TableView memos={list} dayOrder={dayOrder} words={words} flat={timeFilter === 'end'} onOpen={onOpen} renderDetail={renderDetail} />
+      )}
       {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (
         <div className="kb-keep">

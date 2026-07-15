@@ -674,11 +674,26 @@ main {
   color: var(--text);
 }
 
-.tile.t-red b { color: var(--red); }
 .tile.t-amber b { color: var(--amber); }
-.tile.t-blue b { color: var(--blue); }
 .tile.t-purple b { color: var(--purple); }
-.tile.t-teal b { color: var(--teal); }
+
+/* 밀린 게 있으면 오늘 타일이 빨갛게 달아오른다 */
+.tile.tile-late,
+.tile.tile-late b {
+  color: var(--red);
+}
+
+.tile.tile-late {
+  background: var(--red-bg);
+  border-color: var(--red-strong);
+}
+
+.tile-latebit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+}
 
 .kb-dayline {
   font-size: 11.5px;
