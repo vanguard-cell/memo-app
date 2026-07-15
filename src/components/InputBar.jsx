@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { parse, todayStr } from '../parser'
 import { addMemo } from '../store'
 import { fmtDate, fmtPeriod } from '../derive'
+import SendToDateBtn from './SendToDateBtn'
 
 function Chip({ cls, label, onX }) {
   return (
@@ -15,11 +16,13 @@ function Chip({ cls, label, onX }) {
 export default function InputBar() {
   const [text, setText] = useState('')
   const [removed, setRemoved] = useState({})
+  // "날짜 지정" 버튼으로 직접 고른 기한 — 글에 쓴 날짜보다 우선
+  const [pickedDue, setPickedDue] = useState(null)
   const [flash, setFlash] = useState('')
 
   const parsed = useMemo(() => parse(text), [text])
   const eff = {
-    due: removed.due ? null : parsed.due,
+    due: removed.due ? null : pickedDue || parsed.due,
     period: removed.period ? null : parsed.period,
   }
   if (eff.period) eff.due = null
@@ -27,6 +30,7 @@ export default function InputBar() {
   function reset() {
     setText('')
     setRemoved({})
+    setPickedDue(null)
   }
 
   function say(msg) {
@@ -68,7 +72,7 @@ export default function InputBar() {
       <div className="input-row">
         <input
           value={text}
-          placeholder='여기에 그냥 던지세요 — 예: A업체 계약 26.5.30~27.5.29'
+          placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신 / A업체 계약 26.5.30~27.5.29'
           onChange={(e) => {
             setText(e.target.value)
             if (!e.target.value.trim()) setRemoved({})
@@ -88,12 +92,31 @@ export default function InputBar() {
             />
           )}
           {eff.due && (
-            <Chip cls="chip-date" label={`기한 ${fmtDate(eff.due)}`} onX={() => setRemoved((r) => ({ ...r, due: true }))} />
+            <Chip
+              cls="chip-date"
+              label={`기한 ${fmtDate(eff.due)}`}
+              onX={() => {
+                setPickedDue(null)
+                setRemoved((r) => ({ ...r, due: true }))
+              }}
+            />
           )}
           {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
-          <button className="pill pill-keep" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
-            보관함에 넣기
-          </button>
+          <span className="chips-right">
+            {!eff.period && (
+              <SendToDateBtn
+                label="날짜 지정"
+                className="pill"
+                onPick={(d) => {
+                  setPickedDue(d)
+                  setRemoved((r) => ({ ...r, due: false }))
+                }}
+              />
+            )}
+            <button className="pill pill-keep" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
+              보관함에 넣기
+            </button>
+          </span>
         </div>
       )}
       {flash && <div className="flash">{flash}</div>}

@@ -399,11 +399,21 @@ main {
   color: var(--faint);
 }
 
-/* 보관함 버튼 — 칩 줄 오른쪽 끝, 보관 배지와 같은 보라 톤 */
-.pill-keep {
+/* 칩 줄 오른쪽 끝 묶음: 날짜 지정 · 보관함 */
+.chips-right {
   margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.chips-right .pill {
   font-size: 12px;
   padding: 3px 11px;
+}
+
+/* 보관함 버튼 — 보관 배지와 같은 보라 톤 */
+.pill-keep {
   background: #ece9f7;
   border-color: #ece9f7;
   color: #6b5cb8;
