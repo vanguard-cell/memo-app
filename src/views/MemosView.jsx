@@ -74,6 +74,10 @@ function postpone(m, d) {
 
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
+// 완료 목록은 "최근 완료한 순" — 나중에 체크를 만져도 순서가 안 튄다
+const byCompleted = (a, b) =>
+  ((a.completedAt || a.updatedAt) < (b.completedAt || b.updatedAt) ? 1 : -1)
+
 // 공통 우선순위 정렬: 급한 순(밀림→오늘→D-n)이 항상 먼저 — 새로 던진 오늘 메모가 바로 위로 온다.
 // 드래그로 정한 순서는 같은 D-day 안에서만 순서를 가른다. 보드·표·타임라인 공통.
 const boardIdx = (dayOrder, col, id) => {
@@ -193,7 +197,7 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
 
   by.todo.sort(prioSort(dayOrder, 'todo', today))
   by.active.sort(prioSort(dayOrder, 'active', today))
-  by.done.sort((a, b) => boardIdx(dayOrder, 'done', a.id) - boardIdx(dayOrder, 'done', b.id) || byUpdated(a, b))
+  by.done.sort(byCompleted)
 
   function reorderIn(col, draggedId, targetId, after) {
     const ids = by[col].map((x) => x.id).filter((id) => id !== draggedId)
@@ -315,7 +319,7 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
     groups.active.sort(prioSort(dayOrder, 'active', today))
     groups.todo.sort(prioSort(dayOrder, 'todo', today))
     groups.keep.sort(byUpdated)
-    groups.done.sort(byUpdated)
+    groups.done.sort(byCompleted)
     list = [...groups.active, ...groups.todo, ...groups.keep, ...groups.done]
   }
   return (
@@ -475,7 +479,7 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
             // 진행중·할일은 보드와 같은 우선순위, 완료는 최근 완료순
             const cmp =
               gid === 'done'
-                ? (a, b) => byUpdated(a.m, b.m)
+                ? (a, b) => byCompleted(a.m, b.m)
                 : (a, b) => prioSort(dayOrder, gid, today)(a.m, b.m)
             rows.sort(cmp)
             const folded = gid === 'done' && !showDone
