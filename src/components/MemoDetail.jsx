@@ -76,6 +76,10 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               점검: {linkedWork.title}
             </button>
           )}
+          <span className="panel-created">
+            작성 {fmtDate(memo.createdAt.slice(0, 10))}
+            {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
+          </span>
         </div>
         <div className="panel-actions">
           {memo.status !== 'done' ? (
@@ -146,10 +150,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           onUpdate={(i, p) => updateHistory(memo.id, i, p)}
           onRemove={(i) => removeHistory(memo.id, i)}
         />
-        <div className="panel-foot">
-          작성 {fmtDate(memo.createdAt.slice(0, 10))}
-          {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
-        </div>
     </aside>
   )
 }
