@@ -31,7 +31,9 @@ const TYPE = {
   span: ['기간', 'ev-span'],
 }
 
-export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) {
+// 메모탭의 "달력" 보기. memos = 검색·업체 칩이 적용된 목록(달력에도 필터가 먹는다),
+// allMemos = 빠른 추가의 업체 인식용 전체 목록.
+export default function CalendarView({ memos, allMemos, dayOrder, onOpen, renderDetail, filtered }) {
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
@@ -75,7 +77,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
   function quickAdd() {
     const txt = qtext.trim()
     if (!txt || !sel) return
-    const p = parse(txt, companies(memos))
+    const p = parse(txt, companies(allMemos || memos))
     const dateInText = p.period || p.due
     addMemo({
       title: dateInText && p.cleaned ? p.cleaned : txt,
@@ -132,6 +134,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
 
   return (
     <div className="view">
+      {filtered && (
+        <div className="cal-filter-note">검색·필터 적용 중 — 걸러진 메모만 달력에 보입니다</div>
+      )}
       <div className="cal-head">
         <button onClick={() => move(-1)}>‹</button>
         <span className="cal-title">
@@ -176,7 +181,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
               onDrop={(e) => onDrop(date, e)}
             >
               <span className="cal-day">{d}</span>
-              {evs.slice(0, 3).map((e, j) => (
+              {evs.slice(0, 4).map((e, j) => (
                 <span
                   key={j}
                   className={'cal-ev ' + TYPE[e.type][1]}
@@ -194,7 +199,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
                   {e.text}
                 </span>
               ))}
-              {evs.length > 3 && <span className="cal-more">+{evs.length - 3}</span>}
+              {evs.length > 4 && <span className="cal-more">+{evs.length - 4}</span>}
             </div>
           )
         })}

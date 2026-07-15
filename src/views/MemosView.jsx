@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
+import CalendarView from './CalendarView'
 import { memoStatus, companies, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder, getWorks, getDayOrder } from '../store'
 import { todayStr } from '../parser'
@@ -458,6 +459,7 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
 
 const VIEWS = [
   ['board', '보드'],
+  ['calendar', '달력'],
   ['table', '표'],
   ['timeline', '타임라인'],
 ]
@@ -522,6 +524,16 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
         </button>
       </div>
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
+      {view === 'calendar' && (
+        <CalendarView
+          memos={list}
+          allMemos={memos}
+          dayOrder={dayOrder}
+          onOpen={onOpen}
+          renderDetail={renderDetail}
+          filtered={words.length > 0 || !!co}
+        />
+      )}
       {view === 'table' && <TableView memos={list} dayOrder={dayOrder} words={words} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (

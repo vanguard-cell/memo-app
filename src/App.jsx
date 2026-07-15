@@ -6,14 +6,12 @@ import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
 import Login from './components/Login'
 import TodayView from './views/TodayView'
-import CalendarView from './views/CalendarView'
 import MemosView from './views/MemosView'
 
-// 점검탭은 2026-07-14 제거 — 데이터(works)는 store·서버에 그대로 보존되어 있고,
-// 반복 기한 메모로 변환하는 작업이 예정되어 있다.
+// 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
+// 달력 탭은 2026-07-15 메모탭의 "달력" 보기로 흡수.
 const TABS = [
   { id: 'today', label: '오늘' },
-  { id: 'calendar', label: '달력' },
   { id: 'memos', label: '메모' },
 ]
 
@@ -116,9 +114,6 @@ export default function App() {
           <main>
             {tab === 'today' && (
               <TodayView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
-            )}
-            {tab === 'calendar' && (
-              <CalendarView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
             )}
             {tab === 'memos' && <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />}
           </main>
