@@ -25,8 +25,6 @@ export function memoStatus(m) {
 
 export const STATUS_LABEL = { done: '완료', active: '진행중', todo: '할일', keep: '보관' }
 
-export const companies = (memos) => [...new Set(memos.map((m) => m.company).filter(Boolean))]
-
 export function buildNags(memos) {
   const today = todayStr()
   const overdue = []

@@ -109,7 +109,7 @@ export default function App() {
             </nav>
           </header>
         )}
-        <InputBar memos={memos} onOpen={setOpenId} />
+        <InputBar />
         <div className="layout">
           <main>
             {tab === 'today' && (

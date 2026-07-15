@@ -16,7 +16,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   function startEdit() {
     setForm({
       title: memo.title,
-      company: memo.company || '',
       due: memo.due || '',
       start: memo.period?.start || '',
       end: memo.period?.end || '',
@@ -27,7 +26,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   function saveEdit() {
     updateMemo(memo.id, {
       title: form.title.trim() || memo.title,
-      company: form.company.trim() || null,
       due: form.due || null,
       period: form.start && form.end ? { start: form.start, end: form.end } : null,
     })
@@ -45,7 +43,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           <button className="x" onClick={onClose} aria-label="닫기">×</button>
         </div>
         <div className="panel-meta">
-          {memo.company && <span className="chip chip-co">{memo.company}</span>}
           {memo.period && (
             <span className="meta-date">
               기간 {fmtPeriod(memo.period)}
@@ -110,10 +107,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </label>
             <div className="edit-grid">
-              <label>
-                업체
-                <input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-              </label>
               <label>
                 기한
                 <input type="date" value={form.due} onChange={(e) => setForm({ ...form, due: e.target.value })} />

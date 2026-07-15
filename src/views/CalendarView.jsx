@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { fmtDate, memoStatus, STATUS_LABEL, diffDays, companies } from '../derive'
+import { fmtDate, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays, parse } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
@@ -31,9 +31,8 @@ const TYPE = {
   span: ['기간', 'ev-span'],
 }
 
-// 메모탭의 "달력" 보기. memos = 검색·업체 칩이 적용된 목록(달력에도 필터가 먹는다),
-// allMemos = 빠른 추가의 업체 인식용 전체 목록.
-export default function CalendarView({ memos, allMemos, dayOrder, onOpen, renderDetail, filtered }) {
+// 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
+export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
@@ -77,11 +76,10 @@ export default function CalendarView({ memos, allMemos, dayOrder, onOpen, render
   function quickAdd() {
     const txt = qtext.trim()
     if (!txt || !sel) return
-    const p = parse(txt, companies(allMemos || memos))
+    const p = parse(txt)
     const dateInText = p.period || p.due
     addMemo({
       title: dateInText && p.cleaned ? p.cleaned : txt,
-      company: p.company,
       due: p.due || (p.period ? null : sel),
       period: p.period,
     })

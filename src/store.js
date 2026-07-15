@@ -219,12 +219,11 @@ export async function signOut() {
 
 // ---------- 메모 조작 ----------
 
-export function addMemo({ title, company, due, period, fromWork, keep }) {
+export function addMemo({ title, due, period, fromWork, keep }) {
   const now = new Date().toISOString()
   const memo = {
     id: crypto.randomUUID(),
     title,
-    company: company || null,
     status: 'open',
     keep: !!keep,
     due: keep ? null : due || null,

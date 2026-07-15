@@ -1,6 +1,6 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useState } from 'react'
 import CalendarView from './CalendarView'
-import { memoStatus, companies, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
+import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder, getWorks, getDayOrder } from '../store'
 import { todayStr } from '../parser'
 
@@ -102,11 +102,10 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       onClick={() => onOpen(m.id)}
     >
       <div className="kb-title">{m.title}</div>
-      {(badge || chk || m.company) && (
+      {(badge || chk) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
-          {m.company && <span className="chip chip-co">{m.company}</span>}
         </div>
       )}
       <div className="kb-actions">
@@ -250,7 +249,6 @@ function TableView({ memos, dayOrder, words, onOpen, renderDetail }) {
           <tr>
             <th>상태</th>
             <th>제목</th>
-            <th>업체</th>
             <th>기한·기간</th>
             <th>체크</th>
             <th>작성</th>
@@ -269,7 +267,6 @@ function TableView({ memos, dayOrder, words, onOpen, renderDetail }) {
                 <tr className={st === 'done' ? 'mv-done' : ''} onClick={() => onOpen(m.id)}>
                   <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
                   <td className="mv-title">{m.title}</td>
-                  <td className="mv-date">{m.company || ''}</td>
                   <td className="mv-date">
                     {m.period ? fmtPeriod(m.period) : m.due ? fmtDate(m.due) : ''}
                     {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
@@ -281,7 +278,7 @@ function TableView({ memos, dayOrder, words, onOpen, renderDetail }) {
                 </tr>
                 {matched.length > 0 && (
                   <tr className="mv-hit">
-                    <td colSpan={6}>
+                    <td colSpan={5}>
                       <div className="hit-lines">
                         {matched.map((h, i) => (
                           <div key={i} className="hit-line">
@@ -466,15 +463,12 @@ const VIEWS = [
 
 export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   const [q, setQ] = useState('')
-  const [co, setCo] = useState(null)
   const [view, setView] = useState(() => localStorage.getItem('memo-view') || 'board')
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  const cos = useMemo(() => companies(memos), [memos])
 
   const list = memos.filter((m) => {
-    if (co && m.company !== co) return false
     if (words.length) {
-      const hay = [m.title, m.company, ...m.history.map((h) => h.text)]
+      const hay = [m.title, ...m.history.map((h) => h.text)]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -498,7 +492,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           className="search-input mv-search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="검색 — 제목·진행기록·업체, 보관·완료까지"
+          placeholder="검색 — 제목·진행기록, 보관·완료까지"
         />
         <div className="mv-toggle">
           {VIEWS.map(([id, label]) => (
@@ -509,17 +503,8 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
         </div>
       </div>
       <div className="filters wrap">
-        {cos.map((name) => (
-          <button
-            key={name}
-            className={'pill' + (co === name ? ' on' : '')}
-            onClick={() => setCo(co === name ? null : name)}
-          >
-            {name}
-          </button>
-        ))}
         <span className="count">{list.length}건</span>
-        <button className="pill pill-backup" title="메모·점검 전체를 JSON 파일로 저장" onClick={() => downloadBackup(memos)}>
+        <button className="pill pill-backup" title="메모 전체를 JSON 파일로 저장" onClick={() => downloadBackup(memos)}>
           백업
         </button>
       </div>
@@ -527,11 +512,10 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       {view === 'calendar' && (
         <CalendarView
           memos={list}
-          allMemos={memos}
           dayOrder={dayOrder}
           onOpen={onOpen}
           renderDetail={renderDetail}
-          filtered={words.length > 0 || !!co}
+          filtered={words.length > 0}
         />
       )}
       {view === 'table' && <TableView memos={list} dayOrder={dayOrder} words={words} onOpen={onOpen} renderDetail={renderDetail} />}

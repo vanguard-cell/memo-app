@@ -372,11 +372,6 @@ main {
   color: var(--blue);
 }
 
-.chip-co {
-  background: var(--purple-bg);
-  color: var(--purple);
-}
-
 .chip-x {
   border: none;
   background: none;
