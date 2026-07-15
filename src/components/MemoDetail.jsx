@@ -93,23 +93,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           ) : (
             <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
           )}
-          {memo.status !== 'done' && !memo.keep && (
+          {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>
-              {st === 'todo' ? (
-                <button title="진행중으로 옮깁니다" onClick={() => updateMemo(memo.id, { stage: 'active' })}>시작</button>
-              ) : (
-                <button title="할일로 되돌립니다" onClick={() => updateMemo(memo.id, { stage: 'todo' })}>할일로</button>
-              )}
-              {(memo.due || memo.period) && (
-                <>
-                  <button onClick={() => postpone(tomorrow)}>내일로</button>
-                  <SendToDateBtn
-                    min={memo.due && memo.due < today ? today : tomorrow}
-                    max={!memo.due && memo.period ? memo.period.end : undefined}
-                    onPick={postpone}
-                  />
-                </>
-              )}
+              <button onClick={() => postpone(tomorrow)}>내일로</button>
+              <SendToDateBtn
+                min={memo.due && memo.due < today ? today : tomorrow}
+                max={!memo.due && memo.period ? memo.period.end : undefined}
+                onPick={postpone}
+              />
             </>
           )}
           <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
