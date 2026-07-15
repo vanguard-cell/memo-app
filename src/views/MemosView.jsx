@@ -364,13 +364,13 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
       if (!e) e = s
       return s ? [s, e] : null
     }
-    // 미완료: 기한이 항상 구간에 포함 — 내일로/날짜로로 기한을 옮기면 막대도 따라간다
-    if (m.due) {
-      if (!s || m.due < s) s = m.due
-      if (!e || m.due > e) e = m.due
-    }
-    if (!s) return null
-    if (memoStatus(m) === 'active' && today > e) e = today
+    // 할일(착수 전): 줄이 있어도 등록 시점으로 소급하지 않는다 — 현재 기한 자리에 점만.
+    // 내일로/날짜로로 기한을 옮기면 점이 따라간다.
+    if (memoStatus(m) !== 'active') return m.due ? [m.due, m.due] : null
+    // 진행중(착수 후): 첫 기록부터 기한·오늘 중 늦은 쪽까지
+    if (!s) return m.due ? [m.due, m.due] : null
+    if (m.due && m.due > e) e = m.due
+    if (today > e) e = today
     return [s, e]
   }
 
