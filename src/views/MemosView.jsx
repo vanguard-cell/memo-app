@@ -355,26 +355,38 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
   const spanOf = (m) => {
     if (m.period && m.period.start && m.period.end) return [m.period.start, m.period.end]
     const dates = (m.history || []).map((h) => h.date).filter(Boolean)
-    if (!dates.length) return m.due ? [m.due, m.due] : null
-    let s = dates.reduce((a, b) => (a < b ? a : b))
-    let e = dates.reduce((a, b) => (a > b ? a : b))
+    let s = dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : null
+    let e = dates.length ? dates.reduce((a, b) => (a > b ? a : b)) : null
     if (m.status === 'done') {
       const c = m.completedAt ? m.completedAt.slice(0, 10) : null
-      if (c && c > e) e = c
-    } else if (memoStatus(m) === 'active' && today > e) {
-      e = today
+      if (c && (!e || c > e)) e = c
+      if (!s) s = m.due || e
+      if (!e) e = s
+      return s ? [s, e] : null
     }
+    // 미완료: 기한이 항상 구간에 포함 — 내일로/날짜로로 기한을 옮기면 막대도 따라간다
+    if (m.due) {
+      if (!s || m.due < s) s = m.due
+      if (!e || m.due > e) e = m.due
+    }
+    if (!s) return null
+    if (memoStatus(m) === 'active' && today > e) e = today
     return [s, e]
   }
 
   // 라벨 밑 요약 줄: "7.8 ~ 진행중 · 체크 4/7" — 같은 제목이 여럿이어도 구분된다
   const md = (d) => `${Number(d.slice(5, 7))}.${Number(d.slice(8, 10))}`
-  const subOf = (m, s, e, st) => {
+  const subOf = (m, s, e) => {
     const chk = checkInfo(m)
     let range
-    if (s === e) range = m.period ? md(s) : `기한 ${md(s)}`
-    else if (st === 'active' && e === today) range = `${md(s)} ~ 진행중`
-    else range = `${md(s)} ~ ${md(e)}`
+    if (m.period) range = s === e ? md(s) : `${md(s)} ~ ${md(e)}`
+    else if (m.status === 'done') range = s === e ? md(e) : `${md(s)} ~ ${md(e)}`
+    else {
+      // 미완료는 실제 기한을 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 기한 7.17"
+      const due = m.due || e
+      range = `기한 ${md(due)}`
+      if (s < due) range = `${md(s)} ~ ${range}`
+    }
     return range + (chk ? ` · ${chk.label}` : '')
   }
 
@@ -456,7 +468,7 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
                           <span className={'tlv-dot tlv-' + st} />
                           <span className="tlv-lwrap">
                             <span className="tlv-title">{m.title}</span>
-                            <span className="tlv-sub">{subOf(m, s, e, st)}</span>
+                            <span className="tlv-sub">{subOf(m, s, e)}</span>
                           </span>
                         </div>
                         <div className="tlv-days" style={cols}>
