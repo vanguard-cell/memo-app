@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, attachFile, detachFile } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
-import { todayStr } from '../parser'
+import { todayStr, addDays } from '../parser'
 import { hasSupabase } from '../supabase'
 import Timeline from './Timeline'
 import FileSection from './FileSection'
+import SendToDateBtn from './SendToDateBtn'
 
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
@@ -34,6 +35,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
 
   const dday = memo.period?.end && memo.status !== 'done' ? diffDays(memo.period.end, today) : null
   const dueD = memo.due && memo.status !== 'done' ? diffDays(memo.due, today) : null
+
+  // 미루기: 기한은 그 날짜로 이동, 기간(만기) 메모는 만기일 안 건드리고 그날까지 숨김
+  const tomorrow = addDays(today, 1)
+  function postpone(d) {
+    if (!memo.due && memo.period) updateMemo(memo.id, { snoozeUntil: d })
+    else updateMemo(memo.id, { due: d })
+  }
 
   return (
     <aside className={'detail' + (inline ? ' detail-inline' : '')} onClick={(e) => e.stopPropagation()}>
@@ -86,6 +94,25 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
             )
           ) : (
             <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
+          )}
+          {memo.status !== 'done' && !memo.keep && (
+            <>
+              {st === 'todo' ? (
+                <button title="진행중으로 옮깁니다" onClick={() => updateMemo(memo.id, { stage: 'active' })}>시작</button>
+              ) : (
+                <button title="할일로 되돌립니다" onClick={() => updateMemo(memo.id, { stage: 'todo' })}>할일로</button>
+              )}
+              {(memo.due || memo.period) && (
+                <>
+                  <button onClick={() => postpone(tomorrow)}>내일로</button>
+                  <SendToDateBtn
+                    min={memo.due && memo.due < today ? today : tomorrow}
+                    max={!memo.due && memo.period ? memo.period.end : undefined}
+                    onPick={postpone}
+                  />
+                </>
+              )}
+            </>
           )}
           <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
           <button

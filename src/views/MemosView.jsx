@@ -1,9 +1,8 @@
 import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
-import SendToDateBtn from '../components/SendToDateBtn'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
-import { todayStr, addDays } from '../parser'
+import { todayStr } from '../parser'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -49,12 +48,6 @@ function tileMatch(m, id, today) {
   return false
 }
 
-// 밀림·오늘 카드 미루기: 기한은 그 날짜로 이동, 만기 알림은 만기일 안 건드리고 그날까지 숨김
-function postpone(m, d) {
-  if (!m.due && m.period) updateMemo(m.id, { snoozeUntil: d })
-  else updateMemo(m.id, { due: d })
-}
-
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
 // 완료 목록은 "최근 완료한 순" — 나중에 체크를 만져도 순서가 안 튄다
@@ -88,13 +81,10 @@ const COLS = [
 ]
 const DONE_SHOWN = 8
 
-function Card({ m, col, today, onOpen, moveTo, dropCls, onCardOver, onCardLeave, onCardDrop }) {
+function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardDrop }) {
   const st = memoStatus(m)
   const badge = dueBadge(m, today)
   const chk = checkInfo(m)
-  const info = dueInfo(m, today)
-  const urgent = st !== 'done' && info && info.dd <= 0
-  const tomorrow = addDays(today, 1)
   // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단)
   const dayLine = m.period ? (m.history || []).find((h) => h.date === today && h.text) : null
   return (
@@ -118,30 +108,6 @@ function Card({ m, col, today, onOpen, moveTo, dropCls, onCardOver, onCardLeave,
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
         </div>
       )}
-      <div className="kb-actions">
-        {st === 'todo' && (
-          <button onClick={(e) => { e.stopPropagation(); moveTo(m, 'active') }}>시작 ›</button>
-        )}
-        {st === 'active' && (
-          <button onClick={(e) => { e.stopPropagation(); moveTo(m, 'todo') }}>‹ 할일로</button>
-        )}
-        {st !== 'done' && (
-          <button onClick={(e) => { e.stopPropagation(); moveTo(m, 'done') }}>완료 ›</button>
-        )}
-        {st === 'done' && (
-          <button onClick={(e) => { e.stopPropagation(); moveTo(m, 'active') }}>‹ 다시 열기</button>
-        )}
-        {urgent && (
-          <>
-            <button onClick={(e) => { e.stopPropagation(); postpone(m, tomorrow) }}>내일로</button>
-            <SendToDateBtn
-              min={info.dd < 0 ? today : tomorrow}
-              max={info.isEnd ? m.period.end : undefined}
-              onPick={(d) => postpone(m, d)}
-            />
-          </>
-        )}
-      </div>
     </div>
   )
 }
@@ -249,7 +215,6 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
                   col={id}
                   today={today}
                   onOpen={onOpen}
-                  moveTo={moveTo}
                   dropCls={rowDrop && rowDrop.id === m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : ''}
                   onCardOver={(e) => {
                     e.preventDefault()
