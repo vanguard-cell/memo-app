@@ -46,8 +46,8 @@ const checkCls = (st, chk) => (st === 'done' ? (chk.complete ? 'b-gray' : 'b-amb
 
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
-// 공통 우선순위 정렬: 보드에서 드래그로 정한 순서 → 급한 순(밀림→오늘→D-n) → 최근 수정순.
-// 보드·표·타임라인이 전부 이 순서를 따른다 — 우선순위는 보드에서 한 번만 정하면 된다.
+// 공통 우선순위 정렬: 급한 순(밀림→오늘→D-n)이 항상 먼저 — 새로 던진 오늘 메모가 바로 위로 온다.
+// 드래그로 정한 순서는 같은 D-day 안에서만 순서를 가른다. 보드·표·타임라인 공통.
 const boardIdx = (dayOrder, col, id) => {
   const order = (dayOrder && dayOrder['board-' + col]) || []
   const i = order.indexOf(id)
@@ -60,8 +60,8 @@ const urgency = (m, today) => {
 }
 
 const prioSort = (dayOrder, col, today) => (a, b) =>
-  boardIdx(dayOrder, col, a.id) - boardIdx(dayOrder, col, b.id) ||
   urgency(a, today) - urgency(b, today) ||
+  boardIdx(dayOrder, col, a.id) - boardIdx(dayOrder, col, b.id) ||
   byUpdated(a, b)
 
 // 보드에서 열 이동: 완료 열이면 완료 처리, 아니면 stage 지정 (완료였던 건 다시 연다)
