@@ -376,32 +376,6 @@ export function downloadBackup() {
   URL.revokeObjectURL(a.href)
 }
 
-// ---------- 파일 첨부 (메모·점검 공용) ----------
-
-function patchItem(id, fn) {
-  const now = new Date().toISOString()
-  if (state.memos.some((m) => m.id === id)) {
-    commit({
-      ...state,
-      memos: state.memos.map((m) => (m.id === id ? { ...fn(m), updatedAt: now } : m)),
-    })
-  } else {
-    commit({
-      ...state,
-      works: state.works.map((w) => (w.id === id ? { ...fn(w), updatedAt: now } : w)),
-    })
-  }
-  remoteUpsert(id)
-}
-
-export function attachFile(id, file) {
-  patchItem(id, (it) => ({ ...it, files: [...(it.files || []), file] }))
-}
-
-export function detachFile(id, path) {
-  patchItem(id, (it) => ({ ...it, files: (it.files || []).filter((f) => f.path !== path) }))
-}
-
 // ---------- 점검(안전관리 캘린더) ----------
 // work = { id, type:'work', area, title, cycle, owner, evidence, months:[1..12], risk,
 //          runs: { '2026-07': { done, note } }, order, createdAt, updatedAt }

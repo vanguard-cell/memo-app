@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, attachFile, detachFile } from '../store'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
-import { hasSupabase } from '../supabase'
 import Timeline from './Timeline'
-import FileSection from './FileSection'
 import SendToDateBtn from './SendToDateBtn'
 
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }) {
@@ -157,13 +155,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           onUpdate={(i, p) => updateHistory(memo.id, i, p)}
           onRemove={(i) => removeHistory(memo.id, i)}
         />
-        {hasSupabase && (
-          <FileSection
-            files={memo.files || []}
-            onAttach={(f) => attachFile(memo.id, f)}
-            onRemove={(p) => detachFile(memo.id, p)}
-          />
-        )}
         <div className="panel-foot">
           작성 {fmtDate(memo.createdAt.slice(0, 10))}
           {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
