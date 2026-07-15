@@ -639,6 +639,53 @@ main {
   margin-left: auto;
 }
 
+/* 요약 타일 — 오늘 탭을 대체하는 한 줄 숫자. 누르면 시간 필터 */
+.tiles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.tile {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 9px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tile b {
+  font-size: 15.5px;
+}
+
+.tile:hover {
+  border-color: var(--border-hover);
+  background: var(--card);
+}
+
+.tile.on {
+  border: 1.5px solid var(--text);
+  color: var(--text);
+}
+
+.tile.t-red b { color: var(--red); }
+.tile.t-amber b { color: var(--amber); }
+.tile.t-blue b { color: var(--blue); }
+.tile.t-purple b { color: var(--purple); }
+.tile.t-teal b { color: var(--teal); }
+
+.kb-dayline {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
 .mv-top {

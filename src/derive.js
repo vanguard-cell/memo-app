@@ -1,5 +1,3 @@
-import { todayStr } from './parser'
-
 export function fmtDate(s) {
   if (!s) return ''
   const [y, m, d] = s.split('-')
@@ -25,34 +23,3 @@ export function memoStatus(m) {
 
 export const STATUS_LABEL = { done: '완료', active: '진행중', todo: '할일', keep: '보관' }
 
-export function buildNags(memos) {
-  const today = todayStr()
-  const overdue = []
-  const dueToday = []
-  const upcoming = []
-  for (const m of memos) {
-    if (m.status === 'done' || m.keep) continue
-    const snoozed = m.snoozeUntil && m.snoozeUntil > today
-    if (snoozed) continue
-    if (m.due) {
-      const dd = diffDays(m.due, today)
-      if (dd < 0) overdue.push({ m, days: -dd, kind: 'due' })
-      else if (dd === 0) dueToday.push({ m, kind: 'due' })
-      else if (dd > 0 && dd <= 7) upcoming.push({ m, dd, kind: 'due' })
-    }
-    if (m.period && m.period.end) {
-      const dd = diffDays(m.period.end, today)
-      if (dd < 0) overdue.push({ m, days: -dd, kind: 'end' })
-      else if (dd === 0) dueToday.push({ m, kind: 'end' })
-      else if (dd > 0 && dd <= 60) upcoming.push({ m, dd, kind: 'end' })
-    }
-  }
-  overdue.sort((a, b) => b.days - a.days)
-  upcoming.sort((a, b) => a.dd - b.dd)
-  return { overdue, dueToday, upcoming }
-}
-
-export function nagCount(memos) {
-  const { overdue, dueToday } = buildNags(memos)
-  return overdue.length + dueToday.length
-}

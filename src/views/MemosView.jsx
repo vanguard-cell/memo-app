@@ -1,8 +1,9 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
+import SendToDateBtn from '../components/SendToDateBtn'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder, getWorks, getDayOrder } from '../store'
-import { todayStr } from '../parser'
+import { todayStr, addDays } from '../parser'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -44,6 +45,42 @@ function checkInfo(m) {
 // 체크 배지 색: 진행 중엔 초록, 완료된 메모는 회색 — 단 체크가 남은 채 완료된 건 노랑(놓친 건지 확인용)
 const checkCls = (st, chk) => (st === 'done' ? (chk.complete ? 'b-gray' : 'b-amber') : 'b-teal')
 
+// ---------- 요약 타일 (오늘 탭 대체) ----------
+
+// 기한/만기의 D-day. 완료·보관·스누즈된 건 제외.
+function dueInfo(m, today) {
+  if (m.status === 'done' || m.keep) return null
+  if (m.snoozeUntil && m.snoozeUntil > today) return null
+  const end = m.due || (m.period && m.period.end)
+  if (!end) return null
+  return { dd: diffDays(end, today), isEnd: !m.due && !!(m.period && m.period.end) }
+}
+
+const TILES = [
+  ['late', '밀림', 't-red'],
+  ['today', '오늘', 't-amber'],
+  ['week', '이번 주', 't-blue'],
+  ['end', '만기', 't-purple'],
+  ['active', '진행중', 't-teal'],
+]
+
+function tileMatch(m, id, today) {
+  if (id === 'active') return memoStatus(m) === 'active'
+  const info = dueInfo(m, today)
+  if (!info) return false
+  if (id === 'late') return info.dd < 0
+  if (id === 'today') return info.dd <= 0
+  if (id === 'week') return info.dd <= 7
+  if (id === 'end') return info.isEnd && info.dd >= 0 && info.dd <= 60
+  return false
+}
+
+// 밀림·오늘 카드 미루기: 기한은 그 날짜로 이동, 만기 알림은 만기일 안 건드리고 그날까지 숨김
+function postpone(m, d) {
+  if (!m.due && m.period) updateMemo(m.id, { snoozeUntil: d })
+  else updateMemo(m.id, { due: d })
+}
+
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
 // 공통 우선순위 정렬: 급한 순(밀림→오늘→D-n)이 항상 먼저 — 새로 던진 오늘 메모가 바로 위로 온다.
@@ -64,17 +101,6 @@ const prioSort = (dayOrder, col, today) => (a, b) =>
   boardIdx(dayOrder, col, a.id) - boardIdx(dayOrder, col, b.id) ||
   byUpdated(a, b)
 
-// 보드에서 열 이동: 완료 열이면 완료 처리, 아니면 stage 지정 (완료였던 건 다시 연다)
-function moveTo(m, col) {
-  if (!m || memoStatus(m) === col) return
-  if (col === 'done') {
-    completeMemo(m.id)
-    return
-  }
-  if (m.status === 'done') reopenMemo(m.id)
-  updateMemo(m.id, { stage: col })
-}
-
 // ---------- 보드 ----------
 
 const COLS = [
@@ -84,10 +110,15 @@ const COLS = [
 ]
 const DONE_SHOWN = 8
 
-function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardDrop }) {
+function Card({ m, col, today, onOpen, moveTo, dropCls, onCardOver, onCardLeave, onCardDrop }) {
   const st = memoStatus(m)
   const badge = dueBadge(m, today)
   const chk = checkInfo(m)
+  const info = dueInfo(m, today)
+  const urgent = st !== 'done' && info && info.dd <= 0
+  const tomorrow = addDays(today, 1)
+  // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단)
+  const dayLine = m.period ? (m.history || []).find((h) => h.date === today && h.text) : null
   return (
     <div
       className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
@@ -102,6 +133,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       onClick={() => onOpen(m.id)}
     >
       <div className="kb-title">{m.title}</div>
+      {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
       {(badge || chk) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
@@ -121,6 +153,16 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
         {st === 'done' && (
           <button onClick={(e) => { e.stopPropagation(); moveTo(m, 'active') }}>‹ 다시 열기</button>
         )}
+        {urgent && (
+          <>
+            <button onClick={(e) => { e.stopPropagation(); postpone(m, tomorrow) }}>내일로</button>
+            <SendToDateBtn
+              min={info.dd < 0 ? today : tomorrow}
+              max={info.isEnd ? m.period.end : undefined}
+              onPick={(d) => postpone(m, d)}
+            />
+          </>
+        )}
       </div>
     </div>
   )
@@ -130,6 +172,28 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
   const today = todayStr()
   const [over, setOver] = useState(null)
   const [rowDrop, setRowDrop] = useState(null)
+  const [undo, setUndo] = useState(null)
+  const undoTimer = useRef(null)
+
+  // 완료 직후 몇 초간 하단에 "되돌리기"를 보여준다 — 실수로 눌러도 복구 가능
+  function showUndo(label, fn) {
+    clearTimeout(undoTimer.current)
+    setUndo({ label, fn })
+    undoTimer.current = setTimeout(() => setUndo(null), 6000)
+  }
+
+  // 열 이동: 완료 열이면 완료 처리(+되돌리기), 아니면 stage 지정 (완료였던 건 다시 연다)
+  function moveTo(m, col) {
+    if (!m || memoStatus(m) === col) return
+    if (col === 'done') {
+      completeMemo(m.id)
+      showUndo(`'${m.title}' 완료`, () => reopenMemo(m.id))
+      return
+    }
+    if (m.status === 'done') reopenMemo(m.id)
+    updateMemo(m.id, { stage: col })
+  }
+
   const by = { todo: [], active: [], done: [] }
   for (const m of memos) {
     const st = memoStatus(m)
@@ -207,6 +271,7 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
                   col={id}
                   today={today}
                   onOpen={onOpen}
+                  moveTo={moveTo}
                   dropCls={rowDrop && rowDrop.id === m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : ''}
                   onCardOver={(e) => {
                     e.preventDefault()
@@ -226,6 +291,20 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
         })}
       </div>
       {renderDetail && memos.map((m) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
+      {undo && (
+        <div className="undo-bar">
+          <span>{undo.label}</span>
+          <button
+            onClick={() => {
+              undo.fn()
+              clearTimeout(undoTimer.current)
+              setUndo(null)
+            }}
+          >
+            되돌리기
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -464,9 +543,18 @@ const VIEWS = [
 export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   const [q, setQ] = useState('')
   const [view, setView] = useState(() => localStorage.getItem('memo-view') || 'board')
+  // 폰은 "오늘" 타일이 켜진 채 시작 — 예전 오늘 탭과 같은 첫 화면
+  const [timeFilter, setTimeFilter] = useState(() =>
+    window.matchMedia('(max-width: 899px)').matches ? 'today' : null
+  )
+  const today = todayStr()
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
 
+  const counts = {}
+  for (const [id] of TILES) counts[id] = memos.filter((m) => tileMatch(m, id, today)).length
+
   const list = memos.filter((m) => {
+    if (timeFilter && !tileMatch(m, timeFilter, today)) return false
     if (words.length) {
       const hay = [m.title, ...m.history.map((h) => h.text)]
         .filter(Boolean)
@@ -482,11 +570,30 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
     localStorage.setItem('memo-view', v)
   }
 
+  const tileLabel = timeFilter && TILES.find(([id]) => id === timeFilter)[1]
+
   // 보드에는 보관 메모가 안 나오므로, 검색 중이면 걸린 보관 메모를 아래에 따로 보여준다
   const keepHits = view === 'board' && words.length ? list.filter((m) => memoStatus(m) === 'keep') : []
 
   return (
     <div className="view">
+      <div className="tiles">
+        {TILES.map(([id, label, cls]) => (
+          <button
+            key={id}
+            className={'tile ' + cls + (timeFilter === id ? ' on' : '')}
+            title={timeFilter === id ? '다시 누르면 전체 보기' : label + '만 모아 보기'}
+            onClick={() => setTimeFilter((f) => (f === id ? null : id))}
+          >
+            {label} <b>{counts[id]}</b>
+          </button>
+        ))}
+      </div>
+      {timeFilter && (
+        <div className="cal-filter-note">
+          "{tileLabel}" 타일 적용 중 — 해당하는 메모만 보입니다. 타일을 다시 누르면 전체.
+        </div>
+      )}
       <div className="mv-top">
         <input
           className="search-input mv-search"
