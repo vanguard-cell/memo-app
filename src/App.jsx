@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { subscribe, getMemos, getDayOrder, getAuth, signOut } from './store'
+import { subscribe, getMemos, getDayOrder, getAuth, signOut, downloadBackup } from './store'
 import { hasSupabase } from './supabase'
 import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
@@ -58,11 +58,16 @@ export default function App() {
             {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
           </div>
           <div className="stab on">메모</div>
-          {hasSupabase && auth.loggedIn && (
-            <button className="stab stab-logout" title={auth.email} onClick={signOut}>
-              로그아웃
+          <div className="sidenav-foot">
+            <button className="stab stab-foot" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
+              백업
             </button>
-          )}
+            {hasSupabase && auth.loggedIn && (
+              <button className="stab stab-foot" title={auth.email} onClick={signOut}>
+                로그아웃
+              </button>
+            )}
+          </div>
         </aside>
       )}
       <div className="workarea">
@@ -73,6 +78,9 @@ export default function App() {
               {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
             </div>
             <nav className="tabs">
+              <button className="tab tab-logout" onClick={downloadBackup}>
+                백업
+              </button>
               {hasSupabase && auth.loggedIn && (
                 <button className="tab tab-logout" title={auth.email} onClick={signOut}>
                   로그아웃

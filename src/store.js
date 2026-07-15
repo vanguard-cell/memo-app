@@ -359,6 +359,23 @@ export function setDayOrder(date, ids) {
   remotePushState()
 }
 
+// 전체 백업 — 메모(보관·완료 포함)·점검·순서를 JSON 파일로 내려받는다 (이 파일로 복원 가능)
+export function downloadBackup() {
+  const data = {
+    app: '내 기록',
+    exportedAt: new Date().toISOString(),
+    memos: state.visible,
+    works: state.works,
+    dayOrder: state.dayOrder,
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `내기록-백업-${todayStr()}.json`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
 // ---------- 파일 첨부 (메모·점검 공용) ----------
 
 function patchItem(id, fn) {

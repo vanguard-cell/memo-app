@@ -2,27 +2,10 @@ import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
 import SendToDateBtn from '../components/SendToDateBtn'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
-import { completeMemo, reopenMemo, updateMemo, setDayOrder, getWorks, getDayOrder } from '../store'
+import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
 import { todayStr, addDays } from '../parser'
 
 const pad = (n) => String(n).padStart(2, '0')
-
-// 전체 백업 — 메모·점검·순서를 JSON 파일로 내려받는다 (복원은 이 파일로 가능)
-function downloadBackup(memos) {
-  const data = {
-    app: '내 기록',
-    exportedAt: new Date().toISOString(),
-    memos,
-    works: getWorks(),
-    dayOrder: getDayOrder(),
-  }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `내기록-백업-${todayStr()}.json`
-  a.click()
-  URL.revokeObjectURL(a.href)
-}
 
 // 기한 배지: 며칠 밀림 / 오늘 / D-n
 function dueBadge(m, today) {
@@ -620,9 +603,6 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       </div>
       <div className="filters wrap">
         <span className="count">{list.length}건</span>
-        <button className="pill pill-backup" title="메모 전체를 JSON 파일로 저장" onClick={() => downloadBackup(memos)}>
-          백업
-        </button>
       </div>
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'calendar' && (
