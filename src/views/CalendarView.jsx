@@ -184,7 +184,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               {evs.slice(0, 4).map((e, j) => (
                 <span
                   key={j}
-                  className={'cal-ev ' + TYPE[e.type][1]}
+                  className={'cal-ev ' + TYPE[e.type][1] + (memoStatus(e.m) === 'done' ? ' ev-done' : '')}
                   draggable
                   onDragStart={(ev) => {
                     ev.dataTransfer.setData('text/plain', JSON.stringify({ id: e.m.id, type: e.type, date }))

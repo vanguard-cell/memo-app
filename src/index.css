@@ -1426,6 +1426,13 @@ main {
   color: var(--muted);
 }
 
+/* 완료된 메모의 칩: 회색·취소선 — 남은 일과 헷갈리지 않게 */
+.cal-ev.ev-done {
+  background: #efeeea;
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
 .cal-more {
   display: block;
   font-size: 11px;

@@ -554,6 +554,11 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   for (const id of ['late', 'today', 'end']) {
     counts[id] = memos.filter((m) => tileMatch(m, id, today)).length
   }
+  // 타일 표기는 "오늘 = 딱 오늘 기한"과 "밀림"을 분리 (클릭하면 둘 다 모아서 보여줌)
+  counts.todayOnly = memos.filter((m) => {
+    const info = dueInfo(m, today)
+    return info && info.dd === 0
+  }).length
 
   const list = memos.filter((m) => {
     if (timeFilter && !tileMatch(m, timeFilter, today)) return false
@@ -584,10 +589,10 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
         <div className="tiles">
           <button
             className={'tile t-amber' + (counts.late > 0 ? ' tile-late' : '') + (timeFilter === 'today' ? ' on' : '')}
-            title={timeFilter === 'today' ? '다시 누르면 전체 보기' : '오늘까지 해야 하는 것만 모아 보기'}
+            title={timeFilter === 'today' ? '다시 누르면 전체 보기' : '오늘까지 해야 하는 것(밀림 포함)만 모아 보기'}
             onClick={() => toggleTile('today')}
           >
-            오늘 <b>{counts.today}</b>
+            오늘 <b>{counts.todayOnly}</b>
             {counts.late > 0 && <span className="tile-latebit">· 밀림 <b>{counts.late}</b></span>}
           </button>
           <button
