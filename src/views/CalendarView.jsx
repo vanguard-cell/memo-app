@@ -144,8 +144,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         <button
           className="cal-today-btn"
           onClick={() => {
+            // 이번 달로 이동 + 오늘 날짜 선택 — 이미 이번 달이어도 반응이 보이게
             setY(t.getFullYear())
             setMo(t.getMonth())
+            setSel(today)
           }}
         >
           오늘
