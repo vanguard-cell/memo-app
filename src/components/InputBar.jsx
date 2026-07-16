@@ -75,14 +75,16 @@ export default function InputBar() {
           placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신 / A업체 계약 26.5.30~27.5.29'
           onChange={(e) => {
             setText(e.target.value)
-            if (!e.target.value.trim()) setRemoved({})
+            if (!e.target.value.trim()) {
+              setRemoved({})
+              setPickedDue(null)
+            }
           }}
           onKeyDown={onKeyDown}
         />
         <button className="btn-save" onClick={saveNew}>저장</button>
       </div>
-      {text.trim() && (
-        <div className="chips">
+      <div className="chips">
           {!nothing && <span className="chips-label">인식됨</span>}
           {eff.period && (
             <Chip
@@ -101,7 +103,11 @@ export default function InputBar() {
               }}
             />
           )}
-          {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
+          {nothing && (
+            <span className="chips-none">
+              {text.trim() ? '날짜 인식 없음 — 오늘 할 일로 들어갑니다' : '날짜를 안 쓰면 오늘로 들어갑니다'}
+            </span>
+          )}
           <span className="chips-right">
             {!eff.period && (
               <SendToDateBtn
@@ -117,8 +123,7 @@ export default function InputBar() {
               보관함에 넣기
             </button>
           </span>
-        </div>
-      )}
+      </div>
       {flash && <div className="flash">{flash}</div>}
     </section>
   )

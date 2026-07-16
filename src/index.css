@@ -99,7 +99,7 @@ main {
   }
 
   .workarea {
-    padding: 14px 22px 90px;
+    padding: 28px 26px 90px;
   }
 
   .inputbar,
@@ -125,7 +125,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 18px 12px 16px;
+  padding: 28px 12px 18px;
   border-right: 1px solid var(--border);
 }
 
@@ -655,8 +655,7 @@ main {
 .tiles {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .tile {
@@ -715,18 +714,27 @@ main {
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
+/* 상단 컨트롤 한 줄: [오늘·만기 타일] [검색] [보기 토글] */
 .mv-top {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
 .mv-search {
   flex: 1;
   width: auto;
-  min-width: 0;
+  min-width: 220px;
   margin-bottom: 0;
+}
+
+.kb-done-date {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
 }
 
 .mv-toggle {

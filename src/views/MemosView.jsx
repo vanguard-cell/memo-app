@@ -85,6 +85,10 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
   const st = memoStatus(m)
   const badge = dueBadge(m, today)
   const chk = checkInfo(m)
+  const doneDate =
+    st === 'done' && m.completedAt
+      ? `${Number(m.completedAt.slice(5, 7))}.${Number(m.completedAt.slice(8, 10))}`
+      : null
   // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단)
   const dayLine = m.period ? (m.history || []).find((h) => h.date === today && h.text) : null
   return (
@@ -102,10 +106,11 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     >
       <div className="kb-title">{m.title}</div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
-      {(badge || chk) && (
+      {(badge || chk || doneDate) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
+          {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
         </div>
       )}
     </div>
@@ -575,29 +580,24 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
 
   return (
     <div className="view">
-      <div className="tiles">
-        <button
-          className={'tile t-amber' + (counts.late > 0 ? ' tile-late' : '') + (timeFilter === 'today' ? ' on' : '')}
-          title={timeFilter === 'today' ? '다시 누르면 전체 보기' : '오늘까지 해야 하는 것만 모아 보기'}
-          onClick={() => toggleTile('today')}
-        >
-          오늘 <b>{counts.today}</b>
-          {counts.late > 0 && <span className="tile-latebit">· 밀림 <b>{counts.late}</b></span>}
-        </button>
-        <button
-          className={'tile t-purple' + (timeFilter === 'end' ? ' on' : '')}
-          title={timeFilter === 'end' ? '다시 누르면 전체 보기' : '계약 만기(60일 안)를 가까운 순으로'}
-          onClick={() => toggleTile('end')}
-        >
-          만기 <b>{counts.end}</b>
-        </button>
-      </div>
-      {timeFilter && (
-        <div className="cal-filter-note">
-          "{tileLabel}" 타일 적용 중 — 해당하는 메모만 보입니다. 타일을 다시 누르면 전체.
-        </div>
-      )}
       <div className="mv-top">
+        <div className="tiles">
+          <button
+            className={'tile t-amber' + (counts.late > 0 ? ' tile-late' : '') + (timeFilter === 'today' ? ' on' : '')}
+            title={timeFilter === 'today' ? '다시 누르면 전체 보기' : '오늘까지 해야 하는 것만 모아 보기'}
+            onClick={() => toggleTile('today')}
+          >
+            오늘 <b>{counts.today}</b>
+            {counts.late > 0 && <span className="tile-latebit">· 밀림 <b>{counts.late}</b></span>}
+          </button>
+          <button
+            className={'tile t-purple' + (timeFilter === 'end' ? ' on' : '')}
+            title={timeFilter === 'end' ? '다시 누르면 전체 보기' : '계약 만기(60일 안)를 가까운 순으로'}
+            onClick={() => toggleTile('end')}
+          >
+            만기 <b>{counts.end}</b>
+          </button>
+        </div>
         <input
           className="search-input mv-search"
           value={q}
@@ -612,9 +612,11 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           ))}
         </div>
       </div>
-      <div className="filters wrap">
-        <span className="count">{list.length}건</span>
-      </div>
+      {timeFilter && (
+        <div className="cal-filter-note">
+          "{tileLabel}" 타일 적용 중 · {list.length}건 — 타일을 다시 누르면 전체가 보입니다.
+        </div>
+      )}
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
