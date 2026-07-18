@@ -544,10 +544,8 @@ const VIEWS = [
 export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   const [q, setQ] = useState('')
   const [view, setView] = useState(() => localStorage.getItem('memo-view') || 'board')
-  // 폰은 "오늘" 타일이 켜진 채 시작 — 예전 오늘 탭과 같은 첫 화면
-  const [timeFilter, setTimeFilter] = useState(() =>
-    window.matchMedia('(max-width: 899px)').matches ? 'today' : null
-  )
+  // 어디서든 전체 보기로 시작 — 폰만 필터가 켜진 채 시작하니 "메모가 없다"로 오해했음 (2026-07-18)
+  const [timeFilter, setTimeFilter] = useState(null)
   const today = todayStr()
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
 
@@ -620,6 +618,15 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       {timeFilter && view !== 'calendar' && (
         <div className="cal-filter-note">
           "{tileLabel}" 타일 적용 중 · {list.length}건 — 타일을 다시 누르면 전체가 보입니다.
+        </div>
+      )}
+      {timeFilter && view !== 'calendar' && list.length === 0 && (
+        <div className="empty">
+          "{tileLabel}"에 해당하는 메모가 지금은 없습니다.
+          <br />
+          <button style={{ marginTop: 10 }} onClick={() => setTimeFilter(null)}>
+            전체 보기
+          </button>
         </div>
       )}
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}

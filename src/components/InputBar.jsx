@@ -5,7 +5,9 @@ import { fmtDate, fmtPeriod } from '../derive'
 import SendToDateBtn from './SendToDateBtn'
 
 // 음성 입력 (브라우저 내장, 무료) — 크롬·폰 크롬 지원. 미지원 브라우저에선 버튼이 안 보인다.
+// 아이폰 사파리는 웹 음성인식이 사실상 동작하지 않으므로, 키보드 받아쓰기(정확함)를 안내한다.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 
 function Chip({ cls, label, onX }) {
   return (
@@ -26,6 +28,7 @@ export default function InputBar() {
   const recRef = useRef(null)
   const baseTextRef = useRef('')
   const finalRef = useRef('')
+  const inputRef = useRef(null)
 
   // 즉시 끊기 — 어떤 상태에서든 버튼과 인식기를 확실히 되돌린다
   function stopMic() {
@@ -37,6 +40,11 @@ export default function InputBar() {
   }
 
   function toggleMic() {
+    if (IS_IOS) {
+      inputRef.current?.focus()
+      say('아이폰은 키보드의 🎤(받아쓰기)로 말하면 글로 입력됩니다 — 입력창을 누르고 키보드의 마이크를 사용하세요')
+      return
+    }
     if (listening) return stopMic()
     let rec
     try {
@@ -138,6 +146,7 @@ export default function InputBar() {
     <section className="inputbar">
       <div className="input-row">
         <input
+          ref={inputRef}
           value={text}
           placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신 / A업체 계약 26.5.30~27.5.29'
           onChange={(e) => {
