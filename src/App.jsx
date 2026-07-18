@@ -1,6 +1,7 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { subscribe, getMemos, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
 import { hasSupabase } from './supabase'
+import useIsNarrow from './useIsNarrow'
 import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
 import Login from './components/Login'
@@ -8,22 +9,6 @@ import MemosView from './views/MemosView'
 
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
 // 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
-
-// 화면이 좁으면(폰) 상세를 우측 패널 대신 누른 줄 아래에 펼친다
-function useIsNarrow() {
-  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 899px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 899px)')
-    const update = () => setNarrow(mq.matches)
-    mq.addEventListener('change', update)
-    window.addEventListener('resize', update)
-    return () => {
-      mq.removeEventListener('change', update)
-      window.removeEventListener('resize', update)
-    }
-  }, [])
-  return narrow
-}
 
 export default function App() {
   const memos = useSyncExternalStore(subscribe, getMemos)
