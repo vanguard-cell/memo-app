@@ -336,6 +336,17 @@ main {
   min-width: 0;
 }
 
+.who {
+  font-size: 11px;
+  color: var(--faint);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+  padding: 0 4px;
+}
+
 .mic-btn {
   border: 1px solid var(--border);
   border-radius: 8px;

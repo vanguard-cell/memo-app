@@ -63,6 +63,8 @@ export default function InputBar() {
     rec.onend = () => {
       recRef.current = null
       setListening(false)
+      // 인식이 끝났으면 다음 단계를 알려준다 — 내용은 입력창에 있고, 저장해야 메모가 된다
+      if (finalRef.current.trim()) say('🎤 인식 완료 — 아래 인식 결과 확인 후 [저장]을 누르면 메모가 됩니다')
     }
     rec.onerror = () => {
       recRef.current = null

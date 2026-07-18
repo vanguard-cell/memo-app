@@ -59,6 +59,7 @@ export default function App() {
           </div>
           <div className="stab on">메모</div>
           <div className="sidenav-foot">
+            {hasSupabase && auth.loggedIn && <div className="who" title="로그인된 계정">{auth.email}</div>}
             <button className="stab stab-foot" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
               백업
             </button>
@@ -78,6 +79,7 @@ export default function App() {
               {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
             </div>
             <nav className="tabs">
+              {hasSupabase && auth.loggedIn && <span className="who" title="로그인된 계정">{auth.email}</span>}
               <button className="tab tab-logout" onClick={downloadBackup}>
                 백업
               </button>
