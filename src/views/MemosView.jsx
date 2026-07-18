@@ -215,21 +215,24 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
                 <span className="kb-count">{by[id].length}</span>
               </div>
               {shown.map((m) => (
-                <Card
-                  key={m.id}
-                  m={m}
-                  col={id}
-                  today={today}
-                  onOpen={onOpen}
-                  dropCls={rowDrop && rowDrop.id === m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : ''}
-                  onCardOver={(e) => {
-                    e.preventDefault()
-                    const r = e.currentTarget.getBoundingClientRect()
-                    setRowDrop({ id: m.id, after: e.clientY > r.top + r.height / 2 })
-                  }}
-                  onCardLeave={() => setRowDrop((cur) => (cur && cur.id === m.id ? null : cur))}
-                  onCardDrop={(e) => dropOnCard(id, m, e)}
-                />
+                <Fragment key={m.id}>
+                  <Card
+                    m={m}
+                    col={id}
+                    today={today}
+                    onOpen={onOpen}
+                    dropCls={rowDrop && rowDrop.id === m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : ''}
+                    onCardOver={(e) => {
+                      e.preventDefault()
+                      const r = e.currentTarget.getBoundingClientRect()
+                      setRowDrop({ id: m.id, after: e.clientY > r.top + r.height / 2 })
+                    }}
+                    onCardLeave={() => setRowDrop((cur) => (cur && cur.id === m.id ? null : cur))}
+                    onCardDrop={(e) => dropOnCard(id, m, e)}
+                  />
+                  {/* 폰: 누른 카드 바로 아래에 상세 — 보드 맨 밑에 열리면 안 보인다 */}
+                  {renderDetail && renderDetail(m.id)}
+                </Fragment>
               ))}
               {id === 'done' && by.done.length > DONE_SHOWN && (
                 <div className="kb-more">외 {by.done.length - DONE_SHOWN}건 — 표에서 전체 보기</div>
@@ -239,7 +242,6 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
           )
         })}
       </div>
-      {renderDetail && memos.map((m) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
       {undo && (
         <div className="undo-bar">
           <span>{undo.label}</span>
@@ -323,13 +325,22 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
                     </td>
                   </tr>
                 )}
+                {/* 폰: 누른 줄 바로 아래 상세 (표 안이라 tr로 감싼다) */}
+                {renderDetail &&
+                  (() => {
+                    const d = renderDetail(m.id)
+                    return d ? (
+                      <tr className="mv-detail-row">
+                        <td colSpan={5}>{d}</td>
+                      </tr>
+                    ) : null
+                  })()}
               </Fragment>
             )
           })}
         </tbody>
       </table>
       {list.length === 0 && <div className="empty small">해당하는 메모가 없습니다.</div>}
-      {renderDetail && list.map((m) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
     </div>
   )
 }
@@ -469,25 +480,29 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
                     const sd = s < first ? 1 : dayOf(s)
                     const ed = e > last ? dim : dayOf(e)
                     return (
-                      <div className="tlv-row" key={m.id}>
-                        <div className="tlv-label" onClick={() => onOpen(m.id)} title={m.title}>
-                          <span className={'tlv-dot tlv-' + st} />
-                          <span className="tlv-lwrap">
-                            <span className="tlv-title">{m.title}</span>
-                            <span className="tlv-sub">{subOf(m, s, e)}</span>
-                          </span>
+                      <Fragment key={m.id}>
+                        <div className="tlv-row">
+                          <div className="tlv-label" onClick={() => onOpen(m.id)} title={m.title}>
+                            <span className={'tlv-dot tlv-' + st} />
+                            <span className="tlv-lwrap">
+                              <span className="tlv-title">{m.title}</span>
+                              <span className="tlv-sub">{subOf(m, s, e)}</span>
+                            </span>
+                          </div>
+                          <div className="tlv-days" style={cols}>
+                            {todayDay && <span className="tlv-guide" style={{ gridColumn: `${todayDay} / ${todayDay + 1}` }} />}
+                            <span
+                              className={'tlv-bar tlv-' + st}
+                              style={{ gridColumn: `${sd} / ${ed + 1}` }}
+                              onClick={() => onOpen(m.id)}
+                              onMouseEnter={(ev) => setHover({ m, s, e, x: ev.clientX, y: ev.clientY })}
+                              onMouseLeave={() => setHover(null)}
+                            />
+                          </div>
                         </div>
-                        <div className="tlv-days" style={cols}>
-                          {todayDay && <span className="tlv-guide" style={{ gridColumn: `${todayDay} / ${todayDay + 1}` }} />}
-                          <span
-                            className={'tlv-bar tlv-' + st}
-                            style={{ gridColumn: `${sd} / ${ed + 1}` }}
-                            onClick={() => onOpen(m.id)}
-                            onMouseEnter={(ev) => setHover({ m, s, e, x: ev.clientX, y: ev.clientY })}
-                            onMouseLeave={() => setHover(null)}
-                          />
-                        </div>
-                      </div>
+                        {/* 폰: 누른 줄 바로 아래 상세 */}
+                        {renderDetail && renderDetail(m.id)}
+                      </Fragment>
                     )
                   })}
               </Fragment>
@@ -496,7 +511,6 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
           {items.length === 0 && <div className="empty small">이 달에 걸린 메모가 없습니다.</div>}
         </div>
       </div>
-      {renderDetail && items.map(({ m }) => <Fragment key={'d' + m.id}>{renderDetail(m.id)}</Fragment>)}
       {hover && (() => {
         const lines = hover.m.history || []
         const shown = lines.slice(-8)

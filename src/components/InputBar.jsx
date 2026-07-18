@@ -1,13 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { parse, todayStr } from '../parser'
 import { addMemo } from '../store'
 import { fmtDate, fmtPeriod } from '../derive'
 import SendToDateBtn from './SendToDateBtn'
 
-// 음성 입력 (브라우저 내장, 무료) — 크롬·폰 크롬 지원. 미지원 브라우저에선 버튼이 안 보인다.
-// 아이폰 사파리는 웹 음성인식이 사실상 동작하지 않으므로, 키보드 받아쓰기(정확함)를 안내한다.
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+// 음성 입력(마이크 버튼)은 2026-07-18 제거 — 브라우저 음성인식이 기기마다 오작동.
+// 나중에 "회의록 녹음 → 정리" 기능으로 다시 설계 예정 (사용자 요청 시).
 
 function Chip({ cls, label, onX }) {
   return (
@@ -24,75 +22,6 @@ export default function InputBar() {
   // "날짜 지정" 버튼으로 직접 고른 기한 — 글에 쓴 날짜보다 우선
   const [pickedDue, setPickedDue] = useState(null)
   const [flash, setFlash] = useState('')
-  const [listening, setListening] = useState(false)
-  const recRef = useRef(null)
-  const baseTextRef = useRef('')
-  const finalRef = useRef('')
-  const inputRef = useRef(null)
-
-  // 즉시 끊기 — 어떤 상태에서든 버튼과 인식기를 확실히 되돌린다
-  function stopMic() {
-    try {
-      recRef.current?.abort()
-    } catch { /* 이미 끝난 경우 무시 */ }
-    recRef.current = null
-    setListening(false)
-  }
-
-  function toggleMic() {
-    if (IS_IOS) {
-      inputRef.current?.focus()
-      say('아이폰은 키보드의 🎤(받아쓰기)로 말하면 글로 입력됩니다 — 입력창을 누르고 키보드의 마이크를 사용하세요')
-      return
-    }
-    if (listening) return stopMic()
-    let rec
-    try {
-      rec = new SR()
-    } catch {
-      return
-    }
-    rec.lang = 'ko-KR'
-    rec.interimResults = true
-    // 한 마디 모드: 말을 멈추면 저절로 끝난다 (안드로이드에서 continuous 모드가 불안정)
-    rec.continuous = false
-    baseTextRef.current = text.trim()
-    finalRef.current = ''
-    rec.onresult = (e) => {
-      let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i]
-        if (r.isFinal) finalRef.current += r[0].transcript
-        else interim += r[0].transcript
-      }
-      const base = baseTextRef.current
-      setText(((base ? base + ' ' : '') + finalRef.current + interim).trim())
-    }
-    rec.onend = () => {
-      recRef.current = null
-      setListening(false)
-      // 인식이 끝났으면 다음 단계를 알려준다 — 내용은 입력창에 있고, 저장해야 메모가 된다
-      if (finalRef.current.trim()) say('🎤 인식 완료 — 아래 인식 결과 확인 후 [저장]을 누르면 메모가 됩니다')
-    }
-    rec.onerror = (e) => {
-      recRef.current = null
-      setListening(false)
-      // 실패 이유를 화면에 보여준다 — 폰에서 "왜 아무것도 안 나오는지" 알 수 있게
-      const code = e && e.error
-      if (code === 'no-speech') say('말소리가 인식되지 않았습니다 — 마이크 가까이서 다시 시도해보세요')
-      else if (code === 'not-allowed' || code === 'service-not-allowed')
-        say('마이크 권한이 막혀 있습니다 — 브라우저 설정에서 이 사이트의 마이크를 허용해주세요')
-      else if (code === 'network') say('음성 인식 서버 연결 실패 — 인터넷 상태를 확인해주세요')
-      else if (code && code !== 'aborted') say('음성 인식 오류: ' + code)
-    }
-    recRef.current = rec
-    try {
-      rec.start()
-      setListening(true)
-    } catch {
-      stopMic()
-    }
-  }
 
   const parsed = useMemo(() => parse(text), [text])
   const eff = {
@@ -146,7 +75,6 @@ export default function InputBar() {
     <section className="inputbar">
       <div className="input-row">
         <input
-          ref={inputRef}
           value={text}
           placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신 / A업체 계약 26.5.30~27.5.29'
           onChange={(e) => {
@@ -158,16 +86,6 @@ export default function InputBar() {
           }}
           onKeyDown={onKeyDown}
         />
-        {SR && (
-          <button
-            className={'mic-btn' + (listening ? ' listening' : '')}
-            title={listening ? '누르면 즉시 중지' : '말로 입력 — 말을 멈추면 저절로 끝납니다'}
-            aria-label="음성 입력"
-            onClick={toggleMic}
-          >
-            {listening ? '듣는 중 · 중지' : '🎤'}
-          </button>
-        )}
         <button className="btn-save" onClick={saveNew}>저장</button>
       </div>
       <div className="chips">

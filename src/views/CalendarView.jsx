@@ -39,7 +39,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
-  const [sel, setSel] = useState(null)
+  // 폰: 칸이 좁아 제목이 안 읽히므로, 처음부터 오늘이 선택돼 아래 목록으로 읽게 한다
+  const [sel, setSel] = useState(() =>
+    window.matchMedia('(max-width: 899px)').matches ? todayStr() : null
+  )
   const [qtext, setQtext] = useState('')
   const [dropTarget, setDropTarget] = useState(null)
   const [rowDrop, setRowDrop] = useState(null)

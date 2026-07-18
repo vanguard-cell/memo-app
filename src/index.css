@@ -356,29 +356,6 @@ main {
   color: var(--muted);
 }
 
-.mic-btn {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 12px;
-  font-size: 15px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.mic-btn.listening {
-  background: var(--red-bg);
-  border-color: var(--red-strong);
-  color: var(--red);
-  font-size: 13px;
-  font-weight: 600;
-  animation: mic-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes mic-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.35); }
-  50% { box-shadow: 0 0 0 6px rgba(226, 75, 74, 0); }
-}
-
 .btn-save {
   background: var(--text);
   color: #fff;
@@ -2230,5 +2207,38 @@ main {
 
   .tl-date-input {
     width: 112px;
+  }
+}
+
+/* 폰 달력: 칸이 좁아 한 글자씩만 보이던 문제 — 글자 대신 색 막대로.
+   내용은 날짜를 누르면(처음엔 오늘이 선택됨) 아래 목록에서 제목 전체로 읽는다. */
+@media (max-width: 899px) {
+  .cal-cell {
+    min-height: 56px;
+    padding: 5px;
+  }
+
+  .cal-ev {
+    height: 6px;
+    padding: 0;
+    margin-top: 4px;
+    font-size: 0;
+    line-height: 0;
+    color: transparent;
+    overflow: hidden;
+  }
+
+  .cal-ev b {
+    display: none;
+  }
+
+  .cal-more {
+    font-size: 10px;
+  }
+
+  /* 표 보기: 누른 줄 아래 인라인 상세를 담는 줄 */
+  .mv-detail-row td {
+    padding: 0;
+    border: none;
   }
 }
