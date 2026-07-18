@@ -25,27 +25,56 @@ export default function InputBar() {
   const [listening, setListening] = useState(false)
   const recRef = useRef(null)
   const baseTextRef = useRef('')
+  const finalRef = useRef('')
+
+  // 즉시 끊기 — 어떤 상태에서든 버튼과 인식기를 확실히 되돌린다
+  function stopMic() {
+    try {
+      recRef.current?.abort()
+    } catch { /* 이미 끝난 경우 무시 */ }
+    recRef.current = null
+    setListening(false)
+  }
 
   function toggleMic() {
-    if (listening) {
-      recRef.current?.stop()
+    if (listening) return stopMic()
+    let rec
+    try {
+      rec = new SR()
+    } catch {
       return
     }
-    const rec = new SR()
     rec.lang = 'ko-KR'
     rec.interimResults = true
-    rec.continuous = true
+    // 한 마디 모드: 말을 멈추면 저절로 끝난다 (안드로이드에서 continuous 모드가 불안정)
+    rec.continuous = false
     baseTextRef.current = text.trim()
+    finalRef.current = ''
     rec.onresult = (e) => {
-      let heard = ''
-      for (const res of e.results) heard += res[0].transcript
-      setText((baseTextRef.current ? baseTextRef.current + ' ' : '') + heard.trim())
+      let interim = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i]
+        if (r.isFinal) finalRef.current += r[0].transcript
+        else interim += r[0].transcript
+      }
+      const base = baseTextRef.current
+      setText(((base ? base + ' ' : '') + finalRef.current + interim).trim())
     }
-    rec.onend = () => setListening(false)
-    rec.onerror = () => setListening(false)
+    rec.onend = () => {
+      recRef.current = null
+      setListening(false)
+    }
+    rec.onerror = () => {
+      recRef.current = null
+      setListening(false)
+    }
     recRef.current = rec
-    rec.start()
-    setListening(true)
+    try {
+      rec.start()
+      setListening(true)
+    } catch {
+      stopMic()
+    }
   }
 
   const parsed = useMemo(() => parse(text), [text])
@@ -114,11 +143,11 @@ export default function InputBar() {
         {SR && (
           <button
             className={'mic-btn' + (listening ? ' listening' : '')}
-            title={listening ? '누르면 녹음 종료' : '말로 입력 — 누르고 말하면 글로 바뀝니다'}
+            title={listening ? '누르면 즉시 중지' : '말로 입력 — 말을 멈추면 저절로 끝납니다'}
             aria-label="음성 입력"
             onClick={toggleMic}
           >
-            {listening ? '듣는 중…' : '🎤'}
+            {listening ? '듣는 중 · 중지' : '🎤'}
           </button>
         )}
         <button className="btn-save" onClick={saveNew}>저장</button>

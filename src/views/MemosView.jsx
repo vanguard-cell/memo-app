@@ -561,17 +561,16 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
     return info && info.dd === 0
   }).length
 
-  const list = memos.filter((m) => {
-    if (timeFilter && !tileMatch(m, timeFilter, today)) return false
-    if (words.length) {
-      const hay = [m.title, ...m.history.map((h) => h.text)]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      if (!words.every((w) => hay.includes(w))) return false
-    }
-    return true
+  // 검색만 적용된 목록 — 달력 보기는 타일(시간) 필터를 무시한다 (달력 자체가 시간 화면이라 겹치면 텅 비어 보임)
+  const searchList = memos.filter((m) => {
+    if (!words.length) return true
+    const hay = [m.title, ...m.history.map((h) => h.text)]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return words.every((w) => hay.includes(w))
   })
+  const list = searchList.filter((m) => !timeFilter || tileMatch(m, timeFilter, today))
 
   function pick(v) {
     setView(v)
@@ -618,7 +617,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           ))}
         </div>
       </div>
-      {timeFilter && (
+      {timeFilter && view !== 'calendar' && (
         <div className="cal-filter-note">
           "{tileLabel}" 타일 적용 중 · {list.length}건 — 타일을 다시 누르면 전체가 보입니다.
         </div>
@@ -626,7 +625,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
-          memos={list}
+          memos={searchList}
           dayOrder={dayOrder}
           onOpen={onOpen}
           renderDetail={renderDetail}
