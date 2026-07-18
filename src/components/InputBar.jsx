@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { parse, todayStr } from '../parser'
 import { addMemo } from '../store'
 import { fmtDate, fmtPeriod } from '../derive'
 import SendToDateBtn from './SendToDateBtn'
+
+// 음성 입력 (브라우저 내장, 무료) — 크롬·폰 크롬 지원. 미지원 브라우저에선 버튼이 안 보인다.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition
 
 function Chip({ cls, label, onX }) {
   return (
@@ -19,11 +22,37 @@ export default function InputBar() {
   // "날짜 지정" 버튼으로 직접 고른 기한 — 글에 쓴 날짜보다 우선
   const [pickedDue, setPickedDue] = useState(null)
   const [flash, setFlash] = useState('')
+  const [listening, setListening] = useState(false)
+  const recRef = useRef(null)
+  const baseTextRef = useRef('')
+
+  function toggleMic() {
+    if (listening) {
+      recRef.current?.stop()
+      return
+    }
+    const rec = new SR()
+    rec.lang = 'ko-KR'
+    rec.interimResults = true
+    rec.continuous = true
+    baseTextRef.current = text.trim()
+    rec.onresult = (e) => {
+      let heard = ''
+      for (const res of e.results) heard += res[0].transcript
+      setText((baseTextRef.current ? baseTextRef.current + ' ' : '') + heard.trim())
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    recRef.current = rec
+    rec.start()
+    setListening(true)
+  }
 
   const parsed = useMemo(() => parse(text), [text])
   const eff = {
     due: removed.due ? null : pickedDue || parsed.due,
     period: removed.period ? null : parsed.period,
+    deadline: removed.period ? false : parsed.deadline,
   }
   if (eff.period) eff.due = null
 
@@ -45,7 +74,7 @@ export default function InputBar() {
     const title = dateAccepted && parsed.cleaned ? parsed.cleaned : t
     // 날짜가 없으면 오늘 기한으로 — 던진 순간부터 오늘 할 일로 들어간다
     const due = eff.due || (eff.period ? null : todayStr())
-    addMemo({ title, period: eff.period, due })
+    addMemo({ title, period: eff.period, due, deadline: eff.deadline })
     reset()
     say('새 메모로 저장했습니다')
   }
@@ -82,6 +111,16 @@ export default function InputBar() {
           }}
           onKeyDown={onKeyDown}
         />
+        {SR && (
+          <button
+            className={'mic-btn' + (listening ? ' listening' : '')}
+            title={listening ? '누르면 녹음 종료' : '말로 입력 — 누르고 말하면 글로 바뀝니다'}
+            aria-label="음성 입력"
+            onClick={toggleMic}
+          >
+            {listening ? '듣는 중…' : '🎤'}
+          </button>
+        )}
         <button className="btn-save" onClick={saveNew}>저장</button>
       </div>
       <div className="chips">
@@ -89,7 +128,11 @@ export default function InputBar() {
           {eff.period && (
             <Chip
               cls="chip-date"
-              label={`기간 ${fmtPeriod(eff.period)}`}
+              label={
+                eff.deadline
+                  ? `마감 ${fmtDate(eff.period.end)} · 오늘부터 표시`
+                  : `기간 ${fmtPeriod(eff.period)}`
+              }
               onX={() => setRemoved((r) => ({ ...r, period: true }))}
             />
           )}

@@ -6,15 +6,16 @@ import { todayStr } from '../parser'
 
 const pad = (n) => String(n).padStart(2, '0')
 
-// 기한 배지: 며칠 밀림 / 오늘 / D-n
+// 기한 배지: 며칠 밀림 / 오늘 / D-n (마감형은 "마감 D-n"으로 구분)
 function dueBadge(m, today) {
   if (m.status === 'done' || m.keep) return null
   const end = m.due || (m.period && m.period.end)
   if (!end) return null
   const dd = diffDays(end, today)
-  if (dd < 0) return ['b-red', `${-dd}일째`]
-  if (dd === 0) return ['b-amber', '오늘']
-  return ['b-blue', `D-${dd}`]
+  const dl = m.deadline ? '마감 ' : ''
+  if (dd < 0) return ['b-red', `${dl}${-dd}일째`]
+  if (dd === 0) return ['b-amber', dl ? '마감 오늘' : '오늘']
+  return ['b-blue', `${dl}D-${dd}`]
 }
 
 function checkInfo(m) {
@@ -577,7 +578,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
     localStorage.setItem('memo-view', v)
   }
 
-  const tileLabel = timeFilter === 'today' ? '오늘' : '만기'
+  const tileLabel = timeFilter === 'today' ? '오늘' : '마감·만기'
   const toggleTile = (id) => setTimeFilter((f) => (f === id ? null : id))
 
   // 보드에는 보관 메모가 안 나오므로, 검색 중이면 걸린 보관 메모를 아래에 따로 보여준다
@@ -597,10 +598,10 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           </button>
           <button
             className={'tile t-purple' + (timeFilter === 'end' ? ' on' : '')}
-            title={timeFilter === 'end' ? '다시 누르면 전체 보기' : '계약 만기(60일 안)를 가까운 순으로'}
+            title={timeFilter === 'end' ? '다시 누르면 전체 보기' : '마감("~까지")과 계약 만기(60일 안)를 가까운 순으로'}
             onClick={() => toggleTile('end')}
           >
-            만기 <b>{counts.end}</b>
+            마감·만기 <b>{counts.end}</b>
           </button>
         </div>
         <input

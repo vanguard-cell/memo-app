@@ -45,6 +45,12 @@ const KEYWORDS = [
   ['다음 주', 7],
 ]
 
+// 마감형: "7/30까지" — 그날 하는 일이 아니라 그날까지 끝낼 일.
+// 오늘~마감일 기간으로 저장해서 등록한 날부터 계속 보이게 한다.
+const DL_FULL = /(?<!\d)(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})\s*까지/
+const DL_KOR = /(\d{1,2})월\s*(\d{1,2})일\s*까지/
+const DL_SHORT = /(?<!\d)(\d{1,2})[./](\d{1,2})\s*까지/
+
 export function parse(text) {
   const result = { due: null, period: null }
   if (!text || !text.trim()) return result
@@ -79,6 +85,34 @@ export function parse(text) {
         result.period = { start, end }
         rest = rest.replace(sr[0], ' ')
       }
+    }
+  }
+
+  if (!result.period) {
+    let m = DL_FULL.exec(rest)
+    let end = null
+    if (m) end = toISO(m[1], m[2], m[3])
+    if (!end) {
+      m = DL_KOR.exec(rest)
+      if (m) end = toISOFuture(m[1], m[2])
+    }
+    if (!end) {
+      m = DL_SHORT.exec(rest)
+      if (m) end = toISOFuture(m[1], m[2])
+    }
+    if (!end) {
+      for (const [word, days] of KEYWORDS) {
+        if (days > 0 && rest.includes(word + '까지')) {
+          m = [word + '까지']
+          end = addDays(todayStr(), days)
+          break
+        }
+      }
+    }
+    if (end && end >= todayStr()) {
+      result.period = { start: todayStr(), end }
+      result.deadline = true
+      rest = rest.replace(m[0], ' ')
     }
   }
 

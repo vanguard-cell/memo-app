@@ -336,6 +336,29 @@ main {
   min-width: 0;
 }
 
+.mic-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 15px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mic-btn.listening {
+  background: var(--red-bg);
+  border-color: var(--red-strong);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(226, 75, 74, 0); }
+}
+
 .btn-save {
   background: var(--text);
   color: #fff;
@@ -753,6 +776,17 @@ main {
   grid-template-columns: repeat(3, minmax(190px, 1fr));
   gap: 8px;
   align-items: start;
+}
+
+/* 폰: 3열을 세로로 쌓는다 — 가로 스크롤에 열이 숨어 "메모가 안 보이는" 문제 방지 */
+@media (max-width: 899px) {
+  .kb-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kb-col {
+    min-height: 0;
+  }
 }
 
 .kb-col {

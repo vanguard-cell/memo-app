@@ -51,11 +51,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
         <div className="panel-meta">
           {memo.period && (
             <span className="meta-date">
-              기간 {fmtPeriod(memo.period)}
+              {memo.deadline ? `마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
               {dday !== null && (
                 <b className={dday < 0 ? 't-red' : 't-blue'}>
                   {' · '}
-                  {dday < 0 ? `만기 ${-dday}일 지남` : `만기 D-${dday}`}
+                  {dday < 0
+                    ? `${memo.deadline ? '마감' : '만기'} ${-dday}일 지남`
+                    : `${memo.deadline ? '마감' : '만기'} D-${dday}`}
                 </b>
               )}
             </span>

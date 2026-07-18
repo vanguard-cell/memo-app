@@ -31,6 +31,9 @@ const TYPE = {
   span: ['기간', 'ev-span'],
 }
 
+// 마감형 메모는 만기 대신 "마감"으로 표기
+const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.type][0])
+
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
 export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
   const t = new Date()
@@ -195,7 +198,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     onOpen(e.m.id)
                   }}
                 >
-                  {(e.type === 'start' || e.type === 'end') && <b>{TYPE[e.type][0]} </b>}
+                  {(e.type === 'start' || e.type === 'end') && <b>{typeLabel(e)} </b>}
                   {e.text}
                 </span>
               ))}
@@ -256,7 +259,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onClick={() => onOpen(e.m.id)}
             >
-              <span className={'badge ' + TYPE[e.type][1]}>{TYPE[e.type][0]}</span>
+              <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
               <SendToDateBtn label="이동" onPick={(d) => moveEvent(e.m, e.type, sel, d)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
