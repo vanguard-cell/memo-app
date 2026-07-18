@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { fmtDate } from '../derive'
 import { todayStr } from '../parser'
 
-// 진행 기록 공용 UI — 메모 상세(MemoDetail)와 점검 상세(WorkDetail)가 같이 쓴다.
+// 진행 기록 공용 UI — 메모 상세(MemoDetail)가 쓴다.
 // onAdd(text, date) / onToggle(i) / onUpdate(i, patch) / onRemove(i)
 export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove }) {
   const today = todayStr()

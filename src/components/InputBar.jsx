@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { parse, todayStr } from '../parser'
-import { addMemo, addHistory, updateMemo } from '../store'
-import { companies, fmtDate, fmtPeriod } from '../derive'
+import { addMemo } from '../store'
+import { fmtDate, fmtPeriod } from '../derive'
+import SendToDateBtn from './SendToDateBtn'
 
 function Chip({ cls, label, onX }) {
   return (
@@ -12,36 +13,24 @@ function Chip({ cls, label, onX }) {
   )
 }
 
-const truncate = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s)
-
-export default function InputBar({ memos, onOpen }) {
+export default function InputBar() {
   const [text, setText] = useState('')
   const [removed, setRemoved] = useState({})
-  const [confirming, setConfirming] = useState(false)
+  // "날짜 지정" 버튼으로 직접 고른 기한 — 글에 쓴 날짜보다 우선
+  const [pickedDue, setPickedDue] = useState(null)
   const [flash, setFlash] = useState('')
 
-  const known = useMemo(() => companies(memos), [memos])
-  const parsed = useMemo(() => parse(text, known), [text, known])
+  const parsed = useMemo(() => parse(text), [text])
   const eff = {
-    due: removed.due ? null : parsed.due,
+    due: removed.due ? null : pickedDue || parsed.due,
     period: removed.period ? null : parsed.period,
-    company: removed.company ? null : parsed.company,
   }
   if (eff.period) eff.due = null
-
-  const candidate = useMemo(() => {
-    if (!eff.company) return null
-    return (
-      memos
-        .filter((m) => m.status !== 'done' && m.company === eff.company)
-        .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))[0] || null
-    )
-  }, [memos, eff.company])
 
   function reset() {
     setText('')
     setRemoved({})
-    setConfirming(false)
+    setPickedDue(null)
   }
 
   function say(msg) {
@@ -56,7 +45,7 @@ export default function InputBar({ memos, onOpen }) {
     const title = dateAccepted && parsed.cleaned ? parsed.cleaned : t
     // 날짜가 없으면 오늘 기한으로 — 던진 순간부터 오늘 할 일로 들어간다
     const due = eff.due || (eff.period ? null : todayStr())
-    addMemo({ title, ...eff, due })
+    addMemo({ title, period: eff.period, due })
     reset()
     say('새 메모로 저장했습니다')
   }
@@ -65,61 +54,37 @@ export default function InputBar({ memos, onOpen }) {
   function saveKeep() {
     const t = text.trim()
     if (!t) return
-    addMemo({ title: t, company: eff.company, keep: true })
+    addMemo({ title: t, keep: true })
     reset()
     say('보관함에 저장했습니다 — 필요할 때 메모탭에서 검색하세요')
   }
 
-  function attach() {
-    const t = text.trim()
-    if (!t || !candidate) return
-    addHistory(candidate.id, t, todayStr())
-    const patch = {}
-    if (eff.period) patch.period = eff.period
-    else if (eff.due) patch.due = eff.due
-    if (Object.keys(patch).length) updateMemo(candidate.id, patch)
-    const id = candidate.id
-    reset()
-    onOpen(id)
-  }
-
-  function submit(shift) {
-    if (!text.trim()) return
-    if (shift) return saveNew()
-    if (confirming) return attach()
-    if (candidate) return setConfirming(true)
+  function onKeyDown(e) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
     saveNew()
   }
 
-  function onKeyDown(e) {
-    if (e.key === 'Escape') {
-      setConfirming(false)
-      return
-    }
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    submit(e.shiftKey)
-  }
-
-  const nothing = !eff.period && !eff.due && !eff.company
+  const nothing = !eff.period && !eff.due
 
   return (
     <section className="inputbar">
       <div className="input-row">
         <input
           value={text}
-          placeholder='여기에 그냥 던지세요 — 예: A업체 계약 26.5.30~27.5.29'
+          placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신 / A업체 계약 26.5.30~27.5.29'
           onChange={(e) => {
             setText(e.target.value)
-            setConfirming(false)
-            if (!e.target.value.trim()) setRemoved({})
+            if (!e.target.value.trim()) {
+              setRemoved({})
+              setPickedDue(null)
+            }
           }}
           onKeyDown={onKeyDown}
         />
-        <button className="btn-save" onClick={() => submit(false)}>저장</button>
+        <button className="btn-save" onClick={saveNew}>저장</button>
       </div>
-      {text.trim() && (
-        <div className="chips">
+      <div className="chips">
           {!nothing && <span className="chips-label">인식됨</span>}
           {eff.period && (
             <Chip
@@ -129,26 +94,36 @@ export default function InputBar({ memos, onOpen }) {
             />
           )}
           {eff.due && (
-            <Chip cls="chip-date" label={`기한 ${fmtDate(eff.due)}`} onX={() => setRemoved((r) => ({ ...r, due: true }))} />
+            <Chip
+              cls="chip-date"
+              label={`기한 ${fmtDate(eff.due)}`}
+              onX={() => {
+                setPickedDue(null)
+                setRemoved((r) => ({ ...r, due: true }))
+              }}
+            />
           )}
-          {eff.company && (
-            <Chip cls="chip-co" label={`업체 ${eff.company}`} onX={() => setRemoved((r) => ({ ...r, company: true }))} />
+          {nothing && (
+            <span className="chips-none">
+              {text.trim() ? '날짜 인식 없음 — 오늘 할 일로 들어갑니다' : '날짜를 안 쓰면 오늘로 들어갑니다'}
+            </span>
           )}
-          {nothing && <span className="chips-none">날짜 인식 없음 — 오늘 할 일로 들어갑니다</span>}
-          <button className="pill pill-keep" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
-            보관함에 넣기
-          </button>
-        </div>
-      )}
-      {confirming && candidate && (
-        <div className="attach-bar">
-          <span>'{candidate.company}' 진행중 메모가 있습니다</span>
-          <button className="btn-attach" onClick={attach}>
-            → "{truncate(candidate.title, 24)}"에 이어붙이기 (Enter)
-          </button>
-          <button onClick={saveNew}>새 메모로 저장</button>
-        </div>
-      )}
+          <span className="chips-right">
+            {!eff.period && (
+              <SendToDateBtn
+                label="날짜 지정"
+                className="pill"
+                onPick={(d) => {
+                  setPickedDue(d)
+                  setRemoved((r) => ({ ...r, due: false }))
+                }}
+              />
+            )}
+            <button className="pill pill-keep" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
+              보관함에 넣기
+            </button>
+          </span>
+      </div>
       {flash && <div className="flash">{flash}</div>}
     </section>
   )

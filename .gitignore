@@ -16,6 +16,9 @@ dist-ssr
 양식/*
 !양식/README.md
 
+# 개인 데이터 백업 파일 — 절대 커밋 금지
+내기록-백업-*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

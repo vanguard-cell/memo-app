@@ -45,8 +45,8 @@ const KEYWORDS = [
   ['다음 주', 7],
 ]
 
-export function parse(text, knownCompanies = []) {
-  const result = { due: null, period: null, company: null }
+export function parse(text) {
+  const result = { due: null, period: null }
   if (!text || !text.trim()) return result
   let rest = text
 
@@ -117,18 +117,6 @@ export function parse(text, knownCompanies = []) {
           result.due = addDays(todayStr(), days)
           break
         }
-      }
-    }
-  }
-
-  const co = /([A-Za-z0-9가-힣]+업체)/.exec(text)
-  if (co) result.company = co[1]
-  if (!result.company) {
-    const sorted = [...knownCompanies].sort((a, b) => b.length - a.length)
-    for (const name of sorted) {
-      if (name && text.includes(name)) {
-        result.company = name
-        break
       }
     }
   }

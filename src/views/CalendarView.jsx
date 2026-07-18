@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { fmtDate, memoStatus, STATUS_LABEL, diffDays, companies } from '../derive'
+import { fmtDate, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays, parse } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
@@ -31,7 +31,8 @@ const TYPE = {
   span: ['기간', 'ev-span'],
 }
 
-export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) {
+// 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
+export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
@@ -75,11 +76,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
   function quickAdd() {
     const txt = qtext.trim()
     if (!txt || !sel) return
-    const p = parse(txt, companies(memos))
+    const p = parse(txt)
     const dateInText = p.period || p.due
     addMemo({
       title: dateInText && p.cleaned ? p.cleaned : txt,
-      company: p.company,
       due: p.due || (p.period ? null : sel),
       period: p.period,
     })
@@ -132,6 +132,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
 
   return (
     <div className="view">
+      {filtered && (
+        <div className="cal-filter-note">검색·필터 적용 중 — 걸러진 메모만 달력에 보입니다</div>
+      )}
       <div className="cal-head">
         <button onClick={() => move(-1)}>‹</button>
         <span className="cal-title">
@@ -141,8 +144,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
         <button
           className="cal-today-btn"
           onClick={() => {
+            // 이번 달로 이동 + 오늘 날짜 선택 — 이미 이번 달이어도 반응이 보이게
             setY(t.getFullYear())
             setMo(t.getMonth())
+            setSel(today)
           }}
         >
           오늘
@@ -176,10 +181,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
               onDrop={(e) => onDrop(date, e)}
             >
               <span className="cal-day">{d}</span>
-              {evs.slice(0, 3).map((e, j) => (
+              {evs.slice(0, 4).map((e, j) => (
                 <span
                   key={j}
-                  className={'cal-ev ' + TYPE[e.type][1]}
+                  className={'cal-ev ' + TYPE[e.type][1] + (memoStatus(e.m) === 'done' ? ' ev-done' : '')}
                   draggable
                   onDragStart={(ev) => {
                     ev.dataTransfer.setData('text/plain', JSON.stringify({ id: e.m.id, type: e.type, date }))
@@ -194,7 +199,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
                   {e.text}
                 </span>
               ))}
-              {evs.length > 3 && <span className="cal-more">+{evs.length - 3}</span>}
+              {evs.length > 4 && <span className="cal-more">+{evs.length - 4}</span>}
             </div>
           )
         })}

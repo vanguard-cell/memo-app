@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, attachFile, detachFile } from '../store'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
-import { todayStr } from '../parser'
-import { hasSupabase } from '../supabase'
+import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
-import FileSection from './FileSection'
+import SendToDateBtn from './SendToDateBtn'
 
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
@@ -16,7 +15,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   function startEdit() {
     setForm({
       title: memo.title,
-      company: memo.company || '',
       due: memo.due || '',
       start: memo.period?.start || '',
       end: memo.period?.end || '',
@@ -27,7 +25,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   function saveEdit() {
     updateMemo(memo.id, {
       title: form.title.trim() || memo.title,
-      company: form.company.trim() || null,
       due: form.due || null,
       period: form.start && form.end ? { start: form.start, end: form.end } : null,
     })
@@ -37,6 +34,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   const dday = memo.period?.end && memo.status !== 'done' ? diffDays(memo.period.end, today) : null
   const dueD = memo.due && memo.status !== 'done' ? diffDays(memo.due, today) : null
 
+  // 미루기: 기한은 그 날짜로 이동, 기간(만기) 메모는 만기일 안 건드리고 그날까지 숨김
+  const tomorrow = addDays(today, 1)
+  function postpone(d) {
+    if (!memo.due && memo.period) updateMemo(memo.id, { snoozeUntil: d })
+    else updateMemo(memo.id, { due: d })
+  }
+
   return (
     <aside className={'detail' + (inline ? ' detail-inline' : '')} onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
@@ -45,7 +49,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           <button className="x" onClick={onClose} aria-label="닫기">×</button>
         </div>
         <div className="panel-meta">
-          {memo.company && <span className="chip chip-co">{memo.company}</span>}
           {memo.period && (
             <span className="meta-date">
               기간 {fmtPeriod(memo.period)}
@@ -73,6 +76,10 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               점검: {linkedWork.title}
             </button>
           )}
+          <span className="panel-created">
+            작성 {fmtDate(memo.createdAt.slice(0, 10))}
+            {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
+          </span>
         </div>
         <div className="panel-actions">
           {memo.status !== 'done' ? (
@@ -89,6 +96,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
             )
           ) : (
             <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
+          )}
+          {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
+            <>
+              <button onClick={() => postpone(tomorrow)}>내일로</button>
+              <SendToDateBtn
+                min={memo.due && memo.due < today ? today : tomorrow}
+                max={!memo.due && memo.period ? memo.period.end : undefined}
+                onPick={postpone}
+              />
+            </>
           )}
           <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
           <button
@@ -110,10 +127,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </label>
             <div className="edit-grid">
-              <label>
-                업체
-                <input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-              </label>
               <label>
                 기한
                 <input type="date" value={form.due} onChange={(e) => setForm({ ...form, due: e.target.value })} />
@@ -137,17 +150,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           onUpdate={(i, p) => updateHistory(memo.id, i, p)}
           onRemove={(i) => removeHistory(memo.id, i)}
         />
-        {hasSupabase && (
-          <FileSection
-            files={memo.files || []}
-            onAttach={(f) => attachFile(memo.id, f)}
-            onRemove={(p) => detachFile(memo.id, p)}
-          />
-        )}
-        <div className="panel-foot">
-          작성 {fmtDate(memo.createdAt.slice(0, 10))}
-          {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
-        </div>
     </aside>
   )
 }

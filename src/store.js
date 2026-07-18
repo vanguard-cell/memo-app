@@ -21,8 +21,8 @@ function migrate(memos) {
       m.title = p.cleaned
     }
     // 날짜 없는 미완료 메모는 오늘 기한으로 — 완료 전까지 오늘 화면에서 괴롭힌다
-    // (보관 메모는 예외 — 괴롭히지 않고 검색으로만 꺼내본다)
-    if (!m.due && !m.period && m.status !== 'done' && !m.keep) {
+    // (보관·삭제된 메모는 예외)
+    if (!m.due && !m.period && m.status !== 'done' && !m.keep && !m.deleted) {
       m.due = todayStr()
     }
     return m
@@ -48,7 +48,14 @@ function load() {
   return { memos: [], works: [], dayOrder: {} }
 }
 
-let state = load()
+// 삭제는 지우지 않고 표식(deleted:true)만 남긴다 — UI에는 안 보이고,
+// 다른 기기의 옛 복사본이 "서버에 없네?" 하며 다시 올려 되살리는 걸 막는다.
+// 표식은 30일 뒤 동기화 때 실제로 삭제된다.
+function withVisible(s) {
+  return { ...s, visible: s.memos.filter((m) => !m.deleted) }
+}
+
+let state = withVisible(load())
 let session = null
 const listeners = new Set()
 
@@ -64,8 +71,11 @@ function setAuth(patch) {
 }
 
 function commit(next) {
-  state = next
-  localStorage.setItem(KEY, JSON.stringify(state))
+  state = withVisible(next)
+  localStorage.setItem(
+    KEY,
+    JSON.stringify({ memos: state.memos, works: state.works, dayOrder: state.dayOrder })
+  )
   notify()
 }
 
@@ -74,7 +84,7 @@ export function subscribe(fn) {
   return () => listeners.delete(fn)
 }
 
-export const getMemos = () => state.memos
+export const getMemos = () => state.visible
 export const getWorks = () => state.works
 export const getDayOrder = () => state.dayOrder
 export const getAuth = () => authSnap
@@ -96,18 +106,6 @@ function remoteUpsert(id) {
     .catch((e) => {
       console.error('동기화 실패', e)
       setAuth({ syncError: true })
-    })
-}
-
-function remoteDelete(id) {
-  if (!hasSupabase || !session) return
-  supabase
-    .from('memos')
-    .delete()
-    .eq('id', id)
-    .then(({ error }) => {
-      if (error) console.error('동기화 실패', error)
-      setAuth({ syncError: !!error })
     })
 }
 
@@ -160,8 +158,18 @@ async function syncFromServer() {
     const { data: st } = await supabase.from('app_state').select('day_order').maybeSingle()
     const dayOrder = { ...((st && st.day_order) || {}), ...state.dayOrder }
 
-    commit({ memos, works, dayOrder })
-    if (toPush.length) await pushMemoRows(toPush)
+    // 30일 지난 삭제 표식은 이번 동기화에서 실제로 지운다 (모든 기기에 전파된 뒤)
+    const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
+    const isOldTomb = (x) => x.deleted && (x.updatedAt || '') < cutoff
+    const tombIds = [...memos, ...works].filter(isOldTomb).map((x) => x.id)
+
+    commit({
+      memos: memos.filter((x) => !isOldTomb(x)),
+      works: works.filter((x) => !isOldTomb(x)),
+      dayOrder,
+    })
+    if (toPush.length) await pushMemoRows(toPush.filter((x) => !isOldTomb(x)))
+    if (tombIds.length) await supabase.from('memos').delete().in('id', tombIds)
     remotePushState()
     setAuth({ syncError: false })
   } catch (e) {
@@ -219,12 +227,11 @@ export async function signOut() {
 
 // ---------- 메모 조작 ----------
 
-export function addMemo({ title, company, due, period, fromWork, keep }) {
+export function addMemo({ title, due, period, fromWork, keep }) {
   const now = new Date().toISOString()
   const memo = {
     id: crypto.randomUUID(),
     title,
-    company: company || null,
     status: 'open',
     keep: !!keep,
     due: keep ? null : due || null,
@@ -339,8 +346,12 @@ export function reopenMemo(id) {
 }
 
 export function deleteMemo(id) {
-  commit({ ...state, memos: state.memos.filter((m) => m.id !== id) })
-  remoteDelete(id)
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) => (m.id === id ? { ...m, deleted: true, updatedAt: now } : m)),
+  })
+  remoteUpsert(id)
 }
 
 export function setDayOrder(date, ids) {
@@ -348,30 +359,21 @@ export function setDayOrder(date, ids) {
   remotePushState()
 }
 
-// ---------- 파일 첨부 (메모·점검 공용) ----------
-
-function patchItem(id, fn) {
-  const now = new Date().toISOString()
-  if (state.memos.some((m) => m.id === id)) {
-    commit({
-      ...state,
-      memos: state.memos.map((m) => (m.id === id ? { ...fn(m), updatedAt: now } : m)),
-    })
-  } else {
-    commit({
-      ...state,
-      works: state.works.map((w) => (w.id === id ? { ...fn(w), updatedAt: now } : w)),
-    })
+// 전체 백업 — 메모(보관·완료 포함)·점검·순서를 JSON 파일로 내려받는다 (이 파일로 복원 가능)
+export function downloadBackup() {
+  const data = {
+    app: '내 기록',
+    exportedAt: new Date().toISOString(),
+    memos: state.visible,
+    works: state.works,
+    dayOrder: state.dayOrder,
   }
-  remoteUpsert(id)
-}
-
-export function attachFile(id, file) {
-  patchItem(id, (it) => ({ ...it, files: [...(it.files || []), file] }))
-}
-
-export function detachFile(id, path) {
-  patchItem(id, (it) => ({ ...it, files: (it.files || []).filter((f) => f.path !== path) }))
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `내기록-백업-${todayStr()}.json`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 // ---------- 점검(안전관리 캘린더) ----------
@@ -411,8 +413,12 @@ export function updateWork(id, patch) {
 }
 
 export function deleteWork(id) {
-  commit({ ...state, works: state.works.filter((w) => w.id !== id) })
-  remoteDelete(id)
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    works: state.works.map((w) => (w.id === id ? { ...w, deleted: true, updatedAt: now } : w)),
+  })
+  remoteUpsert(id)
 }
 
 export function toggleWorkRun(id, ym) {
