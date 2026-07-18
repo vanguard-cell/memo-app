@@ -244,6 +244,7 @@ export async function runDiagnostics() {
   }
   lines.push(`이 기기에 보이는 메모: ${state.visible.length}건 (점검 ${state.works.length}건)`)
   lines.push(`동기화 오류 표시: ${authSnap.syncError ? '있음' : '없음'}`)
+  lines.push(`앱 버전(빌드 시각): ${typeof __BUILD__ !== 'undefined' ? __BUILD__ : '개발 모드'}`)
   lines.push(`브라우저: ${navigator.userAgent.slice(0, 80)}`)
   alert('[진단 결과]\n' + lines.join('\n'))
 }
