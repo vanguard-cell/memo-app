@@ -223,7 +223,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail }) 
               }
               draggable
               onDragStart={(ev) => {
-                ev.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'reorder', id: e.m.id, date: sel }))
+                // type을 같이 담아서, 달력 칸에 떨어뜨리면 날짜 이동으로도 동작하게 한다
+                ev.dataTransfer.setData(
+                  'text/plain',
+                  JSON.stringify({ kind: 'reorder', id: e.m.id, date: sel, type: e.type })
+                )
                 ev.dataTransfer.effectAllowed = 'move'
               }}
               onDragOver={(ev) => {
