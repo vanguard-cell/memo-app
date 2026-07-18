@@ -345,6 +345,15 @@ main {
   white-space: nowrap;
   align-self: center;
   padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.who:hover {
+  background: none;
+  color: var(--muted);
 }
 
 .mic-btn {

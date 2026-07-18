@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { subscribe, getMemos, getDayOrder, getAuth, signOut, downloadBackup } from './store'
+import { subscribe, getMemos, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
 import { hasSupabase } from './supabase'
 import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
@@ -59,7 +59,11 @@ export default function App() {
           </div>
           <div className="stab on">메모</div>
           <div className="sidenav-foot">
-            {hasSupabase && auth.loggedIn && <div className="who" title="로그인된 계정">{auth.email}</div>}
+            {hasSupabase && auth.loggedIn && (
+              <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
+                {auth.email}
+              </button>
+            )}
             <button className="stab stab-foot" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
               백업
             </button>
@@ -79,7 +83,11 @@ export default function App() {
               {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
             </div>
             <nav className="tabs">
-              {hasSupabase && auth.loggedIn && <span className="who" title="로그인된 계정">{auth.email}</span>}
+              {hasSupabase && auth.loggedIn && (
+                <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
+                  {auth.email}
+                </button>
+              )}
               <button className="tab tab-logout" onClick={downloadBackup}>
                 백업
               </button>

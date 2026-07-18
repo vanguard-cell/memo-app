@@ -66,9 +66,16 @@ export default function InputBar() {
       // 인식이 끝났으면 다음 단계를 알려준다 — 내용은 입력창에 있고, 저장해야 메모가 된다
       if (finalRef.current.trim()) say('🎤 인식 완료 — 아래 인식 결과 확인 후 [저장]을 누르면 메모가 됩니다')
     }
-    rec.onerror = () => {
+    rec.onerror = (e) => {
       recRef.current = null
       setListening(false)
+      // 실패 이유를 화면에 보여준다 — 폰에서 "왜 아무것도 안 나오는지" 알 수 있게
+      const code = e && e.error
+      if (code === 'no-speech') say('말소리가 인식되지 않았습니다 — 마이크 가까이서 다시 시도해보세요')
+      else if (code === 'not-allowed' || code === 'service-not-allowed')
+        say('마이크 권한이 막혀 있습니다 — 브라우저 설정에서 이 사이트의 마이크를 허용해주세요')
+      else if (code === 'network') say('음성 인식 서버 연결 실패 — 인터넷 상태를 확인해주세요')
+      else if (code && code !== 'aborted') say('음성 인식 오류: ' + code)
     }
     recRef.current = rec
     try {

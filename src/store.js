@@ -225,6 +225,29 @@ export async function signOut() {
   await supabase.auth.signOut()
 }
 
+// 자가 진단 — 화면의 이메일을 탭하면 실행. 폰에서 "왜 안 보이는지"를 그 자리에서 알려준다.
+export async function runDiagnostics() {
+  const lines = []
+  try {
+    const { data } = await supabase.auth.getUser()
+    const u = data && data.user
+    lines.push(`계정: ${u ? u.email : '(로그인 안 됨)'}`)
+    lines.push(`사용자 ID: ${u ? u.id.slice(0, 13) : '-'}`)
+  } catch (e) {
+    lines.push('계정 확인 실패: ' + (e.message || e))
+  }
+  try {
+    const { count, error } = await supabase.from('memos').select('id', { count: 'exact', head: true })
+    lines.push(error ? `서버 조회 오류: ${error.message}` : `서버에 있는 내 데이터: ${count}건`)
+  } catch (e) {
+    lines.push('서버 연결 실패: ' + (e.message || e))
+  }
+  lines.push(`이 기기에 보이는 메모: ${state.visible.length}건 (점검 ${state.works.length}건)`)
+  lines.push(`동기화 오류 표시: ${authSnap.syncError ? '있음' : '없음'}`)
+  lines.push(`브라우저: ${navigator.userAgent.slice(0, 80)}`)
+  alert('[진단 결과]\n' + lines.join('\n'))
+}
+
 // ---------- 메모 조작 ----------
 
 export function addMemo({ title, due, period, fromWork, keep, deadline }) {
