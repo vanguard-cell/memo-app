@@ -83,6 +83,30 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
             {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
           </span>
         </div>
+        {/* 폰: 드래그가 없으니 여기서 보드 열을 옮긴다 (PC는 드래그로 — 버튼 안 보임) */}
+        {inline && !memo.keep && (
+          <div className="stage-row">
+            <span className="stage-label">상태</span>
+            {[
+              ['todo', '할일'],
+              ['active', '진행중'],
+              ['done', '완료'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className={'pill' + (st === id ? ' on' : '')}
+                onClick={() => {
+                  if (st === id) return
+                  if (id === 'done') return completeMemo(memo.id)
+                  if (memo.status === 'done') reopenMemo(memo.id)
+                  updateMemo(memo.id, { stage: id })
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="panel-actions">
           {memo.status !== 'done' ? (
             memo.keep ? (
@@ -94,10 +118,10 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
                 오늘 할 일로 꺼내기
               </button>
             ) : (
-              <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
+              !inline && <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
             )
           ) : (
-            <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
+            !inline && <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
           )}
           {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>

@@ -2210,6 +2210,20 @@ main {
   }
 }
 
+/* 폰 상세: 보드 열 이동 버튼(할일/진행중/완료) — PC는 드래그가 있어 안 보인다 */
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.stage-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
 /* 폰 달력: 칸이 좁아 한 글자씩만 보이던 문제 — 글자 대신 색 막대로.
    내용은 날짜를 누르면(처음엔 오늘이 선택됨) 아래 목록에서 제목 전체로 읽는다. */
 @media (max-width: 899px) {
