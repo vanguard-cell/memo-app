@@ -8,6 +8,14 @@ import useIsNarrow from '../useIsNarrow'
 const pad = (n) => String(n).padStart(2, '0')
 
 // 기한 배지: 며칠 밀림 / 오늘 / D-n (마감형은 "마감 D-n"으로 구분)
+// D-n은 가까울수록 따뜻한 색(주황) → 멀수록 차가운 색(파랑)으로 하루 단위 그라데이션 —
+// D-1과 D-3이 배지 색만으로 구분된다. D-14부터는 같은 파랑.
+function ddStyle(dd) {
+  const t = Math.min(Math.max(dd - 1, 0), 13) / 13
+  const hue = Math.round(26 + t * (215 - 26))
+  return { background: `hsl(${hue} 85% 90%)`, color: `hsl(${hue} 80% 30%)` }
+}
+
 function dueBadge(m, today) {
   if (m.status === 'done' || m.keep) return null
   const end = m.due || (m.period && m.period.end)
@@ -16,7 +24,7 @@ function dueBadge(m, today) {
   const dl = m.deadline ? '마감 ' : ''
   if (dd < 0) return ['b-red', `${dl}${-dd}일째`]
   if (dd === 0) return ['b-amber', dl ? '마감 오늘' : '오늘']
-  return ['b-blue', `${dl}D-${dd}`]
+  return ['', `${dl}D-${dd}`, ddStyle(dd)]
 }
 
 function checkInfo(m) {
@@ -110,7 +118,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
       {(badge || chk || doneDate) && (
         <div className="kb-meta">
-          {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
+          {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}>{badge[1]}</span>}
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
           {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
         </div>
@@ -383,7 +391,7 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
                   <td className="mv-title">{m.title}</td>
                   <td className="mv-date">
                     {m.period ? fmtPeriod(m.period) : m.due ? fmtDate(m.due) : ''}
-                    {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
+                    {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}> {badge[1]}</span>}
                   </td>
                   <td className="mv-date">
                     {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
