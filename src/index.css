@@ -1476,6 +1476,46 @@ main {
   color: var(--purple);
 }
 
+/* 기간 중간 칩은 연하게 — 시작·만기 조각과 한눈에 구분 */
+.cal-ev.ev-span {
+  opacity: 0.62;
+}
+
+/* 달력 위 "이 달에 걸친 기간" 요약 — 장기 계약도 존재가 보인다 */
+.cal-periods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cal-periods-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cal-period-chip {
+  background: var(--purple-bg);
+  color: var(--purple);
+  border: none;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 12.5px;
+}
+
+.cal-period-chip span {
+  opacity: 0.75;
+  margin-left: 5px;
+  font-size: 11px;
+}
+
+.muted-inline {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .ev-hist {
   background: #f1f0eb;
   color: var(--muted);

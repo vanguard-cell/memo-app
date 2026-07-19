@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { fmtDate, memoStatus, STATUS_LABEL, diffDays } from '../derive'
+import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays, parse } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
@@ -131,6 +131,39 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   for (let i = 0; i < startDow; i++) cells.push(null)
   for (let d = 1; d <= dim; d++) cells.push(d)
 
+  const first = `${y}-${pad(mo + 1)}-01`
+  const last = `${y}-${pad(mo + 1)}-${pad(dim)}`
+  // 이 달에 걸쳐 있는 기간 메모 — 장기(31일 초과) 기간은 칸에 안 그려지므로 여기서 존재를 알린다
+  const monthPeriods = memos
+    .filter(
+      (m) =>
+        m.period && m.period.start && m.period.end && m.status !== 'done' &&
+        m.period.start <= last && m.period.end >= first
+    )
+    .sort((a, b) => a.period.end.localeCompare(b.period.end))
+  // 그 날짜에 걸쳐 있지만 칸에 조각이 없는 장기 기간 — 날짜 목록에 "기간 중"으로 끼워준다
+  const longSpanning = (date) =>
+    memos.filter(
+      (m) =>
+        m.period && m.period.start && m.period.end && m.status !== 'done' &&
+        diffDays(m.period.end, m.period.start) > 31 &&
+        m.period.start < date && date < m.period.end
+    )
+  // 날짜 목록의 "기간 중" 줄 (PC 날짜 목록·폰 월 목록 공용)
+  const spanningRows = (date) =>
+    longSpanning(date).map((m) => (
+      <Fragment key={'ls' + m.id}>
+        <div className="row" onClick={() => onOpen(m.id)}>
+          <span className="badge ev-span">기간 중</span>
+          <span className="row-title">
+            {m.title} <span className="muted-inline">{diffDays(date, m.period.start) + 1}일차</span>
+          </span>
+          <span className={'badge st-' + memoStatus(m)}>{STATUS_LABEL[memoStatus(m)]}</span>
+        </div>
+        {renderDetail && renderDetail(m.id)}
+      </Fragment>
+    ))
+
   function move(n) {
     const nd = new Date(y, mo + n, 1)
     setY(nd.getFullYear())
@@ -161,6 +194,17 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           오늘
         </button>
       </div>
+      {monthPeriods.length > 0 && (
+        <div className="cal-periods">
+          <span className="cal-periods-label">이 달에 걸친 기간</span>
+          {monthPeriods.map((m) => (
+            <button key={m.id} className="cal-period-chip" onClick={() => onOpen(m.id)}>
+              {m.title}
+              <span>{fmtPeriod(m.period)}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="cal-grid">
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
           <div key={d} className={'cal-dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '')}>
@@ -223,10 +267,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
       {narrow && (() => {
         // 폰: 달력 아래에 이 달 전체를 날짜별 목록으로 — 칸엔 막대(언제·몇 개), 여기서 제목(무슨 일)
         const prefix = `${y}-${pad(mo + 1)}-`
-        // 기간 중간 날짜(span)는 그 날짜 전용 기록이 있을 때만 — 같은 제목이 매일 반복되지 않게
+        // 기간 중간 날짜(span)는 그 날짜 전용 기록이 있을 때만 — 같은 제목이 매일 반복되지 않게.
+        // 단, 선택한 날짜에서는 전부 보여준다 (칸의 보라 막대가 뭔지 확인하는 자리)
         const agEvents = (date) =>
           orderedEvents(date, events[date] || []).filter(
-            (e) => e.type !== 'span' || e.text !== e.m.title
+            (e) => date === sel || e.type !== 'span' || e.text !== e.m.title
           )
         const dates = [
           ...new Set([
@@ -267,7 +312,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                       <button onClick={quickAdd}>추가</button>
                     </div>
                   )}
-                  {evs.length === 0 && <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>}
+                  {evs.length === 0 && (date !== sel || longSpanning(date).length === 0) && (
+                    <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
+                  )}
                   {evs.map((e) => (
                     <Fragment key={e.m.id + e.type}>
                       <div className="row" onClick={() => onOpen(e.m.id)}>
@@ -279,6 +326,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                       {renderDetail && renderDetail(e.m.id)}
                     </Fragment>
                   ))}
+                  {date === sel && spanningRows(date)}
                 </div>
               )
             })}
@@ -299,7 +347,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             />
             <button onClick={quickAdd}>추가</button>
           </div>
-          {(events[sel] || []).length === 0 && <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>}
+          {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && (
+            <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
+          )}
           {orderedEvents(sel, events[sel] || []).map((e) => (
             <Fragment key={e.m.id + e.type}>
             <div
@@ -345,6 +395,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             {renderDetail && renderDetail(e.m.id)}
             </Fragment>
           ))}
+          {spanningRows(sel)}
         </div>
       )}
     </div>
