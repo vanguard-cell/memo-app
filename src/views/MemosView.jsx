@@ -645,7 +645,12 @@ const VIEWS = [
 
 export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   const [q, setQ] = useState('')
-  const [view, setView] = useState(() => localStorage.getItem('memo-view') || 'board')
+  // 폰은 들어올 때 항상 보드부터 — 마지막 보기 기억은 PC만 (사용자 요청 2026-07-19)
+  const [view, setView] = useState(() =>
+    window.matchMedia('(max-width: 899px)').matches
+      ? 'board'
+      : localStorage.getItem('memo-view') || 'board'
+  )
   // 어디서든 전체 보기로 시작 — 폰만 필터가 켜진 채 시작하니 "메모가 없다"로 오해했음 (2026-07-18)
   const [timeFilter, setTimeFilter] = useState(null)
   const today = todayStr()
