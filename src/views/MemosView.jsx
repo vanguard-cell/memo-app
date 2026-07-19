@@ -3,6 +3,7 @@ import CalendarView from './CalendarView'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
 import { todayStr } from '../parser'
+import useIsNarrow from '../useIsNarrow'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -120,8 +121,10 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
 
 function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
   const today = todayStr()
+  const narrow = useIsNarrow()
   const [over, setOver] = useState(null)
   const [rowDrop, setRowDrop] = useState(null)
+  const [showDone, setShowDone] = useState(false)
   const [undo, setUndo] = useState(null)
   const undoTimer = useRef(null)
 
@@ -192,6 +195,81 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
     if (!data || data.id === target.id) return
     if (data.st !== col) moveTo(memos.find((m) => m.id === data.id), col)
     reorderIn(col, data.id, target.id, cur ? cur.after : false)
+  }
+
+  // 폰: PC처럼 할일|진행중 두 열 나란히 — 완료는 아래 접힌 목록.
+  // 열 이동은 드래그 대신 상세의 상태 버튼으로, 상세는 누른 카드 줄 아래 전체 폭으로.
+  if (narrow) {
+    const rows = Math.max(by.todo.length, by.active.length)
+    const detailOf = (m) => {
+      const d = m && renderDetail && renderDetail(m.id)
+      return d ? <div className="kbf-detail">{d}</div> : null
+    }
+    return (
+      <div>
+        <div className="kb-flat">
+          <div className="kb-head">
+            <span className="badge st-todo">할일</span>
+            <span className="kb-count">{by.todo.length}</span>
+          </div>
+          <div className="kb-head">
+            <span className="badge st-active">진행중</span>
+            <span className="kb-count">{by.active.length}</span>
+          </div>
+          {rows === 0 && (
+            <div className="empty small" style={{ gridColumn: '1 / -1' }}>
+              할일·진행중 메모가 없습니다
+            </div>
+          )}
+          {Array.from({ length: rows }, (_, i) => {
+            const L = by.todo[i]
+            const R = by.active[i]
+            return (
+              <Fragment key={(L && L.id) || (R && R.id) || i}>
+                <div className="kbf-cell">
+                  {L && <Card m={L} col="todo" today={today} onOpen={onOpen} dropCls="" />}
+                </div>
+                <div className="kbf-cell">
+                  {R && <Card m={R} col="active" today={today} onOpen={onOpen} dropCls="" />}
+                </div>
+                {detailOf(L)}
+                {detailOf(R)}
+              </Fragment>
+            )
+          })}
+        </div>
+        <button className="tlv-fold" onClick={() => setShowDone((v) => !v)}>
+          완료 {by.done.length}건 {showDone ? '접기 ▴' : '펼치기 ▾'}
+        </button>
+        {showDone && (
+          <div className="kbf-done">
+            {by.done.slice(0, DONE_SHOWN).map((m) => (
+              <Fragment key={m.id}>
+                <Card m={m} col="done" today={today} onOpen={onOpen} dropCls="" />
+                {renderDetail && renderDetail(m.id)}
+              </Fragment>
+            ))}
+            {by.done.length > DONE_SHOWN && (
+              <div className="kb-more">외 {by.done.length - DONE_SHOWN}건 — 표에서 전체 보기</div>
+            )}
+          </div>
+        )}
+        {undo && (
+          <div className="undo-bar">
+            <span>{undo.label}</span>
+            <button
+              onClick={() => {
+                undo.fn()
+                clearTimeout(undoTimer.current)
+                setUndo(null)
+              }}
+            >
+              되돌리기
+            </button>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (

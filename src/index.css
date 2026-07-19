@@ -775,15 +775,37 @@ main {
   align-items: start;
 }
 
-/* 폰: 3열을 세로로 쌓는다 — 가로 스크롤에 열이 숨어 "메모가 안 보이는" 문제 방지 */
-@media (max-width: 899px) {
-  .kb-grid {
-    grid-template-columns: 1fr;
-  }
+/* 폰 보드: PC처럼 할일|진행중 두 열 나란히 (완료는 아래 접힌 목록).
+   상세는 kbf-detail로 두 열을 가로질러 전체 폭으로 열린다. */
+.kb-flat {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 
-  .kb-col {
-    min-height: 0;
-  }
+.kb-flat .kb-head {
+  margin: 0 0 2px;
+}
+
+.kbf-cell {
+  min-width: 0;
+}
+
+.kbf-cell .kb-card {
+  margin: 0;
+  height: 100%;
+}
+
+.kbf-detail {
+  grid-column: 1 / -1;
+}
+
+.kbf-detail .detail-inline {
+  margin: 0;
+}
+
+.kbf-done {
+  margin-top: 8px;
 }
 
 .kb-col {
