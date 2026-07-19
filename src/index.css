@@ -2318,65 +2318,15 @@ main {
     border: none;
   }
 
-  /* 폰 달력 아래: 이 달 전체 날짜별 목록 — 제목은 여기서 읽는다 */
-  .cal-agenda {
-    margin-top: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+}
 
-  .ag-day {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 10px;
-  }
-
-  .ag-day.ag-today {
-    border-color: var(--blue-strong);
-  }
-
-  .ag-day.ag-sel {
-    outline: 2px solid var(--blue-strong);
-    outline-offset: -2px;
-  }
-
-  .ag-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    border: none;
-    background: none;
-    padding: 2px 0 4px;
-    font-size: 14px;
-    text-align: left;
-  }
-
-  .ag-head b {
-    font-size: 15px;
-  }
-
-  .ag-dow {
-    color: var(--muted);
-    font-size: 12px;
-  }
-
-  .ag-dow.sun {
-    color: var(--red);
-  }
-
-  .ag-dow.sat {
-    color: var(--blue);
-  }
-
-  .ag-now {
-    background: var(--blue-strong);
-    color: #fff;
-    border-radius: 10px;
-    padding: 1px 8px;
-    font-size: 11px;
-    font-weight: 600;
-  }
+/* 날짜 목록 제목 옆 "오늘" 표시 */
+.ag-now {
+  background: var(--blue-strong);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 8px;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
 }

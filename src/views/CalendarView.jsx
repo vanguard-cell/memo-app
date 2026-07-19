@@ -3,7 +3,6 @@ import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../deriv
 import { todayStr, addDays, parse } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
-import useIsNarrow from '../useIsNarrow'
 
 // 메모 조각을 다른 날짜로 — 드래그와 "이동" 버튼이 같이 쓴다.
 // 기한→기한 이동 / 시작·만기 조각→그쪽 끝만 / 중간(기간) 조각→기간 전체 평행이동
@@ -38,7 +37,6 @@ const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.t
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
 export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
   const t = new Date()
-  const narrow = useIsNarrow()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
   // 폰: 칸이 좁아 제목이 안 읽히므로, 처음부터 오늘이 선택돼 아래 목록으로 읽게 한다
@@ -231,15 +229,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 (sel === date ? ' cal-sel' : '') +
                 (dropTarget === date ? ' cal-drop' : '')
               }
-              onClick={() => {
-                setSel(date)
-                // 폰: 칸을 누르면 아래 월 목록의 그 날짜로 스르륵 이동
-                if (narrow)
-                  setTimeout(
-                    () => document.getElementById('ag-' + date)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-                    60
-                  )
-              }}
+              onClick={() => setSel(date)}
               onDragOver={(e) => {
                 e.preventDefault()
                 setDropTarget(date)
@@ -271,78 +261,14 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           )
         })}
       </div>
-      {narrow && (() => {
-        // 폰: 달력 아래에 이 달 전체를 날짜별 목록으로 — 칸엔 막대(언제·몇 개), 여기서 제목(무슨 일)
-        const prefix = `${y}-${pad(mo + 1)}-`
-        // 기간 중간 날짜(span)는 그 날짜 전용 기록이 있을 때만 — 같은 제목이 매일 반복되지 않게.
-        // 단, 선택한 날짜에서는 전부 보여준다 (칸의 보라 막대가 뭔지 확인하는 자리)
-        const agEvents = (date) =>
-          orderedEvents(date, events[date] || []).filter(
-            (e) => date === sel || e.type !== 'span' || e.text !== e.m.title
-          )
-        const dates = [
-          ...new Set([
-            ...Object.keys(events).filter((d) => d.startsWith(prefix) && agEvents(d).length > 0),
-            ...(sel && sel.startsWith(prefix) ? [sel] : []),
-          ]),
-        ].sort()
-        const DOW = ['일', '월', '화', '수', '목', '금', '토']
-        return (
-          <div className="cal-agenda">
-            {dates.length === 0 && <div className="empty small">이 달에 걸린 메모가 없습니다</div>}
-            {dates.map((date) => {
-              const evs = agEvents(date)
-              const dow = new Date(y, mo, Number(date.slice(8, 10))).getDay()
-              return (
-                <div
-                  key={date}
-                  id={'ag-' + date}
-                  className={'ag-day' + (date === today ? ' ag-today' : '') + (sel === date ? ' ag-sel' : '')}
-                >
-                  <button className="ag-head" onClick={() => setSel((s) => (s === date ? null : date))}>
-                    <b>{Number(date.slice(8, 10))}일</b>
-                    <span className={'ag-dow' + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '')}>
-                      {DOW[dow]}
-                    </span>
-                    {date === today && <span className="ag-now">오늘</span>}
-                  </button>
-                  {sel === date && (
-                    <div className="cal-add">
-                      <input
-                        value={qtext}
-                        placeholder={`${fmtDate(date)}에 바로 추가 (Enter)`}
-                        onChange={(e) => setQtext(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') quickAdd()
-                        }}
-                      />
-                      <button onClick={quickAdd}>추가</button>
-                    </div>
-                  )}
-                  {evs.length === 0 && (date !== sel || longSpanning(date).length === 0) && (
-                    <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
-                  )}
-                  {evs.map((e) => (
-                    <Fragment key={e.m.id + e.type}>
-                      <div className="row" onClick={() => onOpen(e.m.id)}>
-                        <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
-                        <span className="row-title">{e.text}</span>
-                        <SendToDateBtn label="이동" onPick={(d) => moveEvent(e.m, e.type, date, d)} />
-                        <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
-                      </div>
-                      {renderDetail && renderDetail(e.m.id)}
-                    </Fragment>
-                  ))}
-                  {date === sel && spanningRows(date)}
-                </div>
-              )
-            })}
-          </div>
-        )
-      })()}
-      {!narrow && sel && (
+      {/* 날짜 목록: 선택한 날 하나만, 달력 바로 아래 고정 — 다른 날짜를 누르면 그 자리에서
+          내용만 바뀐다 (폰·PC 공통. 달 전체 나열 + 스크롤 점프는 조작감이 나빠서 제거, 2026-07-19) */}
+      {sel && (
         <div className="cal-detail">
-          <div className="cal-detail-title">{fmtDate(sel)}</div>
+          <div className="cal-detail-title">
+            {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
+            {sel === today && <span className="ag-now">오늘</span>}
+          </div>
           <div className="cal-add">
             <input
               value={qtext}
