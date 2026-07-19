@@ -21,10 +21,11 @@ function dueBadge(m, today) {
   const end = m.due || (m.period && m.period.end)
   if (!end) return null
   const dd = diffDays(end, today)
-  const dl = m.deadline ? '마감 ' : ''
-  if (dd < 0) return ['b-red', `${dl}${-dd}일째`]
-  if (dd === 0) return ['b-amber', dl ? '마감 오늘' : '오늘']
-  return ['', `${dl}D-${dd}`, ddStyle(dd)]
+  // 마감형은 배지에 마감 날짜를 같이 — "7.30까지 D-11"이면 어느 날이 마감인지 카드에서 바로 보인다
+  const md = `${Number(end.slice(5, 7))}.${Number(end.slice(8, 10))}`
+  if (dd < 0) return ['b-red', m.deadline ? `${md}까지 · ${-dd}일 지남` : `${-dd}일째`]
+  if (dd === 0) return ['b-amber', m.deadline ? '마감 오늘' : '오늘']
+  return ['', m.deadline ? `${md}까지 D-${dd}` : `D-${dd}`, ddStyle(dd)]
 }
 
 function checkInfo(m) {
@@ -390,7 +391,8 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
                   <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
                   <td className="mv-title">{m.title}</td>
                   <td className="mv-date">
-                    {m.period ? fmtPeriod(m.period) : m.due ? fmtDate(m.due) : ''}
+                    {/* 마감형은 배지("7.30까지 D-n")가 날짜를 이미 담고 있어 따로 안 쓴다 */}
+                    {m.period ? (m.deadline ? '' : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
                     {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}> {badge[1]}</span>}
                   </td>
                   <td className="mv-date">

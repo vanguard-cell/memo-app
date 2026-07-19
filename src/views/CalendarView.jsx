@@ -109,6 +109,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     for (const m of memos) {
       if (m.due) push(m.due, { m, type: 'due', text: m.title })
       if (m.period && m.period.start && m.period.end) {
+        // 마감형("~까지"): 던진 날~마감의 기간은 오늘부터 보이게 하는 내부 장치일 뿐 —
+        // 달력엔 마감일 조각 하나만 그린다 (시작·중간까지 그리면 한 메모가 여러 개처럼 겹쳐 보임)
+        if (m.deadline) {
+          push(m.period.end, { m, type: 'end', text: m.title })
+          continue
+        }
         push(m.period.start, { m, type: 'start', text: dayLine(m, m.period.start) || m.title })
         if (m.period.end !== m.period.start)
           push(m.period.end, { m, type: 'end', text: dayLine(m, m.period.end) || m.title })
@@ -146,6 +152,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     memos.filter(
       (m) =>
         m.period && m.period.start && m.period.end && m.status !== 'done' &&
+        !m.deadline &&
         diffDays(m.period.end, m.period.start) > 31 &&
         m.period.start < date && date < m.period.end
     )
@@ -200,7 +207,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           {monthPeriods.map((m) => (
             <button key={m.id} className="cal-period-chip" onClick={() => onOpen(m.id)}>
               {m.title}
-              <span>{fmtPeriod(m.period)}</span>
+              <span>{m.deadline ? `~ ${fmtDate(m.period.end)} 마감` : fmtPeriod(m.period)}</span>
             </button>
           ))}
         </div>
