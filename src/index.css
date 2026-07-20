@@ -116,6 +116,13 @@ main {
   .app-wide main {
     max-width: 1360px;
   }
+
+  /* 패널이 열리면 본문 폭을 패널 자리만큼 자동 축소 — 달력·보드가 뒤에 가려지지 않게.
+     (사이드바 200 + 좌우 여백 52 + 패널 414 = 666px 를 뺀 나머지가 본문 몫) */
+  .app.with-detail .inputbar,
+  .app.with-detail main {
+    max-width: clamp(600px, calc(100vw - 666px), 1240px);
+  }
 }
 
 .sidenav {
