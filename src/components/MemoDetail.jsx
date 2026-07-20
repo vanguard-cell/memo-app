@@ -129,7 +129,12 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>
-              <button onClick={() => postpone(tomorrow)}>내일로</button>
+              {/* 기한이 이미 미래면 "내일로"는 무의미(같은 날짜) — 하루 더 미루는 +1일로 바뀐다 */}
+              {memo.due && memo.due > today ? (
+                <button title="기한을 하루 뒤로" onClick={() => postpone(addDays(memo.due, 1))}>+1일</button>
+              ) : (
+                <button title="기한을 내일로 이동" onClick={() => postpone(tomorrow)}>내일로</button>
+              )}
               <SendToDateBtn
                 min={memo.due && memo.due < today ? today : tomorrow}
                 max={!memo.due && memo.period ? memo.period.end : undefined}
