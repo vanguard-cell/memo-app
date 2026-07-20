@@ -23,10 +23,12 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   }
 
   function saveEdit() {
+    // 기간을 넣으면 기한은 비운다 — 둘 다 남으면 달력에 같은 메모가 두 번 그려진다
+    const period = form.start && form.end ? { start: form.start, end: form.end } : null
     updateMemo(memo.id, {
       title: form.title.trim() || memo.title,
-      due: form.due || null,
-      period: form.start && form.end ? { start: form.start, end: form.end } : null,
+      due: period ? null : form.due || null,
+      period,
     })
     setEditing(false)
   }

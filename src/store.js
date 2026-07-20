@@ -20,6 +20,11 @@ function migrate(memos) {
     if ((m.due || m.period) && p.cleaned && p.cleaned !== m.title) {
       m.title = p.cleaned
     }
+    // 기한과 기간을 동시에 가진 메모 정리 — 기한이 기간 끝과 같으면 중복이므로 기한을 지운다
+    // (달력에 같은 메모가 기한 칩 + 만기 칩으로 두 번 그려지던 문제)
+    if (m.due && m.period && m.period.end && m.due === m.period.end) {
+      m.due = null
+    }
     // 날짜 없는 미완료 메모는 오늘 기한으로 — 완료 전까지 오늘 화면에서 괴롭힌다
     // (보관·삭제된 메모는 예외)
     if (!m.due && !m.period && m.status !== 'done' && !m.keep && !m.deleted) {
