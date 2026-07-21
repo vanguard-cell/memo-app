@@ -73,7 +73,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.due && !memo.period && (
             <span className="meta-date">
-              기한 {fmtDate(memo.due)}
+              마감 {fmtDate(memo.due)}
               {dueD !== null && (
                 <b className={dueD < 0 ? 't-red' : ''}>
                   {' · '}
@@ -134,13 +134,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>
-              {/* 기한이 이미 미래면 "내일로"는 무의미(같은 날짜) — 하루 더 미루는 +1일로 바뀐다 */}
+              {/* 밀림·오늘이면 내일로, 이미 미래 마감이면 하루 더 — 라벨은 "하루 미루기" 하나로 통일 */}
               {memo.due && memo.due > today ? (
-                <button title="기한을 하루 뒤로" onClick={() => postpone(addDays(memo.due, 1))}>+1일</button>
+                <button title="마감을 하루 뒤로 미룹니다" onClick={() => postpone(addDays(memo.due, 1))}>하루 미루기</button>
               ) : (
-                <button title="기한을 내일로 이동" onClick={() => postpone(tomorrow)}>내일로</button>
+                <button title="마감을 내일로 미룹니다" onClick={() => postpone(tomorrow)}>하루 미루기</button>
               )}
               <SendToDateBtn
+                label="날짜 지정"
                 min={memo.due && memo.due < today ? today : tomorrow}
                 max={!memo.due && memo.period ? memo.period.end : undefined}
                 onPick={postpone}

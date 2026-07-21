@@ -25,7 +25,7 @@ function moveEvent(m, type, fromDate, targetDate) {
 const pad = (n) => String(n).padStart(2, '0')
 
 const TYPE = {
-  due: ['기한', 'ev-due'],
+  due: ['마감', 'ev-due'],
   start: ['시작', 'ev-start'],
   end: ['만기', 'ev-end'],
   span: ['기간', 'ev-span'],
@@ -327,7 +327,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             >
               <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
-              <SendToDateBtn label="이동" onPick={(dt) => moveEvent(e.m, e.type, sel, dt)} />
+              <SendToDateBtn label="날짜 이동" onPick={(dt) => moveEvent(e.m, e.type, sel, dt)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
             </div>
             </Fragment>

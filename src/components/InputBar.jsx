@@ -104,7 +104,7 @@ export default function InputBar() {
           {eff.due && (
             <Chip
               cls="chip-date"
-              label={`기한 ${fmtDate(eff.due)}`}
+              label={`마감 ${fmtDate(eff.due)}`}
               onX={() => {
                 setPickedDue(null)
                 setRemoved((r) => ({ ...r, due: true }))
@@ -127,7 +127,7 @@ export default function InputBar() {
                 }}
               />
             )}
-            <button className="pill pill-keep" title="기한 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
+            <button className="pill pill-keep" title="날짜 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
               보관함에 넣기
             </button>
           </span>

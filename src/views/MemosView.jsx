@@ -373,9 +373,9 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
           <tr>
             <th>상태</th>
             <th>제목</th>
-            <th>기한·기간</th>
+            <th>마감·기간</th>
             <th>체크</th>
-            <th>작성</th>
+            <th>작성일</th>
           </tr>
         </thead>
         <tbody>
@@ -487,9 +487,9 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
     if (m.period) range = s === e ? md(s) : `${md(s)} ~ ${md(e)}`
     else if (m.status === 'done') range = s === e ? md(e) : `${md(s)} ~ ${md(e)}`
     else {
-      // 미완료는 실제 기한을 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 기한 7.17"
+      // 미완료는 실제 마감을 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 마감 7.17"
       const due = m.due || e
-      range = `기한 ${md(due)}`
+      range = `마감 ${md(due)}`
       if (s < due) range = `${md(s)} ~ ${range}`
     }
     return range + (chk ? ` · ${chk.label}` : '')
