@@ -766,11 +766,12 @@ main {
   margin-top: 3px;
 }
 
-/* 다음 할 일 힌트 — 체크 안 된 첫 줄을 옅게 한 줄로 */
+/* 다음 할 일 힌트 — 배지 줄 오른쪽에 체크 안 된 첫 줄을 옅게 */
 .kb-next {
   font-size: 11.5px;
   color: var(--faint);
-  margin-top: 2px;
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

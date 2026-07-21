@@ -120,11 +120,11 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     >
       <div className="kb-title">{m.title}</div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
-      {nextLine && <div className="kb-next">다음: {nextLine.text}</div>}
-      {(badge || chk || doneDate) && (
+      {(badge || chk || doneDate || nextLine) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}>{badge[1]}</span>}
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
+          {nextLine && <span className="kb-next">{nextLine.text}</span>}
           {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
         </div>
       )}
