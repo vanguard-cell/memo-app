@@ -102,6 +102,9 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       : null
   // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단)
   const dayLine = m.period ? (m.history || []).find((h) => h.date === today && h.text) : null
+  // 다음 할 일 힌트: 입력 순서상 아직 체크 안 된 첫 줄 — 다음 작업일 가능성이 높다
+  const nextLine =
+    st !== 'done' ? (m.history || []).find((h) => h.type !== 'log' && !h.done && h.text) : null
   return (
     <div
       className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
@@ -117,6 +120,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     >
       <div className="kb-title">{m.title}</div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
+      {nextLine && <div className="kb-next">다음: {nextLine.text}</div>}
       {(badge || chk || doneDate) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}>{badge[1]}</span>}

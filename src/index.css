@@ -766,6 +766,16 @@ main {
   margin-top: 3px;
 }
 
+/* 다음 할 일 힌트 — 체크 안 된 첫 줄을 옅게 한 줄로 */
+.kb-next {
+  font-size: 11.5px;
+  color: var(--faint);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
 /* 상단 컨트롤 한 줄: [오늘·만기 타일] [검색] [보기 토글] */
