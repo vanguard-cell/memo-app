@@ -166,6 +166,33 @@ main {
   font-weight: 600;
 }
 
+/* 새 버전 감지 배너 — 새로고침 전까지 상단 중앙에 떠 있는다 */
+.update-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--text);
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 80;
+}
+
+.update-bar button {
+  background: #fff;
+  border-color: #fff;
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 3px 10px;
+  font-weight: 600;
+}
+
 /* 사이드바 맨 아래 묶음: 백업 · 로그아웃 */
 .sidenav-foot {
   margin-top: auto;
