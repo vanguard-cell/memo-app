@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
-import { todayStr, addDays, parse } from '../parser'
+import { todayStr, addDays } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
 
@@ -82,13 +82,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   function quickAdd() {
     const txt = qtext.trim()
     if (!txt || !sel) return
-    const p = parse(txt)
-    const dateInText = p.period || p.due
-    addMemo({
-      title: dateInText && p.cleaned ? p.cleaned : txt,
-      due: p.due || (p.period ? null : sel),
-      period: p.period,
-    })
+    // 날짜 칸을 클릭해 추가하는 맥락 — 글 속 날짜("7/20 메일참고" 같은 참고 표기)는
+    // 파싱하지 않고, 클릭한 날짜를 그대로 기한으로 쓴다
+    addMemo({ title: txt, due: sel })
     setQtext('')
   }
 
