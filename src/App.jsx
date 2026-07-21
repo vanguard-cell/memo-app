@@ -1,20 +1,23 @@
 import { useState, useSyncExternalStore } from 'react'
-import { subscribe, getMemos, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
+import { subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
 import { hasSupabase } from './supabase'
 import useIsNarrow from './useIsNarrow'
 import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
 import Login from './components/Login'
 import MemosView from './views/MemosView'
+import TrashView from './views/TrashView'
 
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
 // 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
 
 export default function App() {
   const memos = useSyncExternalStore(subscribe, getMemos)
+  const trash = useSyncExternalStore(subscribe, getTrash)
   const dayOrder = useSyncExternalStore(subscribe, getDayOrder)
   const auth = useSyncExternalStore(subscribe, getAuth)
   const [openId, setOpenId] = useState(null)
+  const [showTrash, setShowTrash] = useState(false)
   const narrow = useIsNarrow()
   const open = memos.find((m) => m.id === openId)
 
@@ -49,6 +52,13 @@ export default function App() {
                 {auth.email}
               </button>
             )}
+            <button
+              className="stab stab-foot"
+              title="삭제한 메모는 30일 보관 후 자동 삭제 — 그 안에 복구 가능"
+              onClick={() => setShowTrash((v) => !v)}
+            >
+              휴지통{trash.length > 0 ? ` ${trash.length}` : ''}
+            </button>
             <button className="stab stab-foot" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
               백업
             </button>
@@ -73,6 +83,9 @@ export default function App() {
                   {auth.email}
                 </button>
               )}
+              <button className="tab tab-logout" onClick={() => setShowTrash((v) => !v)}>
+                휴지통{trash.length > 0 ? ` ${trash.length}` : ''}
+              </button>
               <button className="tab tab-logout" onClick={downloadBackup}>
                 백업
               </button>
@@ -84,15 +97,21 @@ export default function App() {
             </nav>
           </header>
         )}
-        <InputBar />
-        <div className="layout">
-          <main>
-            <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
-          </main>
-          {sidePanel && open && (
-            <MemoDetail key={open.id} memo={open} onOpen={setOpenId} onClose={() => setOpenId(null)} />
-          )}
-        </div>
+        {showTrash ? (
+          <TrashView memos={trash} onClose={() => setShowTrash(false)} />
+        ) : (
+          <>
+            <InputBar />
+            <div className="layout">
+              <main>
+                <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
+              </main>
+              {sidePanel && open && (
+                <MemoDetail key={open.id} memo={open} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

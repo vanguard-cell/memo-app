@@ -52,7 +52,12 @@ function load() {
 // 다른 기기의 옛 복사본이 "서버에 없네?" 하며 다시 올려 되살리는 걸 막는다.
 // 표식은 30일 뒤 동기화 때 실제로 삭제된다.
 function withVisible(s) {
-  return { ...s, visible: s.memos.filter((m) => !m.deleted) }
+  return {
+    ...s,
+    visible: s.memos.filter((m) => !m.deleted),
+    // 휴지통: 삭제 표식이 붙은 메모 (최근 삭제한 것부터). 30일 뒤 동기화 때 완전 삭제된다.
+    trash: s.memos.filter((m) => m.deleted).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
+  }
 }
 
 let state = withVisible(load())
@@ -85,6 +90,7 @@ export function subscribe(fn) {
 }
 
 export const getMemos = () => state.visible
+export const getTrash = () => state.trash
 export const getWorks = () => state.works
 export const getDayOrder = () => state.dayOrder
 export const getAuth = () => authSnap
@@ -375,6 +381,16 @@ export function deleteMemo(id) {
   commit({
     ...state,
     memos: state.memos.map((m) => (m.id === id ? { ...m, deleted: true, updatedAt: now } : m)),
+  })
+  remoteUpsert(id)
+}
+
+// 휴지통에서 복구 — 삭제 표식만 떼면 원래 자리(보드·달력)로 돌아온다
+export function restoreMemo(id) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) => (m.id === id ? { ...m, deleted: false, updatedAt: now } : m)),
   })
   remoteUpsert(id)
 }

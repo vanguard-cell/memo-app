@@ -137,7 +137,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           <button
             className="btn-danger"
             onClick={() => {
-              if (window.confirm('이 메모와 진행기록을 모두 삭제할까요?')) {
+              if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
                 deleteMemo(memo.id)
                 onClose()
               }

@@ -2320,6 +2320,31 @@ main {
 
 }
 
+/* 휴지통 화면 */
+.trash-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.trash-head .pill {
+  margin-left: auto;
+}
+
+.trash-note {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.trash-meta {
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
 /* 날짜 목록 제목 옆 "오늘" 표시 */
 .ag-now {
   background: var(--blue-strong);
