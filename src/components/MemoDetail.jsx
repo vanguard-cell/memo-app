@@ -53,9 +53,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
         <div className="panel-head">
           <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
           <span className="panel-title">{memo.title}</span>
-          <button className="x" onClick={onClose} aria-label={inline ? '접기' : '닫기'} title={inline ? '접기' : '닫기'}>
-            {inline ? '▴' : '×'}
-          </button>
+          {inline ? (
+            <button className="fold-btn" onClick={onClose}>접기</button>
+          ) : (
+            <button className="x" onClick={onClose} aria-label="닫기" title="닫기">×</button>
+          )}
         </div>
         <div className="panel-meta">
           {memo.period && (
