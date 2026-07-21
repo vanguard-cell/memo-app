@@ -23,12 +23,17 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   }
 
   function saveEdit() {
-    // 기간을 넣으면 기한은 비운다 — 둘 다 남으면 달력에 같은 메모가 두 번 그려진다
+    // 폼에서 마감일과 기간이 상호 배타라 여기선 검증만 — 한쪽만 채운 기간은 저장 막기
+    if ((form.start && !form.end) || (!form.start && form.end)) {
+      window.alert('기간은 시작과 끝을 모두 선택해 주세요.')
+      return
+    }
     const period = form.start && form.end ? { start: form.start, end: form.end } : null
     updateMemo(memo.id, {
       title: form.title.trim() || memo.title,
       due: period ? null : form.due || null,
       period,
+      deadline: period ? memo.deadline || false : false,
     })
     setEditing(false)
   }
@@ -162,17 +167,30 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </label>
             <div className="edit-grid">
+              {/* 마감일과 기간은 상호 배타 — 한쪽을 입력하면 다른 쪽이 비워진다 (기한이 조용히 무시되던 버그 방지) */}
               <label>
-                기한
-                <input type="date" value={form.due} onChange={(e) => setForm({ ...form, due: e.target.value })} />
+                마감일
+                <input
+                  type="date"
+                  value={form.due}
+                  onChange={(e) => setForm({ ...form, due: e.target.value, start: '', end: '' })}
+                />
               </label>
               <label>
-                기간 시작
-                <input type="date" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
-              </label>
-              <label>
-                기간 끝
-                <input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
+                기간
+                <span className="eg-range">
+                  <input
+                    type="date"
+                    value={form.start}
+                    onChange={(e) => setForm({ ...form, start: e.target.value, due: '' })}
+                  />
+                  <span className="eg-tilde">~</span>
+                  <input
+                    type="date"
+                    value={form.end}
+                    onChange={(e) => setForm({ ...form, end: e.target.value, due: '' })}
+                  />
+                </span>
               </label>
             </div>
             <button className="btn-done" onClick={saveEdit}>저장</button>

@@ -1730,9 +1730,26 @@ main {
 }
 
 .edit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+/* 기간 시작~끝 한 줄 — 물결로 묶어 한 덩어리로 보이게 */
+.eg-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eg-range input {
+  flex: 1;
+  min-width: 0;
+}
+
+.eg-tilde {
+  color: var(--faint);
+  flex-shrink: 0;
 }
 
 .edit-form .btn-done {
