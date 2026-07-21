@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
-import { todayStr, addDays, parse } from '../parser'
+import { todayStr, addDays } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
 
@@ -25,7 +25,7 @@ function moveEvent(m, type, fromDate, targetDate) {
 const pad = (n) => String(n).padStart(2, '0')
 
 const TYPE = {
-  due: ['기한', 'ev-due'],
+  due: ['마감', 'ev-due'],
   start: ['시작', 'ev-start'],
   end: ['만기', 'ev-end'],
   span: ['기간', 'ev-span'],
@@ -82,13 +82,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   function quickAdd() {
     const txt = qtext.trim()
     if (!txt || !sel) return
-    const p = parse(txt)
-    const dateInText = p.period || p.due
-    addMemo({
-      title: dateInText && p.cleaned ? p.cleaned : txt,
-      due: p.due || (p.period ? null : sel),
-      period: p.period,
-    })
+    // 날짜 칸을 클릭해 추가하는 맥락 — 글 속 날짜("7/20 메일참고" 같은 참고 표기)는
+    // 파싱하지 않고, 클릭한 날짜를 그대로 기한으로 쓴다
+    addMemo({ title: txt, due: sel })
     setQtext('')
   }
 
@@ -156,18 +152,23 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     )
   // 날짜 목록의 "기간 중" 줄 (PC 날짜 목록·폰 월 목록 공용)
   const spanningRows = (date) =>
-    longSpanning(date).map((m) => (
-      <Fragment key={'ls' + m.id}>
-        <div className="row" onClick={() => onOpen(m.id)}>
-          <span className="badge ev-span">기간 중</span>
-          <span className="row-title">
-            {m.title} <span className="muted-inline">{diffDays(date, m.period.start) + 1}일차</span>
-          </span>
-          <span className={'badge st-' + memoStatus(m)}>{STATUS_LABEL[memoStatus(m)]}</span>
-        </div>
-        {renderDetail && renderDetail(m.id)}
-      </Fragment>
-    ))
+    longSpanning(date).map((m) => {
+      // 폰: 누른 줄이 그 자리에서 상세로 바뀐다 (제목 중복 방지)
+      const d = renderDetail ? renderDetail(m.id) : null
+      return (
+        <Fragment key={'ls' + m.id}>
+          {d || (
+            <div className="row" onClick={() => onOpen(m.id)}>
+              <span className="badge ev-span">기간 중</span>
+              <span className="row-title">
+                {m.title} <span className="muted-inline">{diffDays(date, m.period.start) + 1}일차</span>
+              </span>
+              <span className={'badge st-' + memoStatus(m)}>{STATUS_LABEL[memoStatus(m)]}</span>
+            </div>
+          )}
+        </Fragment>
+      )
+    })
 
   function move(n) {
     const nd = new Date(y, mo + n, 1)
@@ -283,7 +284,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && (
             <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
           )}
-          {orderedEvents(sel, events[sel] || []).map((e) => (
+          {orderedEvents(sel, events[sel] || []).map((e) => {
+            // 폰: 누른 줄이 그 자리에서 상세로 바뀐다 (제목 중복 방지)
+            const d = renderDetail ? renderDetail(e.m.id) : null
+            if (d) return <Fragment key={e.m.id + e.type}>{d}</Fragment>
+            return (
             <Fragment key={e.m.id + e.type}>
             <div
               className={
@@ -322,12 +327,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             >
               <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
-              <SendToDateBtn label="이동" onPick={(d) => moveEvent(e.m, e.type, sel, d)} />
+              <SendToDateBtn label="날짜 이동" onPick={(dt) => moveEvent(e.m, e.type, sel, dt)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
             </div>
-            {renderDetail && renderDetail(e.m.id)}
             </Fragment>
-          ))}
+            )
+          })}
           {spanningRows(sel)}
         </div>
       )}

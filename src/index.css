@@ -116,6 +116,13 @@ main {
   .app-wide main {
     max-width: 1360px;
   }
+
+  /* 패널이 열리면 본문 폭을 패널 자리만큼 자동 축소 — 달력·보드가 뒤에 가려지지 않게.
+     (사이드바 200 + 좌우 여백 52 + 패널 414 = 666px 를 뺀 나머지가 본문 몫) */
+  .app.with-detail .inputbar,
+  .app.with-detail main {
+    max-width: clamp(600px, calc(100vw - 666px), 1240px);
+  }
 }
 
 .sidenav {
@@ -156,6 +163,33 @@ main {
   background: var(--card);
   border-color: var(--border);
   color: var(--text);
+  font-weight: 600;
+}
+
+/* 새 버전 감지 배너 — 새로고침 전까지 상단 중앙에 떠 있는다 */
+.update-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--text);
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 80;
+}
+
+.update-bar button {
+  background: #fff;
+  border-color: #fff;
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 3px 10px;
   font-weight: 600;
 }
 
@@ -730,6 +764,17 @@ main {
   font-size: 11.5px;
   color: var(--muted);
   margin-top: 3px;
+}
+
+/* 다음 할 일 힌트 — 배지 줄 오른쪽에 체크 안 된 첫 줄을 옅게 */
+.kb-next {
+  font-size: 11.5px;
+  color: var(--faint);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
@@ -1648,6 +1693,15 @@ main {
   background: none;
 }
 
+/* 인라인 상세의 접기 버튼 — 글자로 명확하게 */
+.fold-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .panel-meta {
   display: flex;
   gap: 8px;
@@ -1723,9 +1777,26 @@ main {
 }
 
 .edit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+/* 기간 시작~끝 한 줄 — 물결로 묶어 한 덩어리로 보이게 */
+.eg-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eg-range input {
+  flex: 1;
+  min-width: 0;
+}
+
+.eg-tilde {
+  color: var(--faint);
+  flex-shrink: 0;
 }
 
 .edit-form .btn-done {

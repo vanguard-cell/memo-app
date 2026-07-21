@@ -102,6 +102,9 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       : null
   // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단)
   const dayLine = m.period ? (m.history || []).find((h) => h.date === today && h.text) : null
+  // 다음 할 일 힌트: 입력 순서상 아직 체크 안 된 첫 줄 — 다음 작업일 가능성이 높다
+  const nextLine =
+    st !== 'done' ? (m.history || []).find((h) => h.type !== 'log' && !h.done && h.text) : null
   return (
     <div
       className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
@@ -117,10 +120,11 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     >
       <div className="kb-title">{m.title}</div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
-      {(badge || chk || doneDate) && (
+      {(badge || chk || doneDate || nextLine) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}>{badge[1]}</span>}
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
+          {nextLine && <span className="kb-next">{nextLine.text}</span>}
           {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
         </div>
       )}
@@ -210,10 +214,6 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
   // 열 이동은 드래그 대신 상세의 상태 버튼으로, 상세는 누른 카드 줄 아래 전체 폭으로.
   if (narrow) {
     const rows = Math.max(by.todo.length, by.active.length)
-    const detailOf = (m) => {
-      const d = m && renderDetail && renderDetail(m.id)
-      return d ? <div className="kbf-detail">{d}</div> : null
-    }
     return (
       <div>
         <div className="kb-flat">
@@ -233,16 +233,19 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
           {Array.from({ length: rows }, (_, i) => {
             const L = by.todo[i]
             const R = by.active[i]
+            // 카드를 누르면 새 창이 아래 붙는 게 아니라, 카드 자리가 상세로 바뀐다 (제목 중복 방지)
+            const Ld = L && renderDetail ? renderDetail(L.id) : null
+            const Rd = R && renderDetail ? renderDetail(R.id) : null
             return (
               <Fragment key={(L && L.id) || (R && R.id) || i}>
                 <div className="kbf-cell">
-                  {L && <Card m={L} col="todo" today={today} onOpen={onOpen} dropCls="" />}
+                  {L && !Ld && <Card m={L} col="todo" today={today} onOpen={onOpen} dropCls="" />}
                 </div>
                 <div className="kbf-cell">
-                  {R && <Card m={R} col="active" today={today} onOpen={onOpen} dropCls="" />}
+                  {R && !Rd && <Card m={R} col="active" today={today} onOpen={onOpen} dropCls="" />}
                 </div>
-                {detailOf(L)}
-                {detailOf(R)}
+                {Ld && <div className="kbf-detail">{Ld}</div>}
+                {Rd && <div className="kbf-detail">{Rd}</div>}
               </Fragment>
             )
           })}
@@ -252,12 +255,14 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
         </button>
         {showDone && (
           <div className="kbf-done">
-            {by.done.slice(0, DONE_SHOWN).map((m) => (
-              <Fragment key={m.id}>
-                <Card m={m} col="done" today={today} onOpen={onOpen} dropCls="" />
-                {renderDetail && renderDetail(m.id)}
-              </Fragment>
-            ))}
+            {by.done.slice(0, DONE_SHOWN).map((m) => {
+              const d = renderDetail ? renderDetail(m.id) : null
+              return (
+                <Fragment key={m.id}>
+                  {d || <Card m={m} col="done" today={today} onOpen={onOpen} dropCls="" />}
+                </Fragment>
+              )
+            })}
             {by.done.length > DONE_SHOWN && (
               <div className="kb-more">외 {by.done.length - DONE_SHOWN}건 — 표에서 전체 보기</div>
             )}
@@ -372,9 +377,9 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
           <tr>
             <th>상태</th>
             <th>제목</th>
-            <th>기한·기간</th>
+            <th>마감·기간</th>
             <th>체크</th>
-            <th>작성</th>
+            <th>작성일</th>
           </tr>
         </thead>
         <tbody>
@@ -385,6 +390,15 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
             const matched = words.length
               ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
               : []
+            // 폰: 누른 줄이 그 자리에서 상세로 바뀐다 (제목 중복 방지)
+            const d = renderDetail ? renderDetail(m.id) : null
+            if (d) {
+              return (
+                <tr className="mv-detail-row" key={m.id}>
+                  <td colSpan={5}>{d}</td>
+                </tr>
+              )
+            }
             return (
               <Fragment key={m.id}>
                 <tr className={st === 'done' ? 'mv-done' : ''} onClick={() => onOpen(m.id)}>
@@ -413,16 +427,6 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
                     </td>
                   </tr>
                 )}
-                {/* 폰: 누른 줄 바로 아래 상세 (표 안이라 tr로 감싼다) */}
-                {renderDetail &&
-                  (() => {
-                    const d = renderDetail(m.id)
-                    return d ? (
-                      <tr className="mv-detail-row">
-                        <td colSpan={5}>{d}</td>
-                      </tr>
-                    ) : null
-                  })()}
               </Fragment>
             )
           })}
@@ -487,9 +491,9 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
     if (m.period) range = s === e ? md(s) : `${md(s)} ~ ${md(e)}`
     else if (m.status === 'done') range = s === e ? md(e) : `${md(s)} ~ ${md(e)}`
     else {
-      // 미완료는 실제 기한을 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 기한 7.17"
+      // 미완료는 실제 마감을 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 마감 7.17"
       const due = m.due || e
-      range = `기한 ${md(due)}`
+      range = `마감 ${md(due)}`
       if (s < due) range = `${md(s)} ~ ${range}`
     }
     return range + (chk ? ` · ${chk.label}` : '')
@@ -567,6 +571,9 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
                     const st = memoStatus(m)
                     const sd = s < first ? 1 : dayOf(s)
                     const ed = e > last ? dim : dayOf(e)
+                    // 폰: 누른 줄이 그 자리에서 상세로 바뀐다
+                    const d = renderDetail ? renderDetail(m.id) : null
+                    if (d) return <Fragment key={m.id}>{d}</Fragment>
                     return (
                       <Fragment key={m.id}>
                         <div className="tlv-row">
@@ -588,8 +595,6 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
                             />
                           </div>
                         </div>
-                        {/* 폰: 누른 줄 바로 아래 상세 */}
-                        {renderDetail && renderDetail(m.id)}
                       </Fragment>
                     )
                   })}
@@ -753,17 +758,21 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       {keepHits.length > 0 && (
         <div className="kb-keep">
           <div className="done-divider">검색에 걸린 보관 메모 · {keepHits.length}건</div>
-          {keepHits.map((m) => (
-            <Fragment key={m.id}>
-              <div className="kb-card" onClick={() => onOpen(m.id)}>
-                <div className="kb-meta" style={{ marginTop: 0 }}>
-                  <span className="badge st-keep">보관</span>
-                  <span className="kb-title">{m.title}</span>
-                </div>
-              </div>
-              {renderDetail && renderDetail(m.id)}
-            </Fragment>
-          ))}
+          {keepHits.map((m) => {
+            const d = renderDetail ? renderDetail(m.id) : null
+            return (
+              <Fragment key={m.id}>
+                {d || (
+                  <div className="kb-card" onClick={() => onOpen(m.id)}>
+                    <div className="kb-meta" style={{ marginTop: 0 }}>
+                      <span className="badge st-keep">보관</span>
+                      <span className="kb-title">{m.title}</span>
+                    </div>
+                  </div>
+                )}
+              </Fragment>
+            )
+          })}
         </div>
       )}
     </div>

@@ -23,10 +23,17 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   }
 
   function saveEdit() {
+    // 폼에서 마감일과 기간이 상호 배타라 여기선 검증만 — 한쪽만 채운 기간은 저장 막기
+    if ((form.start && !form.end) || (!form.start && form.end)) {
+      window.alert('기간은 시작과 끝을 모두 선택해 주세요.')
+      return
+    }
+    const period = form.start && form.end ? { start: form.start, end: form.end } : null
     updateMemo(memo.id, {
       title: form.title.trim() || memo.title,
-      due: form.due || null,
-      period: form.start && form.end ? { start: form.start, end: form.end } : null,
+      due: period ? null : form.due || null,
+      period,
+      deadline: period ? memo.deadline || false : false,
     })
     setEditing(false)
   }
@@ -46,7 +53,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
         <div className="panel-head">
           <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
           <span className="panel-title">{memo.title}</span>
-          <button className="x" onClick={onClose} aria-label="닫기">×</button>
+          {inline ? (
+            <button className="fold-btn" onClick={onClose}>접기</button>
+          ) : (
+            <button className="x" onClick={onClose} aria-label="닫기" title="닫기">×</button>
+          )}
         </div>
         <div className="panel-meta">
           {memo.period && (
@@ -64,7 +75,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.due && !memo.period && (
             <span className="meta-date">
-              기한 {fmtDate(memo.due)}
+              마감 {fmtDate(memo.due)}
               {dueD !== null && (
                 <b className={dueD < 0 ? 't-red' : ''}>
                   {' · '}
@@ -125,8 +136,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>
-              <button onClick={() => postpone(tomorrow)}>내일로</button>
+              {/* 밀림·오늘이면 내일로, 이미 미래 마감이면 하루 더 — 라벨은 "하루 미루기" 하나로 통일 */}
+              {memo.due && memo.due > today ? (
+                <button title="마감을 하루 뒤로 미룹니다" onClick={() => postpone(addDays(memo.due, 1))}>하루 미루기</button>
+              ) : (
+                <button title="마감을 내일로 미룹니다" onClick={() => postpone(tomorrow)}>하루 미루기</button>
+              )}
               <SendToDateBtn
+                label="날짜 지정"
                 min={memo.due && memo.due < today ? today : tomorrow}
                 max={!memo.due && memo.period ? memo.period.end : undefined}
                 onPick={postpone}
@@ -153,17 +170,30 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </label>
             <div className="edit-grid">
+              {/* 마감일과 기간은 상호 배타 — 한쪽을 입력하면 다른 쪽이 비워진다 (기한이 조용히 무시되던 버그 방지) */}
               <label>
-                기한
-                <input type="date" value={form.due} onChange={(e) => setForm({ ...form, due: e.target.value })} />
+                마감일
+                <input
+                  type="date"
+                  value={form.due}
+                  onChange={(e) => setForm({ ...form, due: e.target.value, start: '', end: '' })}
+                />
               </label>
               <label>
-                기간 시작
-                <input type="date" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
-              </label>
-              <label>
-                기간 끝
-                <input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
+                기간
+                <span className="eg-range">
+                  <input
+                    type="date"
+                    value={form.start}
+                    onChange={(e) => setForm({ ...form, start: e.target.value, due: '' })}
+                  />
+                  <span className="eg-tilde">~</span>
+                  <input
+                    type="date"
+                    value={form.end}
+                    onChange={(e) => setForm({ ...form, end: e.target.value, due: '' })}
+                  />
+                </span>
               </label>
             </div>
             <button className="btn-done" onClick={saveEdit}>저장</button>
