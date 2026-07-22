@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
 import { hasSupabase } from './supabase'
 import useIsNarrow from './useIsNarrow'
@@ -58,17 +58,65 @@ export default function App() {
   const [openId, setOpenId] = useState(null)
   const [showTrash, setShowTrash] = useState(false)
   const [showKeep, setShowKeep] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef(null)
   const keeps = memos.filter((m) => m.keep)
   const narrow = useIsNarrow()
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
+
+  // 메모 열기 — 닫히는 중이었다면 취소하고 그대로 이어서 연다
+  function openMemo(id) {
+    clearTimeout(closeTimer.current)
+    setClosing(false)
+    setOpenId(id)
+  }
+
+  // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다
+  function closeDetail() {
+    if (narrow) {
+      setOpenId(null)
+      return
+    }
+    setClosing(true)
+    clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => {
+      setOpenId(null)
+      setClosing(false)
+    }, 160)
+  }
+
+  // 빈 곳을 누르면(또는 Esc) 패널이 닫힌다. 메모를 여는 자리들은 예외 —
+  // 거기서는 닫는 대신 그 메모로 바뀌어야 한다.
+  useEffect(() => {
+    if (narrow || !open) return
+    const KEEP_OPEN =
+      '.detail, .kb-card, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar'
+    const onDown = (e) => {
+      if (e.target.closest && e.target.closest(KEEP_OPEN)) return
+      closeDetail()
+    }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      // 입력 중일 땐 그 입력의 Esc(수정 취소)가 우선
+      const t = e.target
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      closeDetail()
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [narrow, open])
 
   // 폰: 누른 줄 바로 아래에 상세를 펼침 (각 뷰가 자기 줄 밑에서 호출)
   const renderDetail = (id) => {
     if (!narrow || openId !== id) return null
     if (open && open.id === id) {
       return (
-        <MemoDetail key={open.id} inline memo={open} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+        <MemoDetail key={open.id} inline memo={open} onOpen={openMemo} onClose={() => setOpenId(null)} />
       )
     }
     return null
@@ -162,13 +210,13 @@ export default function App() {
             <main>
               <KeepView
                 memos={keeps}
-                onOpen={setOpenId}
+                onOpen={openMemo}
                 renderDetail={renderDetail}
                 onClose={() => setShowKeep(false)}
               />
             </main>
             {sidePanel && open && (
-              <MemoDetail key={open.id} memo={open} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closeDetail} />
             )}
           </div>
         ) : (
@@ -176,10 +224,10 @@ export default function App() {
             <InputBar />
             <div className="layout">
               <main>
-                <MemosView memos={memos} dayOrder={dayOrder} onOpen={setOpenId} renderDetail={renderDetail} />
+                <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} renderDetail={renderDetail} />
               </main>
               {sidePanel && open && (
-                <MemoDetail key={open.id} memo={open} onOpen={setOpenId} onClose={() => setOpenId(null)} />
+                <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closeDetail} />
               )}
             </div>
           </>

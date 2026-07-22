@@ -5,7 +5,7 @@ import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
 import SendToDateBtn from './SendToDateBtn'
 
-export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }) {
+export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, closing }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
@@ -79,7 +79,10 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   }
 
   return (
-    <aside className={'detail' + (inline ? ' detail-inline' : '')} onClick={(e) => e.stopPropagation()}>
+    <aside
+      className={'detail' + (inline ? ' detail-inline' : '') + (closing ? ' detail-out' : '')}
+      onClick={(e) => e.stopPropagation()}
+    >
         <div className="panel-head">
           <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
           <span className="panel-title">{memo.title}</span>
