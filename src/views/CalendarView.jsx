@@ -25,7 +25,7 @@ function moveEvent(m, type, fromDate, targetDate) {
 const pad = (n) => String(n).padStart(2, '0')
 
 const TYPE = {
-  due: ['마감', 'ev-due'],
+  due: ['예정', 'ev-due'],
   start: ['시작', 'ev-start'],
   end: ['만기', 'ev-end'],
   span: ['기간', 'ev-span'],
@@ -33,6 +33,9 @@ const TYPE = {
 
 // 마감형 메모는 만기 대신 "마감"으로 표기
 const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.type][0])
+
+// 깃발(⚑)은 마감형("~까지"로 던진 것)에만 — 날짜만 잡힌 예정까지 마감으로 보이던 문제 (2026-07-22)
+const isDeadline = (e) => e.type === 'end' && e.m.deadline
 
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
 export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
@@ -48,13 +51,20 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   const [rowDrop, setRowDrop] = useState(null)
   const today = todayStr()
 
+  // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
+  // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
+  const ST_RANK = { active: 0, todo: 1, keep: 2, done: 3 }
+
   function orderedEvents(date, evs) {
     const order = (dayOrder && dayOrder[date]) || []
     const idx = (e) => {
       const i = order.indexOf(e.m.id)
       return i === -1 ? Number.MAX_SAFE_INTEGER : i
     }
-    return [...evs].sort((a, b) => idx(a) - idx(b))
+    return [...evs].sort((a, b) => {
+      const r = ST_RANK[memoStatus(a.m)] - ST_RANK[memoStatus(b.m)]
+      return r !== 0 ? r : idx(a) - idx(b)
+    })
   }
 
   function reorder(date, evs, draggedId, targetId, after) {
@@ -253,6 +263,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     onOpen(e.m.id)
                   }}
                 >
+                  {isDeadline(e) && <b>⚑ </b>}
                   {(e.type === 'start' || e.type === 'end') && <b>{typeLabel(e)} </b>}
                   {e.text}
                 </span>
@@ -325,7 +336,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onClick={() => onOpen(e.m.id)}
             >
-              <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
+              <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
               <SendToDateBtn label="날짜 이동" onPick={(dt) => moveEvent(e.m, e.type, sel, dt)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>

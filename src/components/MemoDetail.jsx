@@ -23,7 +23,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   }
 
   function saveEdit() {
-    // 폼에서 마감일과 기간이 상호 배타라 여기선 검증만 — 한쪽만 채운 기간은 저장 막기
+    // 폼에서 예정일과 기간이 상호 배타라 여기선 검증만 — 한쪽만 채운 기간은 저장 막기
     if ((form.start && !form.end) || (!form.start && form.end)) {
       window.alert('기간은 시작과 끝을 모두 선택해 주세요.')
       return
@@ -62,7 +62,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
         <div className="panel-meta">
           {memo.period && (
             <span className="meta-date">
-              {memo.deadline ? `마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
+              {memo.deadline ? `⚑ 마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
               {dday !== null && (
                 <b className={dday < 0 ? 't-red' : 't-blue'}>
                   {' · '}
@@ -75,7 +75,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.due && !memo.period && (
             <span className="meta-date">
-              마감 {fmtDate(memo.due)}
+              예정 {fmtDate(memo.due)}
               {dueD !== null && (
                 <b className={dueD < 0 ? 't-red' : ''}>
                   {' · '}
@@ -136,11 +136,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
           )}
           {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>
-              {/* 밀림·오늘이면 내일로, 이미 미래 마감이면 하루 더 — 라벨은 "하루 미루기" 하나로 통일 */}
+              {/* 밀림·오늘이면 내일로, 이미 미래 날짜면 하루 더 — 라벨은 "하루 미루기" 하나로 통일 */}
               {memo.due && memo.due > today ? (
-                <button title="마감을 하루 뒤로 미룹니다" onClick={() => postpone(addDays(memo.due, 1))}>하루 미루기</button>
+                <button title="날짜를 하루 뒤로 미룹니다" onClick={() => postpone(addDays(memo.due, 1))}>하루 미루기</button>
               ) : (
-                <button title="마감을 내일로 미룹니다" onClick={() => postpone(tomorrow)}>하루 미루기</button>
+                <button title="날짜를 내일로 미룹니다" onClick={() => postpone(tomorrow)}>하루 미루기</button>
               )}
               <SendToDateBtn
                 label="날짜 지정"
@@ -148,6 +148,29 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
                 max={!memo.due && memo.period ? memo.period.end : undefined}
                 onPick={postpone}
               />
+              {/* 예정 ↔ 마감 전환 — "까지"로 안 던진 것도 나중에 진짜 마감으로 바꿀 수 있게 (2026-07-22) */}
+              {memo.due && !memo.period && (
+                <button
+                  title="그날까지 끝낼 일로 바꿉니다 — 달력에 ⚑ 마감(빨강)으로 표시"
+                  onClick={() =>
+                    updateMemo(memo.id, {
+                      due: null,
+                      period: { start: today < memo.due ? today : memo.due, end: memo.due },
+                      deadline: true,
+                    })
+                  }
+                >
+                  마감으로 지정
+                </button>
+              )}
+              {memo.deadline && memo.period && (
+                <button
+                  title="날짜만 잡힌 예정으로 되돌립니다"
+                  onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
+                >
+                  마감 해제
+                </button>
+              )}
             </>
           )}
           <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
@@ -170,9 +193,9 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </label>
             <div className="edit-grid">
-              {/* 마감일과 기간은 상호 배타 — 한쪽을 입력하면 다른 쪽이 비워진다 (기한이 조용히 무시되던 버그 방지) */}
+              {/* 예정일과 기간은 상호 배타 — 한쪽을 입력하면 다른 쪽이 비워진다 (기한이 조용히 무시되던 버그 방지) */}
               <label>
-                마감일
+                예정일
                 <input
                   type="date"
                   value={form.due}

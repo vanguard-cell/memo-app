@@ -95,7 +95,7 @@ export default function InputBar() {
               cls="chip-date"
               label={
                 eff.deadline
-                  ? `마감 ${fmtDate(eff.period.end)} · 오늘부터 표시`
+                  ? `⚑ 마감 ${fmtDate(eff.period.end)} · 오늘부터 표시`
                   : `기간 ${fmtPeriod(eff.period)}`
               }
               onX={() => setRemoved((r) => ({ ...r, period: true }))}
@@ -104,7 +104,7 @@ export default function InputBar() {
           {eff.due && (
             <Chip
               cls="chip-date"
-              label={`마감 ${fmtDate(eff.due)}`}
+              label={`예정 ${fmtDate(eff.due)}`}
               onX={() => {
                 setPickedDue(null)
                 setRemoved((r) => ({ ...r, due: true }))
