@@ -2404,6 +2404,19 @@ main {
   margin-left: auto;
 }
 
+/* 전체 선택이 있으면 그 뒤 버튼들(완전 삭제·닫기)은 붙여서 오른쪽에 모은다 */
+.trash-head .trash-selall ~ .pill {
+  margin-left: 0;
+}
+
+.trash-check {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--red-strong);
+  cursor: pointer;
+}
+
 .trash-note {
   font-size: 12.5px;
   color: var(--muted);

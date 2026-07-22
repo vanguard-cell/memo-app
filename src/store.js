@@ -400,6 +400,23 @@ export function restoreMemo(id) {
   remoteUpsert(id)
 }
 
+// 휴지통에서 완전 삭제 — 30일을 기다리지 않고 즉시 지운다. 되돌릴 수 없음.
+// 서버 삭제가 실패하면(오프라인 등) 다음 동기화 때 휴지통에 다시 나타나므로 그때 재시도하면 된다.
+export function purgeMemos(ids) {
+  commit({ ...state, memos: state.memos.filter((m) => !ids.includes(m.id)) })
+  if (!hasSupabase || !session) return
+  supabase
+    .from('memos')
+    .delete()
+    .in('id', ids)
+    .then(({ error }) => {
+      if (error) {
+        console.error('완전 삭제 동기화 실패', error)
+        setAuth({ syncError: true })
+      }
+    })
+}
+
 export function setDayOrder(date, ids) {
   commit({ ...state, dayOrder: { ...state.dayOrder, [date]: ids } })
   remotePushState()
