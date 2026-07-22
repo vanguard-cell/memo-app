@@ -25,7 +25,7 @@ function moveEvent(m, type, fromDate, targetDate) {
 const pad = (n) => String(n).padStart(2, '0')
 
 const TYPE = {
-  due: ['마감', 'ev-due'],
+  due: ['예정', 'ev-due'],
   start: ['시작', 'ev-start'],
   end: ['만기', 'ev-end'],
   span: ['기간', 'ev-span'],
@@ -34,8 +34,8 @@ const TYPE = {
 // 마감형 메모는 만기 대신 "마감"으로 표기
 const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.type][0])
 
-// 마감 조각(기한, 마감형 만기)엔 깃발을 붙인다 — 달력 칸·날짜 목록에서 마감이 한눈에 보이게
-const isDeadline = (e) => e.type === 'due' || (e.type === 'end' && e.m.deadline)
+// 깃발(⚑)은 마감형("~까지"로 던진 것)에만 — 날짜만 잡힌 예정까지 마감으로 보이던 문제 (2026-07-22)
+const isDeadline = (e) => e.type === 'end' && e.m.deadline
 
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
 export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {

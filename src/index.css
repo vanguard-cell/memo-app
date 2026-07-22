@@ -1501,10 +1501,10 @@ main {
   font-weight: 700;
 }
 
-/* 마감은 붉은 계열 — 할일 상태 배지(호박색)와 같은 색이라 구분이 안 되던 문제 */
+/* 예정(날짜만 잡힌 항목)은 호박색 — 진짜 마감(빨강·⚑, ev-end)과 구분 */
 .ev-due {
-  background: var(--red-bg);
-  color: var(--red);
+  background: var(--amber-bg);
+  color: var(--amber);
 }
 
 .ev-start {

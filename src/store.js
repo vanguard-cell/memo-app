@@ -418,7 +418,7 @@ export function restoreMemos(ids) {
     })
 }
 
-// 보관함에서 꺼내기 — 지정한 마감일을 달아 할 일로 보낸다 (여러 개 한 번에 가능)
+// 보관함에서 꺼내기 — 지정한 날짜(예정)를 달아 할 일로 보낸다 (여러 개 한 번에 가능)
 export function unkeepMemos(ids, due) {
   const now = new Date().toISOString()
   commit({

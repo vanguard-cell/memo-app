@@ -377,7 +377,7 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
           <tr>
             <th>상태</th>
             <th>제목</th>
-            <th>마감·기간</th>
+            <th>날짜·기간</th>
             <th>체크</th>
             <th>작성일</th>
           </tr>
@@ -491,9 +491,9 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
     if (m.period) range = s === e ? md(s) : `${md(s)} ~ ${md(e)}`
     else if (m.status === 'done') range = s === e ? md(e) : `${md(s)} ~ ${md(e)}`
     else {
-      // 미완료는 실제 마감을 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 마감 7.17"
+      // 미완료는 잡힌 날짜를 표기 — 시작점(첫 기록)이 앞서면 "7.10 ~ 예정 7.17"
       const due = m.due || e
-      range = `마감 ${md(due)}`
+      range = `예정 ${md(due)}`
       if (s < due) range = `${md(s)} ~ ${range}`
     }
     return range + (chk ? ` · ${chk.label}` : '')
