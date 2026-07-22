@@ -418,6 +418,24 @@ export function restoreMemos(ids) {
     })
 }
 
+// 보관함에서 꺼내기 — 지정한 마감일을 달아 할 일로 보낸다 (여러 개 한 번에 가능)
+export function unkeepMemos(ids, due) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      ids.includes(m.id) ? { ...m, keep: false, due, updatedAt: now } : m
+    ),
+  })
+  if (!hasSupabase || !session) return
+  pushMemoRows(state.memos.filter((m) => ids.includes(m.id)))
+    .then(() => setAuth({ syncError: false }))
+    .catch((e) => {
+      console.error('동기화 실패', e)
+      setAuth({ syncError: true })
+    })
+}
+
 // 휴지통에서 완전 삭제 — 30일을 기다리지 않고 즉시 지운다. 되돌릴 수 없음.
 // 서버 삭제가 실패하면(오프라인 등) 다음 동기화 때 휴지통에 다시 나타나므로 그때 재시도하면 된다.
 export function purgeMemos(ids) {
