@@ -51,13 +51,20 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   const [rowDrop, setRowDrop] = useState(null)
   const today = todayStr()
 
+  // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
+  // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
+  const ST_RANK = { active: 0, todo: 1, keep: 2, done: 3 }
+
   function orderedEvents(date, evs) {
     const order = (dayOrder && dayOrder[date]) || []
     const idx = (e) => {
       const i = order.indexOf(e.m.id)
       return i === -1 ? Number.MAX_SAFE_INTEGER : i
     }
-    return [...evs].sort((a, b) => idx(a) - idx(b))
+    return [...evs].sort((a, b) => {
+      const r = ST_RANK[memoStatus(a.m)] - ST_RANK[memoStatus(b.m)]
+      return r !== 0 ? r : idx(a) - idx(b)
+    })
   }
 
   function reorder(date, evs, draggedId, targetId, after) {
