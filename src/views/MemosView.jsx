@@ -674,7 +674,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
   // 검색만 적용된 목록 — 달력 보기는 타일(시간) 필터를 무시한다 (달력 자체가 시간 화면이라 겹치면 텅 비어 보임)
   const searchList = memos.filter((m) => {
     if (!words.length) return true
-    const hay = [m.title, ...m.history.map((h) => h.text)]
+    const hay = [m.title, m.desc, ...m.history.map((h) => h.text)]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()

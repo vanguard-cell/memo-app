@@ -1659,6 +1659,43 @@ main {
     width: 400px;
     z-index: 40;
     box-shadow: 0 10px 34px rgba(0, 0, 0, 0.14);
+    /* 오른쪽에서 미끄러져 들어온다 — 어디서 나온 창인지 눈으로 따라가게 (2026-07-22) */
+    animation: panel-slide-in 200ms cubic-bezier(0.22, 0.7, 0.3, 1);
+  }
+}
+
+@keyframes panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 인라인(폰) 상세도 살짝 펼쳐지듯 */
+.detail.detail-inline {
+  animation: panel-fade-in 160ms ease-out;
+}
+
+@keyframes panel-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 움직임을 줄이도록 설정한 기기에서는 애니메이션을 끈다 */
+@media (prefers-reduced-motion: reduce) {
+  .detail,
+  .detail.detail-inline {
+    animation: none;
   }
 }
 
@@ -1849,6 +1886,49 @@ main {
   font-weight: 600;
   color: var(--muted);
   margin-bottom: 6px;
+}
+
+/* 작업 설명 — 진행기록 위에 놓이는 고정 칸 (노션 세부정보의 '작업 설명') */
+.panel-desc {
+  margin: 14px 0 16px;
+}
+
+.panel-sec-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.desc-input {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  resize: none;
+  overflow: hidden;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 9px;
+  margin-left: -9px;
+  outline: none;
+}
+
+.desc-input:hover {
+  background: #f4f3ee;
+}
+
+.desc-input:focus {
+  background: var(--card);
+  border-color: var(--border);
+}
+
+.desc-input::placeholder {
+  color: var(--faint);
 }
 
 .tl-item {

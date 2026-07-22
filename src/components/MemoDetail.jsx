@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
@@ -9,8 +9,38 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
+  // 작업 설명 — 진행기록(시간순 줄)과 달리 "이 일이 뭔지"를 적어두는 고정 칸.
+  // 저장 버튼 없이 자동 저장한다: 타이핑이 멎으면 0.7초 뒤, 포커스가 빠질 때, 패널이 닫힐 때.
+  const [desc, setDesc] = useState(memo.desc || '')
+  const latestRef = useRef(memo.desc || '')
+  const savedRef = useRef(memo.desc || '')
+  const timerRef = useRef(null)
   const st = memoStatus(memo)
   const today = todayStr()
+
+  function fitDesc(el) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }
+
+  function saveDesc() {
+    clearTimeout(timerRef.current)
+    const v = latestRef.current.trim()
+    if (v === savedRef.current) return
+    savedRef.current = v
+    updateMemo(memo.id, { desc: v })
+  }
+
+  function onDescChange(v) {
+    setDesc(v)
+    latestRef.current = v
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(saveDesc, 700)
+  }
+
+  // 패널을 닫거나 다른 메모로 옮겨가도 적던 내용이 날아가지 않게
+  useEffect(() => () => saveDesc(), [])
 
   function startEdit() {
     setForm({
@@ -222,6 +252,20 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline }
             <button className="btn-done" onClick={saveEdit}>저장</button>
           </div>
         )}
+        <div className="panel-desc">
+          <div className="panel-sec-label">작업 설명</div>
+          <textarea
+            ref={fitDesc}
+            className="desc-input"
+            value={desc}
+            placeholder="이 일이 무엇인지 적어두는 칸 — 배경·목적·담당·참고할 내용"
+            onChange={(e) => {
+              onDescChange(e.target.value)
+              fitDesc(e.target)
+            }}
+            onBlur={saveDesc}
+          />
+        </div>
         <Timeline
           history={memo.history}
           onAdd={(t, d) => addHistory(memo.id, t, d)}
