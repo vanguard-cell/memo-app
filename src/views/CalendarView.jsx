@@ -34,6 +34,9 @@ const TYPE = {
 // 마감형 메모는 만기 대신 "마감"으로 표기
 const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.type][0])
 
+// 마감 조각(기한, 마감형 만기)엔 깃발을 붙인다 — 달력 칸·날짜 목록에서 마감이 한눈에 보이게
+const isDeadline = (e) => e.type === 'due' || (e.type === 'end' && e.m.deadline)
+
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
 export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
   const t = new Date()
@@ -253,6 +256,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     onOpen(e.m.id)
                   }}
                 >
+                  {isDeadline(e) && <b>⚑ </b>}
                   {(e.type === 'start' || e.type === 'end') && <b>{typeLabel(e)} </b>}
                   {e.text}
                 </span>
@@ -325,7 +329,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onClick={() => onOpen(e.m.id)}
             >
-              <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
+              <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
               <SendToDateBtn label="날짜 이동" onPick={(dt) => moveEvent(e.m, e.type, sel, dt)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>

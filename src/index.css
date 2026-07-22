@@ -1501,9 +1501,10 @@ main {
   font-weight: 700;
 }
 
+/* 마감은 붉은 계열 — 할일 상태 배지(호박색)와 같은 색이라 구분이 안 되던 문제 */
 .ev-due {
-  background: var(--amber-bg);
-  color: var(--amber);
+  background: var(--red-bg);
+  color: var(--red);
 }
 
 .ev-start {
