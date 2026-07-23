@@ -1,8 +1,10 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import { addMemo, updateMemo, setDayOrder } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
+import MemoDetail from '../components/MemoDetail'
+import useIsNarrow from '../useIsNarrow'
 
 // 메모 조각을 다른 날짜로 — 드래그와 "이동" 버튼이 같이 쓴다.
 // 기한→기한 이동 / 시작·만기 조각→그쪽 끝만 / 중간(기간) 조각→기간 전체 평행이동
@@ -39,6 +41,7 @@ const isDeadline = (e) => e.type === 'end' && e.m.deadline
 
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
 export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
+  const narrow = useIsNarrow()
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
   const [mo, setMo] = useState(t.getMonth())
@@ -49,7 +52,28 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   const [qtext, setQtext] = useState('')
   const [dropTarget, setDropTarget] = useState(null)
   const [rowDrop, setRowDrop] = useState(null)
+  // PC: 상세를 우측 목록 위에 자체 인라인으로 띄운다 (App 우측 패널 대신) —
+  // 폰은 화면이 좁아 기존대로 누른 줄이 그 자리에서 펼쳐진다(onOpen/renderDetail)
+  const [localOpenId, setLocalOpenId] = useState(null)
   const today = todayStr()
+
+  // PC 진입 시 App 우측 패널은 닫아둔다 — 달력 우측 목록과 이중으로 뜨지 않게
+  useEffect(() => {
+    if (!narrow) onOpen(null)
+  }, [narrow]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 항목 열기: PC는 우측 목록 위 인라인(로컬), 폰은 기존 App 인라인
+  const openDetail = (id) => {
+    if (narrow) onOpen(id)
+    else setLocalOpenId((cur) => (cur === id ? null : id))
+  }
+  const localOpen = !narrow && localOpenId ? memos.find((m) => m.id === localOpenId) : null
+
+  // 날짜를 고르면 그날 목록을 보여주고, 열려있던 상세는 닫는다 (다른 날 상세가 위에 남지 않게)
+  const selectDay = (date) => {
+    setSel(date)
+    setLocalOpenId(null)
+  }
 
   // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
   // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
@@ -168,7 +192,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
       return (
         <Fragment key={'ls' + m.id}>
           {d || (
-            <div className="row" onClick={() => onOpen(m.id)}>
+            <div className={'row' + (localOpenId === m.id ? ' row-sel' : '')} onClick={() => openDetail(m.id)}>
               <span className="badge ev-span">기간 중</span>
               <span className="row-title">
                 {m.title} <span className="muted-inline">{diffDays(date, m.period.start) + 1}일차</span>
@@ -185,10 +209,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     setY(nd.getFullYear())
     setMo(nd.getMonth())
     setSel(null)
+    setLocalOpenId(null)
   }
 
   return (
-    <div className="view">
+    <div className={'view' + (!narrow ? ' cal-split' : '')}>
+      <div className="cal-left">
       {filtered && (
         <div className="cal-filter-note">검색·필터 적용 중 — 걸러진 메모만 달력에 보입니다</div>
       )}
@@ -204,7 +230,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             // 이번 달로 이동 + 오늘 날짜 선택 — 이미 이번 달이어도 반응이 보이게
             setY(t.getFullYear())
             setMo(t.getMonth())
-            setSel(today)
+            selectDay(today)
           }}
         >
           오늘
@@ -214,7 +240,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         <div className="cal-periods">
           <span className="cal-periods-label">이 달에 걸친 기간</span>
           {monthPeriods.map((m) => (
-            <button key={m.id} className="cal-period-chip" onClick={() => onOpen(m.id)}>
+            <button key={m.id} className="cal-period-chip" onClick={() => openDetail(m.id)}>
               {m.title}
               <span>{m.deadline ? `~ ${fmtDate(m.period.end)} 마감` : fmtPeriod(m.period)}</span>
             </button>
@@ -240,7 +266,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 (sel === date ? ' cal-sel' : '') +
                 (dropTarget === date ? ' cal-drop' : '')
               }
-              onClick={() => setSel(date)}
+              onClick={() => selectDay(date)}
               onDragOver={(e) => {
                 e.preventDefault()
                 setDropTarget(date)
@@ -260,7 +286,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                   }}
                   onClick={(ev) => {
                     ev.stopPropagation()
-                    onOpen(e.m.id)
+                    // 칩을 누르면 그 날짜를 선택하면서 우측에 상세를 연다
+                    setSel(date)
+                    openDetail(e.m.id)
                   }}
                 >
                   {isDeadline(e) && <b>⚑ </b>}
@@ -273,9 +301,20 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           )
         })}
       </div>
-      {/* 날짜 목록: 선택한 날 하나만, 달력 바로 아래 고정 — 다른 날짜를 누르면 그 자리에서
-          내용만 바뀐다 (폰·PC 공통. 달 전체 나열 + 스크롤 점프는 조작감이 나빠서 제거, 2026-07-19) */}
+      </div>{/* cal-left */}
+      {/* 날짜 목록: PC는 달력 우측 칸, 폰은 달력 아래 — 다른 날짜를 누르면 내용만 바뀐다.
+          PC에서 목록의 한 줄을 누르면 그 상세가 목록 맨 위에 펼쳐진다 (2026-07-23) */}
       {sel && (
+        <div className="cal-right">
+          {localOpen && (
+            <MemoDetail
+              key={localOpen.id}
+              inline
+              memo={localOpen}
+              onOpen={openDetail}
+              onClose={() => setLocalOpenId(null)}
+            />
+          )}
         <div className="cal-detail">
           <div className="cal-detail-title">
             {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
@@ -304,6 +343,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             <div
               className={
                 'row' +
+                (localOpenId === e.m.id ? ' row-sel' : '') +
                 (rowDrop && rowDrop.id === e.m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : '')
               }
               draggable
@@ -334,7 +374,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 if (data.kind !== 'reorder' || data.date !== sel || data.id === e.m.id) return
                 reorder(sel, events[sel] || [], data.id, e.m.id, cur ? cur.after : false)
               }}
-              onClick={() => onOpen(e.m.id)}
+              onClick={() => openDetail(e.m.id)}
             >
               <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
@@ -345,6 +385,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             )
           })}
           {spanningRows(sel)}
+        </div>
         </div>
       )}
     </div>

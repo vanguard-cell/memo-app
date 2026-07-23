@@ -1617,6 +1617,38 @@ main {
   margin-top: 1px;
 }
 
+/* PC: 달력(좌) + 선택 날짜 목록(우) 2단. 폰은 cal-split이 안 붙어 세로로 쌓인다 (2026-07-23) */
+.cal-split {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.cal-split .cal-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-split .cal-right {
+  width: 360px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+/* 2단일 땐 목록이 우측 칸 맨 위에 붙는다 (아래로 밀던 여백 제거) */
+.cal-split .cal-right > .cal-detail:first-child {
+  margin-top: 0;
+}
+
+/* 우측 목록에서 지금 상세가 열린 줄 표시 */
+.row-sel {
+  background: var(--blue-bg);
+  box-shadow: inset 0 0 0 1.5px var(--blue-strong);
+}
+
 .cal-detail {
   margin-top: 14px;
 }
