@@ -75,6 +75,34 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     setLocalOpenId(null)
   }
 
+  // PC: 우측 칸은 [닫힘 → 목록 → 상세] 3단계. 빈 곳 클릭·Esc는 한 단계씩 물러난다
+  // (상세 → 목록 → 닫힘). 달력 칸·항목·우측 칸 안쪽을 누른 건 후퇴가 아니다.
+  useEffect(() => {
+    if (narrow || (!sel && !localOpenId)) return
+    const KEEP =
+      '.cal-cell, .cal-ev, .cal-period-chip, .cal-right, .cal-head, .cal-periods, .cal-filter-note, .mv-top, .inputbar, .sidenav, .topbar, .update-bar, .undo-bar'
+    const stepBack = () => {
+      if (localOpenId) setLocalOpenId(null)
+      else setSel(null)
+    }
+    const onDown = (e) => {
+      if (e.target.closest && e.target.closest(KEEP)) return
+      stepBack()
+    }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      const t = e.target
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      stepBack()
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [narrow, sel, localOpenId])
+
   // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
   // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
   const ST_RANK = { active: 0, todo: 1, keep: 2, done: 3 }
@@ -302,11 +330,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         })}
       </div>
       </div>{/* cal-left */}
-      {/* 날짜 목록: PC는 달력 우측 칸, 폰은 달력 아래 — 다른 날짜를 누르면 내용만 바뀐다.
-          PC에서 목록의 한 줄을 누르면 그 상세가 목록 맨 위에 펼쳐진다 (2026-07-23) */}
-      {sel && (
+      {/* 우측 칸: 날짜를 고르면 그날 목록, 목록의 항목을 누르면 목록이 상세로 바뀐다(교체).
+          빈 곳 클릭·Esc로 상세→목록→닫힘 순으로 물러난다 (PC, 2026-07-23) */}
+      {(sel || localOpen) && (
         <div className="cal-right">
-          {localOpen && (
+          {localOpen ? (
             <MemoDetail
               key={localOpen.id}
               inline
@@ -314,7 +342,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               onOpen={openDetail}
               onClose={() => setLocalOpenId(null)}
             />
-          )}
+          ) : (
         <div className="cal-detail">
           <div className="cal-detail-title">
             {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
@@ -386,6 +414,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           })}
           {spanningRows(sel)}
         </div>
+          )}
         </div>
       )}
     </div>

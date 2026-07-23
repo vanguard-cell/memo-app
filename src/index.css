@@ -1649,6 +1649,19 @@ main {
   box-shadow: inset 0 0 0 1.5px var(--blue-strong);
 }
 
+/* 목록 ↔ 상세가 같은 자리에서 교체될 때 부드럽게 나타나게 */
+.cal-split .cal-right > .cal-detail,
+.cal-split .cal-right > .detail-inline {
+  animation: panel-fade-in 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-split .cal-right > .cal-detail,
+  .cal-split .cal-right > .detail-inline {
+    animation: none;
+  }
+}
+
 .cal-detail {
   margin-top: 14px;
 }
