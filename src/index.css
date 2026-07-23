@@ -1882,6 +1882,56 @@ main {
   word-break: break-all;
 }
 
+/* 제목을 상세 맨 위에서 바로 편집 — 평소엔 테두리 없이 제목처럼 보이다가 포커스 때만 칸이 뜬다 */
+.panel-title-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 3px 7px;
+  margin: -3px -7px;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+}
+
+.panel-title-input:hover {
+  background: #f4f3ee;
+}
+
+.panel-title-input:focus {
+  background: var(--card);
+  border-color: var(--border);
+}
+
+.panel-title-input::placeholder {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+/* 예정일 인라인 선택 */
+.meta-date-input {
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  margin-right: 4px;
+}
+
+/* 제목 없는 새 메모 카드 */
+.kb-untitled {
+  color: var(--faint);
+}
+
 .x {
   border: none;
   background: none;

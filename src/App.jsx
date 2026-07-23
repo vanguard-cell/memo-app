@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
+import {
+  subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
+  addMemo, updateMemo, completeMemo, purgeMemos,
+} from './store'
+import { todayStr } from './parser'
 import { hasSupabase } from './supabase'
 import useIsNarrow from './useIsNarrow'
 import MemoDetail from './components/MemoDetail'
-import ComposePanel from './components/ComposePanel'
 import Login from './components/Login'
 import MemosView from './views/MemosView'
 import TrashView from './views/TrashView'
@@ -56,7 +59,6 @@ export default function App() {
   const dayOrder = useSyncExternalStore(subscribe, getDayOrder)
   const auth = useSyncExternalStore(subscribe, getAuth)
   const [openId, setOpenId] = useState(null)
-  const [compose, setCompose] = useState(null) // 새 메모 작성 패널의 상태(todo/active/done) 또는 null
   const [showTrash, setShowTrash] = useState(false)
   const [showKeep, setShowKeep] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -66,41 +68,57 @@ export default function App() {
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
 
-  // 메모 열기 — 닫히는 중이었다면 취소하고 그대로 이어서 연다 (작성 패널이 떠 있었으면 닫는다)
+  // 제목·기록·설명이 모두 빈 "임시 메모"(+ 로 만들었다가 안 쓰고 닫은 것)는 완전히 지운다.
+  // 톰스톤(휴지통)이 아니라 purge — 빈 초안이 휴지통에 쌓이지 않게.
+  function discardIfEmptyDraft(id) {
+    // 최신 store 상태를 직접 읽는다 (제목 저장 직후 닫힘 등 타이밍에서 stale 방지)
+    const m = getMemos().find((x) => x.id === id)
+    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && !m.keep) {
+      purgeMemos([m.id])
+    }
+  }
+
+  // 메모 열기 — 닫히는 중이었다면 취소하고 그대로 이어서 연다.
+  // 열려있던 게 빈 초안이면 버리고 넘어간다.
   function openMemo(id) {
     clearTimeout(closeTimer.current)
     setClosing(false)
-    setCompose(null)
+    if (openId && openId !== id) discardIfEmptyDraft(openId)
     setOpenId(id)
   }
 
-  // 보드 칸의 + — 그 칸 상태로 새 메모 작성 패널을 연다
+  // 보드 칸의 + — 그 칸 상태의 새 메모(제목 빈칸·오늘 예정)를 바로 만들고 상세를 연다.
+  // 작성 패널을 따로 두지 않고 상세 패널을 그대로 쓴다 (제목·날짜·작업설명·진행기록 동일).
   function openCompose(status) {
     clearTimeout(closeTimer.current)
     setClosing(false)
-    setOpenId(null)
-    setCompose(status)
+    if (openId) discardIfEmptyDraft(openId)
+    const m = addMemo({ title: '', due: todayStr() })
+    if (status === 'active') updateMemo(m.id, { stage: 'active' })
+    else if (status === 'done') completeMemo(m.id)
+    setOpenId(m.id)
   }
 
-  // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다 (상세·작성 패널 공통)
+  // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다. 빈 초안이면 지운다.
   function closePanel() {
+    const closingId = openId
     if (narrow) {
       setOpenId(null)
-      setCompose(null)
+      discardIfEmptyDraft(closingId)
       return
     }
     setClosing(true)
     clearTimeout(closeTimer.current)
     closeTimer.current = setTimeout(() => {
       setOpenId(null)
-      setCompose(null)
       setClosing(false)
+      discardIfEmptyDraft(closingId)
     }, 160)
   }
 
   // 빈 곳을 누르면(또는 Esc) 패널이 닫힌다. 메모를 여는 자리·+ 버튼은 예외.
   useEffect(() => {
-    if (narrow || (!open && !compose)) return
+    if (narrow || !open) return
     const KEEP_OPEN =
       '.detail, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar'
     const onDown = (e) => {
@@ -120,7 +138,7 @@ export default function App() {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
     }
-  }, [narrow, open, compose])
+  }, [narrow, open])
 
   // 폰: 누른 줄 바로 아래에 상세를 펼침 (각 뷰가 자기 줄 밑에서 호출)
   const renderDetail = (id) => {
@@ -139,7 +157,7 @@ export default function App() {
   const sidePanel = !narrow
 
   return (
-    <div className={'app app-mid' + (sidePanel && (open || compose) ? ' with-detail' : '')}>
+    <div className={'app app-mid' + (sidePanel && open ? ' with-detail' : '')}>
       {updateReady && (
         <div className="update-bar">
           새 버전이 배포됐습니다
@@ -235,16 +253,7 @@ export default function App() {
             <main>
               <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} onCompose={openCompose} renderDetail={renderDetail} />
             </main>
-            {/* 작성 패널: PC는 오른쪽 고정, 폰은 화면을 덮는 오버레이(.detail 모바일 스타일) */}
-            {compose && (
-              <ComposePanel
-                status={compose}
-                closing={closing}
-                onClose={closePanel}
-                onCreated={(id) => openMemo(id)}
-              />
-            )}
-            {sidePanel && !compose && open && (
+            {sidePanel && open && (
               <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
             )}
           </div>

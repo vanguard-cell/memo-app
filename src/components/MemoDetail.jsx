@@ -15,10 +15,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const latestRef = useRef(memo.desc || '')
   const savedRef = useRef(memo.desc || '')
   const timerRef = useRef(null)
+  // 제목 — 상세 맨 위에서 바로 쓴다(+ 로 만든 새 메모는 빈 제목으로 열려 자동 포커스). 자동 저장.
+  const [title, setTitle] = useState(memo.title || '')
+  const titleLatest = useRef(memo.title || '')
+  const titleSaved = useRef(memo.title || '')
   const st = memoStatus(memo)
   const today = todayStr()
 
-  function fitDesc(el) {
+  function fitTA(el) {
     if (!el) return
     el.style.height = 'auto'
     el.style.height = el.scrollHeight + 'px'
@@ -39,8 +43,15 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     timerRef.current = setTimeout(saveDesc, 700)
   }
 
+  function saveTitle() {
+    const v = titleLatest.current.trim()
+    if (v === titleSaved.current) return
+    titleSaved.current = v
+    updateMemo(memo.id, { title: v })
+  }
+
   // 패널을 닫거나 다른 메모로 옮겨가도 적던 내용이 날아가지 않게
-  useEffect(() => () => saveDesc(), [])
+  useEffect(() => () => { saveTitle(); saveDesc() }, [])
 
   function startEdit() {
     setForm({
@@ -85,7 +96,27 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     >
         <div className="panel-head">
           <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
-          <span className="panel-title">{memo.title}</span>
+          <textarea
+            className="panel-title-input"
+            value={title}
+            rows={1}
+            ref={fitTA}
+            autoFocus={!memo.title}
+            placeholder="제목을 입력하세요"
+            onChange={(e) => {
+              setTitle(e.target.value)
+              titleLatest.current = e.target.value
+              fitTA(e.target)
+            }}
+            onBlur={saveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveTitle()
+                e.target.blur()
+              }
+            }}
+          />
           {inline ? (
             <button className="fold-btn" onClick={onClose}>접기</button>
           ) : (
@@ -108,10 +139,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           )}
           {memo.due && !memo.period && (
             <span className="meta-date">
-              예정 {fmtDate(memo.due)}
+              예정{' '}
+              {/* 날짜를 바로 고른다 — 새 메모는 기본이 오늘이라 안 건드리고 넘어가도 된다 */}
+              <input
+                type="date"
+                className="meta-date-input"
+                value={memo.due}
+                onChange={(e) => e.target.value && updateMemo(memo.id, { due: e.target.value })}
+              />
               {dueD !== null && (
                 <b className={dueD < 0 ? 't-red' : ''}>
-                  {' · '}
                   {dueD < 0 ? `${-dueD}일 지남` : dueD === 0 ? '오늘' : `D-${dueD}`}
                 </b>
               )}
@@ -258,13 +295,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
         <div className="panel-desc">
           <div className="panel-sec-label">작업 설명</div>
           <textarea
-            ref={fitDesc}
+            ref={fitTA}
             className="desc-input"
             value={desc}
             placeholder="이 일이 무엇인지 적어두는 칸 — 배경·목적·담당·참고할 내용"
             onChange={(e) => {
               onDescChange(e.target.value)
-              fitDesc(e.target)
+              fitTA(e.target)
             }}
             onBlur={saveDesc}
           />

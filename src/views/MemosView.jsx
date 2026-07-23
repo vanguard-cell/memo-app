@@ -99,7 +99,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       onDrop={onCardDrop}
       onClick={() => onOpen(m.id)}
     >
-      <div className="kb-title">{m.title}</div>
+      <div className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
       {(badge || chk || doneDate || nextLine) && (
         <div className="kb-meta">
