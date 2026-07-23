@@ -1511,6 +1511,7 @@ main {
 }
 
 .cal-cell {
+  position: relative;
   min-height: 108px;
   background: var(--card);
   border: 1px solid var(--border);
@@ -1519,6 +1520,34 @@ main {
   font-size: 12px;
   cursor: pointer;
   overflow: hidden;
+}
+
+/* 칸 우측 상단 + — 평소엔 숨고, 칸에 마우스를 올리면 나타난다 */
+.cal-cell-add {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  line-height: 1;
+  font-size: 15px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 90ms;
+}
+
+.cal-cell:hover .cal-cell-add {
+  opacity: 1;
+}
+
+.cal-cell-add:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+  background: #fafaf7;
 }
 
 /* 빈 곳에 마우스: 칸이 반응 — "날짜를 누르면 그날 목록" */

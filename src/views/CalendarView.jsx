@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
-import { addMemo, updateMemo, setDayOrder } from '../store'
+import { addMemo, updateMemo, setDayOrder, getMemos, purgeMemos } from '../store'
 import SendToDateBtn from '../components/SendToDateBtn'
 import MemoDetail from '../components/MemoDetail'
 import useIsNarrow from '../useIsNarrow'
@@ -62,15 +62,40 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     if (!narrow) onOpen(null)
   }, [narrow]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 제목·기록·설명이 모두 빈 "초안"(칸 + 로 만들었다가 안 쓴 것)은 완전히 지운다 (휴지통 안 남김)
+  const discardIfEmptyDraft = (id) => {
+    const m = getMemos().find((x) => x.id === id)
+    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && !m.keep) {
+      purgeMemos([m.id])
+    }
+  }
+  const closeLocal = () => {
+    const id = localOpenId
+    setLocalOpenId(null)
+    if (id) discardIfEmptyDraft(id)
+  }
+
   // 항목 열기: PC는 우측 목록 위 인라인(로컬), 폰은 기존 App 인라인
   const openDetail = (id) => {
-    if (narrow) onOpen(id)
-    else setLocalOpenId((cur) => (cur === id ? null : id))
+    if (narrow) return onOpen(id)
+    if (localOpenId === id) return closeLocal()
+    if (localOpenId) discardIfEmptyDraft(localOpenId)
+    setLocalOpenId(id)
   }
   const localOpen = !narrow && localOpenId ? memos.find((m) => m.id === localOpenId) : null
 
+  // 칸의 + — 그 날짜로 새 초안 메모를 만들고 상세를 연다 (보드 +와 같은 흐름)
+  const newMemoOn = (date) => {
+    if (localOpenId) discardIfEmptyDraft(localOpenId)
+    const m = addMemo({ title: '', due: date })
+    setSel(date)
+    if (narrow) onOpen(m.id)
+    else setLocalOpenId(m.id)
+  }
+
   // 날짜를 고르면 그날 목록을 보여주고, 열려있던 상세는 닫는다 (다른 날 상세가 위에 남지 않게)
   const selectDay = (date) => {
+    if (localOpenId) discardIfEmptyDraft(localOpenId)
     setSel(date)
     setLocalOpenId(null)
   }
@@ -82,8 +107,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     const KEEP =
       '.cal-cell, .cal-ev, .cal-period-chip, .cal-right, .cal-head, .cal-periods, .cal-filter-note, .mv-top, .inputbar, .sidenav, .topbar, .update-bar, .undo-bar'
     const stepBack = () => {
-      if (localOpenId) setLocalOpenId(null)
-      else setSel(null)
+      if (localOpenId) {
+        discardIfEmptyDraft(localOpenId)
+        setLocalOpenId(null)
+      } else setSel(null)
     }
     const onDown = (e) => {
       if (e.target.closest && e.target.closest(KEEP)) return
@@ -227,6 +254,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
 
   function move(n) {
     const nd = new Date(y, mo + n, 1)
+    if (localOpenId) discardIfEmptyDraft(localOpenId)
     setY(nd.getFullYear())
     setMo(nd.getMonth())
     setSel(null)
@@ -285,6 +313,19 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               onDrop={(e) => onDrop(date, e)}
             >
               <span className="cal-day">{d}</span>
+              {/* 칸 우측 상단 + — 그 날짜로 새 메모. PC에서 칸에 마우스를 올리면 나타난다 */}
+              {!narrow && (
+                <button
+                  className="cal-cell-add"
+                  title="이 날짜에 새 메모"
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    newMemoOn(date)
+                  }}
+                >
+                  +
+                </button>
+              )}
               {evs.slice(0, 4).map((e, j) => (
                 <span
                   key={j}
@@ -396,7 +437,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 inline
                 memo={localOpen}
                 onOpen={openDetail}
-                onClose={() => setLocalOpenId(null)}
+                onClose={closeLocal}
               />
             </div>
           )}
