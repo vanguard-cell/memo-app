@@ -76,7 +76,7 @@ export default function InputBar() {
       <div className="input-row">
         <input
           value={text}
-          placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신 / A업체 계약 26.5.30~27.5.29'
+          placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신'
           onChange={(e) => {
             setText(e.target.value)
             if (!e.target.value.trim()) {

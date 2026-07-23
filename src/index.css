@@ -825,9 +825,10 @@ main {
 }
 
 .mv-search {
-  flex: 1;
+  flex: 1 1 auto;
   width: auto;
   min-width: 220px;
+  max-width: 520px;
   margin-bottom: 0;
 }
 
@@ -842,6 +843,7 @@ main {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* 보드 */
@@ -1628,16 +1630,17 @@ main {
     align-items: start;
   }
 
-  /* 달력 보기에서만 본문·입력창을 화면 끝까지 넓혀 우측 절반을 목록·상세로 쓴다
-     (보드·표는 cal-split이 없어 기존 폭 유지) */
+  /* 달력 보기에서만 본문을 화면 끝까지 넓혀 우측 절반을 목록·상세로 쓴다
+     (보드·표는 cal-split이 없어 기존 폭 유지). 단 위쪽 입력창·툴바는 늘리지 않는다 —
+     달력만 넓어지고 메뉴 줄은 적당한 폭으로 왼쪽에 둔다 (2026-07-24) */
   .app-mid main:has(.cal-split),
   .app-wide main:has(.cal-split) {
     max-width: none;
   }
 
-  .app-mid .inputbar:has(~ .layout .cal-split),
-  .app-wide .inputbar:has(~ .layout .cal-split) {
-    max-width: none;
+  /* 본문이 넓어져도 툴바(타일·검색·보기전환)는 화면 끝까지 늘어나지 않게 */
+  main:has(.cal-split) .mv-top {
+    max-width: 1240px;
   }
 
   /* 우측 절반: 목록(고정 폭) + 상세(나머지). 상세가 열려도 목록이 안 밀린다 */
