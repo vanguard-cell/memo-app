@@ -1,6 +1,5 @@
 import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
-import InputBar from '../components/InputBar'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
 import { todayStr } from '../parser'
@@ -114,7 +113,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
   )
 }
 
-function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
+function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
   const today = todayStr()
   const narrow = useIsNarrow()
   const [over, setOver] = useState(null)
@@ -202,10 +201,12 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
           <div className="kb-head">
             <span className="badge st-todo">할일</span>
             <span className="kb-count">{by.todo.length}</span>
+            {onCompose && <button className="kb-add" title="이 칸에 새 메모" onClick={() => onCompose('todo')}>+</button>}
           </div>
           <div className="kb-head">
             <span className="badge st-active">진행중</span>
             <span className="kb-count">{by.active.length}</span>
+            {onCompose && <button className="kb-add" title="이 칸에 새 메모" onClick={() => onCompose('active')}>+</button>}
           </div>
           {rows === 0 && (
             <div className="empty small" style={{ gridColumn: '1 / -1' }}>
@@ -287,6 +288,7 @@ function BoardView({ memos, dayOrder, onOpen, renderDetail }) {
               <div className="kb-head">
                 <span className={'badge st-' + id}>{label}</span>
                 <span className="kb-count">{by[id].length}</span>
+                {onCompose && <button className="kb-add" title="이 칸에 새 메모" onClick={() => onCompose(id)}>+</button>}
               </div>
               {shown.map((m) => (
                 <Fragment key={m.id}>
@@ -630,7 +632,7 @@ const VIEWS = [
   ['timeline', '타임라인'],
 ]
 
-export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
+export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
   const [q, setQ] = useState('')
   // 폰은 들어올 때 항상 보드부터 — 마지막 보기 기억은 PC만 (사용자 요청 2026-07-19)
   const [view, setView] = useState(() =>
@@ -662,9 +664,14 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
 
   return (
     <div className="view">
-      {/* 위쪽: 던지기 입력 + 보기전환을 한 줄에, 그 아래 검색 한 줄. 타일(오늘/마감·만기)은 제거함 (2026-07-24) */}
+      {/* 위쪽: 검색 + 보기전환 한 줄. 새 메모는 보드 칸의 + 로 만든다 (던지기 입력은 2026-07-24 제거) */}
       <div className="mv-head">
-        <InputBar />
+        <input
+          className="search-input mv-search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="검색 — 제목·진행기록, 보관·완료까지"
+        />
         <div className="mv-toggle">
           {VIEWS.map(([id, label]) => (
             <button key={id} className={'pill' + (view === id ? ' on' : '')} onClick={() => pick(id)}>
@@ -673,13 +680,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           ))}
         </div>
       </div>
-      <input
-        className="search-input mv-search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="검색 — 제목·진행기록, 보관·완료까지"
-      />
-      {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
+      {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
           memos={searchList}

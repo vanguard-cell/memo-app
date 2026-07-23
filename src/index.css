@@ -815,15 +815,15 @@ main {
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
-/* 위쪽 줄: 던지기 입력(왼쪽, 늘어남) + 보기전환(오른쪽) */
+/* 위쪽 줄: 검색(왼쪽, 늘어남) + 보기전환(오른쪽). 새 메모는 보드 칸의 + 로 만든다 */
 .mv-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
-.mv-head .inputbar {
+.mv-head .mv-search {
   flex: 1;
   min-width: 0;
   margin-bottom: 0;
@@ -831,31 +831,53 @@ main {
 
 .mv-head .mv-toggle {
   flex-shrink: 0;
-  margin-top: 5px;
 }
 
-/* 검색은 던지기 아래 한 줄 — 전체 폭 */
 .mv-search {
-  display: block;
-  width: 100%;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
-/* 좁은 화면(폰·작은 태블릿): 던지기 입력이 보기전환에 밀려 찌그러지지 않게 세로로 쌓는다 */
+/* 좁은 화면(폰): 검색과 보기전환을 세로로 쌓는다 */
 @media (max-width: 899px) {
   .mv-head {
-    flex-direction: column;
+    flex-wrap: wrap;
   }
 
-  .mv-head .inputbar {
-    width: 100%;
+  .mv-head .mv-search {
+    flex-basis: 100%;
   }
 
   .mv-head .mv-toggle {
-    margin-top: 0;
     overflow-x: auto;
     max-width: 100%;
   }
+}
+
+/* 보드 칸 헤더의 + — 그 칸(할일/진행중/완료)에 새 메모 작성 패널을 연다 */
+.kb-add {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  line-height: 1;
+  font-size: 17px;
+  color: var(--muted);
+  border: 1px solid transparent;
+  background: none;
+  border-radius: 6px;
+}
+
+.kb-add:hover {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* 작성 패널: 상세 패널과 같은 자리·모양, 안의 입력창은 테두리 없이 꽉 차게 */
+.compose-panel .inputbar {
+  border: none;
+  padding: 0;
+  margin: 8px 0 0;
 }
 
 .kb-done-date {
@@ -1663,10 +1685,9 @@ main {
     max-width: none;
   }
 
-  /* 던지기·보기전환 줄과 검색 줄은 달력의 왼쪽 절반 폭에 딱 맞춘다 —
+  /* 검색·보기전환 줄은 달력의 왼쪽 절반 폭에 딱 맞춘다 —
      오른쪽 절반은 목록·상세 전용으로 비운다. 50% - (그리드 갭 24px)/2 = cal-left 폭 */
-  main:has(.cal-split) .mv-head,
-  main:has(.cal-split) .mv-search {
+  main:has(.cal-split) .mv-head {
     max-width: calc(50% - 12px);
   }
 

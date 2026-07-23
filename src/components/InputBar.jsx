@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { parse, todayStr } from '../parser'
-import { addMemo } from '../store'
+import { addMemo, updateMemo, completeMemo } from '../store'
 import { fmtDate, fmtPeriod } from '../derive'
 import SendToDateBtn from './SendToDateBtn'
 
@@ -16,7 +16,9 @@ function Chip({ cls, label, onX }) {
   )
 }
 
-export default function InputBar() {
+// status가 주어지면 "작성 패널" 모드 — 저장 시 그 칸(할일/진행중/완료)으로 만들고 onSaved(id)를 부른다.
+// status가 없으면 예전 상단 던지기 입력(현재는 작성 패널에서만 사용).
+export default function InputBar({ status, onSaved }) {
   const [text, setText] = useState('')
   const [removed, setRemoved] = useState({})
   // "날짜 지정" 버튼으로 직접 고른 기한 — 글에 쓴 날짜보다 우선
@@ -49,18 +51,23 @@ export default function InputBar() {
     const title = dateAccepted && parsed.cleaned ? parsed.cleaned : t
     // 날짜가 없으면 오늘 기한으로 — 던진 순간부터 오늘 할 일로 들어간다
     const due = eff.due || (eff.period ? null : todayStr())
-    addMemo({ title, period: eff.period, due, deadline: eff.deadline })
+    const memo = addMemo({ title, period: eff.period, due, deadline: eff.deadline })
+    // 작성 패널 모드: 누른 칸의 상태로 만든다 (진행중=stage 지정, 완료=바로 완료 처리)
+    if (status === 'active') updateMemo(memo.id, { stage: 'active' })
+    else if (status === 'done') completeMemo(memo.id)
     reset()
-    say('새 메모로 저장했습니다')
+    if (onSaved) onSaved(memo.id)
+    else say('새 메모로 저장했습니다')
   }
 
   // 보관: 기한 없이 저장 — 오늘·달력에 안 뜨고 메모탭 검색으로만 꺼내본다
   function saveKeep() {
     const t = text.trim()
     if (!t) return
-    addMemo({ title: t, keep: true })
+    const memo = addMemo({ title: t, keep: true })
     reset()
-    say('보관함에 저장했습니다 — 필요할 때 메모탭에서 검색하세요')
+    if (onSaved) onSaved(memo.id)
+    else say('보관함에 저장했습니다 — 필요할 때 메모탭에서 검색하세요')
   }
 
   function onKeyDown(e) {
@@ -76,7 +83,8 @@ export default function InputBar() {
       <div className="input-row">
         <input
           value={text}
-          placeholder='여기에 그냥 던지세요 — 예: 7/20 견적 회신'
+          autoFocus={!!status}
+          placeholder={status ? '무엇을 할지 한 줄로 — 예: 7/20 견적 회신' : '여기에 그냥 던지세요 — 예: 7/20 견적 회신'}
           onChange={(e) => {
             setText(e.target.value)
             if (!e.target.value.trim()) {
@@ -86,7 +94,7 @@ export default function InputBar() {
           }}
           onKeyDown={onKeyDown}
         />
-        <button className="btn-save" onClick={saveNew}>저장</button>
+        <button className="btn-save" onClick={saveNew}>{status ? '추가' : '저장'}</button>
       </div>
       <div className="chips">
           {!nothing && <span className="chips-label">인식됨</span>}
@@ -127,6 +135,7 @@ export default function InputBar() {
                 }}
               />
             )}
+            {/* 보관함에 넣기 — 던지기 입력이 사라져서, 새 메모 작성 패널이 유일한 보관 생성 통로다 */}
             <button className="pill pill-keep" title="날짜 없이 저장 — 오늘·달력에 안 뜨고 검색으로만 꺼내봅니다" onClick={saveKeep}>
               보관함에 넣기
             </button>

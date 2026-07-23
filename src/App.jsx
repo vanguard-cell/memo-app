@@ -3,6 +3,7 @@ import { subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadB
 import { hasSupabase } from './supabase'
 import useIsNarrow from './useIsNarrow'
 import MemoDetail from './components/MemoDetail'
+import ComposePanel from './components/ComposePanel'
 import Login from './components/Login'
 import MemosView from './views/MemosView'
 import TrashView from './views/TrashView'
@@ -55,6 +56,7 @@ export default function App() {
   const dayOrder = useSyncExternalStore(subscribe, getDayOrder)
   const auth = useSyncExternalStore(subscribe, getAuth)
   const [openId, setOpenId] = useState(null)
+  const [compose, setCompose] = useState(null) // 새 메모 작성 패널의 상태(todo/active/done) 또는 null
   const [showTrash, setShowTrash] = useState(false)
   const [showKeep, setShowKeep] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -64,43 +66,53 @@ export default function App() {
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
 
-  // 메모 열기 — 닫히는 중이었다면 취소하고 그대로 이어서 연다
+  // 메모 열기 — 닫히는 중이었다면 취소하고 그대로 이어서 연다 (작성 패널이 떠 있었으면 닫는다)
   function openMemo(id) {
     clearTimeout(closeTimer.current)
     setClosing(false)
+    setCompose(null)
     setOpenId(id)
   }
 
-  // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다
-  function closeDetail() {
+  // 보드 칸의 + — 그 칸 상태로 새 메모 작성 패널을 연다
+  function openCompose(status) {
+    clearTimeout(closeTimer.current)
+    setClosing(false)
+    setOpenId(null)
+    setCompose(status)
+  }
+
+  // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다 (상세·작성 패널 공통)
+  function closePanel() {
     if (narrow) {
       setOpenId(null)
+      setCompose(null)
       return
     }
     setClosing(true)
     clearTimeout(closeTimer.current)
     closeTimer.current = setTimeout(() => {
       setOpenId(null)
+      setCompose(null)
       setClosing(false)
     }, 160)
   }
 
-  // 빈 곳을 누르면(또는 Esc) 패널이 닫힌다. 메모를 여는 자리들은 예외 —
-  // 거기서는 닫는 대신 그 메모로 바뀌어야 한다.
+  // 빈 곳을 누르면(또는 Esc) 패널이 닫힌다. 메모를 여는 자리·+ 버튼은 예외.
   useEffect(() => {
-    if (narrow || !open) return
+    if (narrow || (!open && !compose)) return
     const KEEP_OPEN =
-      '.detail, .kb-card, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar'
+      '.detail, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar'
     const onDown = (e) => {
       if (e.target.closest && e.target.closest(KEEP_OPEN)) return
-      closeDetail()
+      closePanel()
     }
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       // 입력 중일 땐 그 입력의 Esc(수정 취소)가 우선
       const t = e.target
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
-      closeDetail()
+      closePanel()
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -108,7 +120,7 @@ export default function App() {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
     }
-  }, [narrow, open])
+  }, [narrow, open, compose])
 
   // 폰: 누른 줄 바로 아래에 상세를 펼침 (각 뷰가 자기 줄 밑에서 호출)
   const renderDetail = (id) => {
@@ -127,7 +139,7 @@ export default function App() {
   const sidePanel = !narrow
 
   return (
-    <div className={'app app-mid' + (sidePanel && open ? ' with-detail' : '')}>
+    <div className={'app app-mid' + (sidePanel && (open || compose) ? ' with-detail' : '')}>
       {updateReady && (
         <div className="update-bar">
           새 버전이 배포됐습니다
@@ -215,16 +227,25 @@ export default function App() {
               />
             </main>
             {sidePanel && open && (
-              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closeDetail} />
+              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
             )}
           </div>
         ) : (
           <div className="layout">
             <main>
-              <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} renderDetail={renderDetail} />
+              <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} onCompose={openCompose} renderDetail={renderDetail} />
             </main>
-            {sidePanel && open && (
-              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closeDetail} />
+            {/* 작성 패널: PC는 오른쪽 고정, 폰은 화면을 덮는 오버레이(.detail 모바일 스타일) */}
+            {compose && (
+              <ComposePanel
+                status={compose}
+                closing={closing}
+                onClose={closePanel}
+                onCreated={(id) => openMemo(id)}
+              />
+            )}
+            {sidePanel && !compose && open && (
+              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
             )}
           </div>
         )}
