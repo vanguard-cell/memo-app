@@ -146,18 +146,21 @@ main {
     max-width: 880px;
   }
 
-  .app-mid .inputbar,
   .app-mid main {
     max-width: 1240px;
   }
 
-  .app-wide .inputbar,
   .app-wide main {
     max-width: 1360px;
   }
 
-  /* 패널이 열리면 본문은 왼쪽 절반(정중앙까지)만 쓰고, 상세 패널이 오른쪽 절반을 채운다 —
-     노션처럼 분할선이 화면 정중앙 (2026-07-24) */
+  /* 보드는 상세를 열든 닫든 항상 왼쪽 절반(정중앙까지)에 고정 — 달력처럼 열고 닫아도
+     칸이 안 움직인다. 오른쪽 절반은 상세 자리(닫혀 있으면 빈다). (2026-07-24) */
+  main:has(.kb-grid-wrap) {
+    max-width: var(--half);
+  }
+
+  /* 표·타임라인은 평소 넓게 쓰다가, 상세를 열면 왼쪽 절반으로 줄어 상세에 안 가려진다 */
   .app.with-detail main {
     max-width: var(--half);
   }
