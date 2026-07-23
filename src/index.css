@@ -1617,30 +1617,51 @@ main {
   margin-top: 1px;
 }
 
-/* PC: 달력(좌) + 선택 날짜 목록(우) 2단. 폰은 cal-split이 안 붙어 세로로 쌓인다 (2026-07-23) */
-.cal-split {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
+/* PC: 화면을 좌우 절반으로 — 왼쪽 절반은 달력(본문), 오른쪽 절반은 목록·상세.
+   달력은 왼쪽 절반에 고정이라 목록·상세가 열려도 밀리거나 크기가 변하지 않는다.
+   비율(1fr:1fr)이라 화면이 커져도 공간 배분은 그대로다. 폰은 cal-split이 안 붙어 세로로 쌓인다. (2026-07-24) */
+@media (min-width: 900px) {
+  .cal-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* 달력 보기에서만 본문·입력창을 화면 끝까지 넓혀 우측 절반을 목록·상세로 쓴다
+     (보드·표는 cal-split이 없어 기존 폭 유지) */
+  .app-mid main:has(.cal-split),
+  .app-wide main:has(.cal-split) {
+    max-width: none;
+  }
+
+  .app-mid .inputbar:has(~ .layout .cal-split),
+  .app-wide .inputbar:has(~ .layout .cal-split) {
+    max-width: none;
+  }
+
+  /* 우측 절반: 목록(고정 폭) + 상세(나머지). 상세가 열려도 목록이 안 밀린다 */
+  .cal-split .cal-right {
+    display: grid;
+    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    position: sticky;
+    top: 8px;
+  }
+
+  .cal-split .cal-right > .cal-detail,
+  .cal-split .cal-right > .cal-detailcol {
+    min-width: 0;
+    max-height: calc(100vh / var(--zoom) - 32px);
+    overflow-y: auto;
+    margin-top: 0;
+    animation: panel-fade-in 160ms ease-out;
+  }
 }
 
 .cal-split .cal-left {
-  flex: 1;
   min-width: 0;
-}
-
-.cal-split .cal-right {
-  width: 360px;
-  flex-shrink: 0;
-  position: sticky;
-  top: 8px;
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-}
-
-/* 2단일 땐 목록이 우측 칸 맨 위에 붙는다 (아래로 밀던 여백 제거) */
-.cal-split .cal-right > .cal-detail:first-child {
-  margin-top: 0;
 }
 
 /* 우측 목록에서 지금 상세가 열린 줄 표시 */
@@ -1649,15 +1670,9 @@ main {
   box-shadow: inset 0 0 0 1.5px var(--blue-strong);
 }
 
-/* 목록 ↔ 상세가 같은 자리에서 교체될 때 부드럽게 나타나게 */
-.cal-split .cal-right > .cal-detail,
-.cal-split .cal-right > .detail-inline {
-  animation: panel-fade-in 160ms ease-out;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .cal-split .cal-right > .cal-detail,
-  .cal-split .cal-right > .detail-inline {
+  .cal-split .cal-right > .cal-detailcol {
     animation: none;
   }
 }

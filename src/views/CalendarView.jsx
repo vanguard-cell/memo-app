@@ -330,19 +330,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         })}
       </div>
       </div>{/* cal-left */}
-      {/* 우측 칸: 날짜를 고르면 그날 목록, 목록의 항목을 누르면 목록이 상세로 바뀐다(교체).
-          빈 곳 클릭·Esc로 상세→목록→닫힘 순으로 물러난다 (PC, 2026-07-23) */}
+      {/* 우측 절반: 날짜를 고르면 그날 목록이 왼쪽에, 목록의 항목을 누르면 그 오른쪽에 상세가 나란히.
+          빈 곳 클릭·Esc로 상세→목록→닫힘 순으로 물러난다. 왼쪽 달력은 그대로 (PC, 2026-07-24) */}
       {(sel || localOpen) && (
         <div className="cal-right">
-          {localOpen ? (
-            <MemoDetail
-              key={localOpen.id}
-              inline
-              memo={localOpen}
-              onOpen={openDetail}
-              onClose={() => setLocalOpenId(null)}
-            />
-          ) : (
+          {sel && (
         <div className="cal-detail">
           <div className="cal-detail-title">
             {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
@@ -414,6 +406,17 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           })}
           {spanningRows(sel)}
         </div>
+          )}
+          {localOpen && (
+            <div className="cal-detailcol">
+              <MemoDetail
+                key={localOpen.id}
+                inline
+                memo={localOpen}
+                onOpen={openDetail}
+                onClose={() => setLocalOpenId(null)}
+              />
+            </div>
           )}
         </div>
       )}
