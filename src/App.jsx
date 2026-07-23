@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics } from './store'
 import { hasSupabase } from './supabase'
 import useIsNarrow from './useIsNarrow'
-import InputBar from './components/InputBar'
 import MemoDetail from './components/MemoDetail'
 import Login from './components/Login'
 import MemosView from './views/MemosView'
@@ -220,17 +219,14 @@ export default function App() {
             )}
           </div>
         ) : (
-          <>
-            <InputBar />
-            <div className="layout">
-              <main>
-                <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} renderDetail={renderDetail} />
-              </main>
-              {sidePanel && open && (
-                <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closeDetail} />
-              )}
-            </div>
-          </>
+          <div className="layout">
+            <main>
+              <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} renderDetail={renderDetail} />
+            </main>
+            {sidePanel && open && (
+              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closeDetail} />
+            )}
+          </div>
         )}
       </div>
     </div>

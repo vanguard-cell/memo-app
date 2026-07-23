@@ -195,15 +195,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
 
   const first = `${y}-${pad(mo + 1)}-01`
   const last = `${y}-${pad(mo + 1)}-${pad(dim)}`
-  // 이 달에 걸쳐 있는 기간 메모 — 장기(31일 초과) 기간은 칸에 안 그려지므로 여기서 존재를 알린다
-  const monthPeriods = memos
-    .filter(
-      (m) =>
-        m.period && m.period.start && m.period.end && m.status !== 'done' &&
-        m.period.start <= last && m.period.end >= first
-    )
-    .sort((a, b) => a.period.end.localeCompare(b.period.end))
   // 그 날짜에 걸쳐 있지만 칸에 조각이 없는 장기 기간 — 날짜 목록에 "기간 중"으로 끼워준다
+  // ("이 달에 걸친 기간" 칩 줄은 2026-07-24 제거 — 검색이 그 자리를 대체)
   const longSpanning = (date) =>
     memos.filter(
       (m) =>
@@ -264,17 +257,6 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           오늘
         </button>
       </div>
-      {monthPeriods.length > 0 && (
-        <div className="cal-periods">
-          <span className="cal-periods-label">이 달에 걸친 기간</span>
-          {monthPeriods.map((m) => (
-            <button key={m.id} className="cal-period-chip" onClick={() => openDetail(m.id)}>
-              {m.title}
-              <span>{m.deadline ? `~ ${fmtDate(m.period.end)} 마감` : fmtPeriod(m.period)}</span>
-            </button>
-          ))}
-        </div>
-      )}
       <div className="cal-grid">
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
           <div key={d} className={'cal-dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '')}>

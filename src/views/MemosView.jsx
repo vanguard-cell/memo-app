@@ -1,5 +1,6 @@
 import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
+import InputBar from '../components/InputBar'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
 import { todayStr } from '../parser'
@@ -38,26 +39,7 @@ function checkInfo(m) {
 // 체크 배지 색: 진행 중엔 초록, 완료된 메모는 회색 — 단 체크가 남은 채 완료된 건 노랑(놓친 건지 확인용)
 const checkCls = (st, chk) => (st === 'done' ? (chk.complete ? 'b-gray' : 'b-amber') : 'b-teal')
 
-// ---------- 요약 타일 (오늘 탭 대체) ----------
-
-// 기한/만기의 D-day. 완료·보관·스누즈된 건 제외.
-function dueInfo(m, today) {
-  if (m.status === 'done' || m.keep) return null
-  if (m.snoozeUntil && m.snoozeUntil > today) return null
-  const end = m.due || (m.period && m.period.end)
-  if (!end) return null
-  return { dd: diffDays(end, today), isEnd: !m.due && !!(m.period && m.period.end) }
-}
-
-// 타일은 둘뿐: 오늘(밀림 포함 — 밀린 게 있으면 빨갛게 병기), 만기(계약 만기 D-60 레이더)
-function tileMatch(m, id, today) {
-  const info = dueInfo(m, today)
-  if (!info) return false
-  if (id === 'late') return info.dd < 0
-  if (id === 'today') return info.dd <= 0
-  if (id === 'end') return info.isEnd && info.dd >= 0 && info.dd <= 60
-  return false
-}
+// 오늘/마감·만기 요약 타일(시간 필터)은 2026-07-24 제거 — 급한 순서는 보드 정렬·D-n 배지 색으로 본다.
 
 const byUpdated = (a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)
 
@@ -656,20 +638,8 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       ? 'board'
       : localStorage.getItem('memo-view') || 'board'
   )
-  // 어디서든 전체 보기로 시작 — 폰만 필터가 켜진 채 시작하니 "메모가 없다"로 오해했음 (2026-07-18)
-  const [timeFilter, setTimeFilter] = useState(null)
   const today = todayStr()
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
-
-  const counts = {}
-  for (const id of ['late', 'today', 'end']) {
-    counts[id] = memos.filter((m) => tileMatch(m, id, today)).length
-  }
-  // 타일 표기는 "오늘 = 딱 오늘 기한"과 "밀림"을 분리 (클릭하면 둘 다 모아서 보여줌)
-  counts.todayOnly = memos.filter((m) => {
-    const info = dueInfo(m, today)
-    return info && info.dd === 0
-  }).length
 
   // 검색만 적용된 목록 — 달력 보기는 타일(시간) 필터를 무시한다 (달력 자체가 시간 화면이라 겹치면 텅 비어 보임)
   const searchList = memos.filter((m) => {
@@ -680,45 +650,21 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
       .toLowerCase()
     return words.every((w) => hay.includes(w))
   })
-  const list = searchList.filter((m) => !timeFilter || tileMatch(m, timeFilter, today))
+  const list = searchList
 
   function pick(v) {
     setView(v)
     localStorage.setItem('memo-view', v)
   }
 
-  const tileLabel = timeFilter === 'today' ? '오늘' : '마감·만기'
-  const toggleTile = (id) => setTimeFilter((f) => (f === id ? null : id))
-
   // 보드에는 보관 메모가 안 나오므로, 검색 중이면 걸린 보관 메모를 아래에 따로 보여준다
   const keepHits = view === 'board' && words.length ? list.filter((m) => memoStatus(m) === 'keep') : []
 
   return (
     <div className="view">
-      <div className="mv-top">
-        <div className="tiles">
-          <button
-            className={'tile t-amber' + (counts.late > 0 ? ' tile-late' : '') + (timeFilter === 'today' ? ' on' : '')}
-            title={timeFilter === 'today' ? '다시 누르면 전체 보기' : '오늘까지 해야 하는 것(밀림 포함)만 모아 보기'}
-            onClick={() => toggleTile('today')}
-          >
-            오늘 <b>{counts.todayOnly}</b>
-            {counts.late > 0 && <span className="tile-latebit">· 밀림 <b>{counts.late}</b></span>}
-          </button>
-          <button
-            className={'tile t-purple' + (timeFilter === 'end' ? ' on' : '')}
-            title={timeFilter === 'end' ? '다시 누르면 전체 보기' : '마감("~까지")과 계약 만기(60일 안)를 가까운 순으로'}
-            onClick={() => toggleTile('end')}
-          >
-            마감·만기 <b>{counts.end}</b>
-          </button>
-        </div>
-        <input
-          className="search-input mv-search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="검색 — 제목·진행기록, 보관·완료까지"
-        />
+      {/* 위쪽: 던지기 입력 + 보기전환을 한 줄에, 그 아래 검색 한 줄. 타일(오늘/마감·만기)은 제거함 (2026-07-24) */}
+      <div className="mv-head">
+        <InputBar />
         <div className="mv-toggle">
           {VIEWS.map(([id, label]) => (
             <button key={id} className={'pill' + (view === id ? ' on' : '')} onClick={() => pick(id)}>
@@ -727,20 +673,12 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
           ))}
         </div>
       </div>
-      {timeFilter && view !== 'calendar' && (
-        <div className="cal-filter-note">
-          "{tileLabel}" 타일 적용 중 · {list.length}건 — 타일을 다시 누르면 전체가 보입니다.
-        </div>
-      )}
-      {timeFilter && view !== 'calendar' && list.length === 0 && (
-        <div className="empty">
-          "{tileLabel}"에 해당하는 메모가 지금은 없습니다.
-          <br />
-          <button style={{ marginTop: 10 }} onClick={() => setTimeFilter(null)}>
-            전체 보기
-          </button>
-        </div>
-      )}
+      <input
+        className="search-input mv-search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="검색 — 제목·진행기록, 보관·완료까지"
+      />
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
@@ -752,7 +690,7 @@ export default function MemosView({ memos, dayOrder, onOpen, renderDetail }) {
         />
       )}
       {view === 'table' && (
-        <TableView memos={list} dayOrder={dayOrder} words={words} flat={timeFilter === 'end'} onOpen={onOpen} renderDetail={renderDetail} />
+        <TableView memos={list} dayOrder={dayOrder} words={words} flat={false} onOpen={onOpen} renderDetail={renderDetail} />
       )}
       {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (

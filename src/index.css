@@ -815,31 +815,47 @@ main {
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
-/* 상단 컨트롤 한 줄: [오늘·만기 타일] [검색] [보기 토글] */
-.mv-top {
+/* 위쪽 줄: 던지기 입력(왼쪽, 늘어남) + 보기전환(오른쪽) */
+.mv-head {
   display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.mv-search {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 180px;
-  max-width: 520px;
+.mv-head .inputbar {
+  flex: 1;
+  min-width: 0;
   margin-bottom: 0;
 }
 
-/* 달력 보기에선 툴바가 왼쪽 절반 폭 — 줄바꿈 없이 한 줄, 검색창이 남는 만큼만 차지한다 */
-main:has(.cal-split) .mv-top {
-  flex-wrap: nowrap;
+.mv-head .mv-toggle {
+  flex-shrink: 0;
+  margin-top: 5px;
 }
 
-main:has(.cal-split) .mv-search {
-  max-width: 300px;
-  min-width: 0;
+/* 검색은 던지기 아래 한 줄 — 전체 폭 */
+.mv-search {
+  display: block;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+/* 좁은 화면(폰·작은 태블릿): 던지기 입력이 보기전환에 밀려 찌그러지지 않게 세로로 쌓는다 */
+@media (max-width: 899px) {
+  .mv-head {
+    flex-direction: column;
+  }
+
+  .mv-head .inputbar {
+    width: 100%;
+  }
+
+  .mv-head .mv-toggle {
+    margin-top: 0;
+    overflow-x: auto;
+    max-width: 100%;
+  }
 }
 
 .kb-done-date {
@@ -1647,11 +1663,10 @@ main:has(.cal-split) .mv-search {
     max-width: none;
   }
 
-  /* 입력창·툴바는 달력의 왼쪽 절반 폭에 딱 맞춘다 — 오른쪽 절반은 목록·상세 전용으로 비운다.
-     50% - (그리드 갭 24px)/2 = cal-left 폭 (2026-07-24 사용자 확정) */
-  .app-mid .inputbar:has(~ .layout .cal-split),
-  .app-wide .inputbar:has(~ .layout .cal-split),
-  main:has(.cal-split) .mv-top {
+  /* 던지기·보기전환 줄과 검색 줄은 달력의 왼쪽 절반 폭에 딱 맞춘다 —
+     오른쪽 절반은 목록·상세 전용으로 비운다. 50% - (그리드 갭 24px)/2 = cal-left 폭 */
+  main:has(.cal-split) .mv-head,
+  main:has(.cal-split) .mv-search {
     max-width: calc(50% - 12px);
   }
 
@@ -2526,14 +2541,6 @@ main:has(.cal-split) .mv-search {
   .nag-actions button {
     padding: 4px 7px;
     font-size: 12px;
-  }
-
-  .mv-top {
-    flex-wrap: wrap;
-  }
-
-  .mv-search {
-    flex-basis: 100%;
   }
 
   .cal-cell {
