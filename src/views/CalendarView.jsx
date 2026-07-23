@@ -2,7 +2,6 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import { addMemo, updateMemo, setDayOrder, getMemos, purgeMemos } from '../store'
-import SendToDateBtn from '../components/SendToDateBtn'
 import MemoDetail from '../components/MemoDetail'
 import useIsNarrow from '../useIsNarrow'
 
@@ -421,7 +420,6 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             >
               <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               <span className="row-title">{e.text}</span>
-              <SendToDateBtn label="날짜 이동" onPick={(dt) => moveEvent(e.m, e.type, sel, dt)} />
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
             </div>
             </Fragment>
