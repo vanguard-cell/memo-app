@@ -99,6 +99,13 @@ export default function App() {
     setOpenId(m.id)
   }
 
+  // 왼쪽 메뉴 빈 곳이나 "메모"를 누르면 보관함·휴지통을 닫고 메모 화면으로 돌아간다
+  function backToMemo() {
+    setOpenId(null)
+    setShowKeep(false)
+    setShowTrash(false)
+  }
+
   // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다. 빈 초안이면 지운다.
   function closePanel() {
     const closingId = openId
@@ -165,12 +172,24 @@ export default function App() {
         </div>
       )}
       {!narrow && (
-        <aside className="sidenav">
+        <aside
+          className="sidenav"
+          onClick={(e) => {
+            // 빈 곳(버튼·탭이 아닌 곳)을 누르면 메모 화면으로 돌아간다
+            if (e.target.closest('button, .stab')) return
+            backToMemo()
+          }}
+        >
           <div className="brand">
             내 기록
             {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
           </div>
-          <div className="stab on">메모</div>
+          <button
+            className={'stab' + (!showKeep && !showTrash ? ' on' : '')}
+            onClick={backToMemo}
+          >
+            메모
+          </button>
           <div className="sidenav-foot">
             {hasSupabase && auth.loggedIn && (
               <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
