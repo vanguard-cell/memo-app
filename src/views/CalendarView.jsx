@@ -325,10 +325,18 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                   +
                 </button>
               )}
-              {evs.slice(0, 4).map((e, j) => (
+              {evs.slice(0, 4).map((e, j) => {
+                const st = memoStatus(e.m)
+                return (
                 <span
                   key={j}
-                  className={'cal-ev ' + TYPE[e.type][1] + (memoStatus(e.m) === 'done' ? ' ev-done' : '')}
+                  className={
+                    'cal-ev ' +
+                    TYPE[e.type][1] +
+                    // 진행중인 메모는 보드 진행중과 같은 초록으로 — 굴러가는 중임이 달력에서도 보인다.
+                    // 단 ⚑ 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
+                    (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '')
+                  }
                   draggable
                   onDragStart={(ev) => {
                     ev.dataTransfer.setData('text/plain', JSON.stringify({ id: e.m.id, type: e.type, date }))
@@ -345,7 +353,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                   {(e.type === 'start' || e.type === 'end') && <b>{typeLabel(e)} </b>}
                   {e.text}
                 </span>
-              ))}
+                )
+              })}
               {evs.length > 4 && <span className="cal-more">+{evs.length - 4}</span>}
             </div>
           )

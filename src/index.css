@@ -1647,6 +1647,14 @@ main {
   opacity: 0.62;
 }
 
+/* 진행중인 메모의 조각 — 보드 진행중과 같은 초록. 달력만 훑어도 굴러가는 건이 보인다.
+   ⚑ 마감(빨강) 조각은 급한 표시가 우선이라 제외 (2026-07-26) */
+.cal-ev.ev-doing {
+  background: var(--teal-bg);
+  color: var(--teal);
+  opacity: 1;
+}
+
 /* 달력 위 "이 달에 걸친 기간" 요약 — 장기 계약도 존재가 보인다 */
 .cal-periods {
   display: flex;
