@@ -72,6 +72,55 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------- 스크롤바 — 프로그램처럼 ----------
+   윈도우 기본 굵은 회색 스크롤바가 곳곳에 뜨면 웹페이지처럼 보인다.
+   전 탭 공통: 평소엔 안 보이다가, 그 스크롤 영역에 마우스를 올리면
+   가는 막대만 옅게 나타난다. 휠·드래그·터치 스크롤은 그대로. (2026-07-27) */
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 양옆 투명 테두리 + padding-box 클립 → 실제 보이는 막대는 5px */
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+:hover::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+:hover::-webkit-scrollbar-thumb:hover {
+  background: #a9a8a0;
+}
+
+/* 파이어폭스: 가는 막대, 마우스 올린 영역에서만 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+/* 탭을 오가며 목록 길이가 달라져도 본문이 좌우로 들썩이지 않게 —
+   스크롤바 자리는 미리 잡아두고(트랙이 투명이라 안 보임) 막대만 숨었다 나타난다 */
+html {
+  scrollbar-gutter: stable;
+}
+
 button {
   font: inherit;
   cursor: pointer;
