@@ -345,14 +345,15 @@ function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
     // 만기 타일 등에서: 상태 구분 없이 가까운 날짜부터 촤르륵
     list = [...memos].sort((a, b) => urgency(a, today) - urgency(b, today) || byUpdated(a, b))
   } else {
-    // 진행중 → 할일 → 보관 → 완료 순. 진행중·할일 안에서는 보드와 같은 우선순위.
-    const groups = { active: [], todo: [], keep: [], done: [] }
+    // 진행중 → 할일 → 보류 → 보관 → 완료 순. 진행중·할일 안에서는 보드와 같은 우선순위.
+    const groups = { active: [], todo: [], hold: [], keep: [], done: [] }
     for (const m of memos) groups[memoStatus(m)].push(m)
     groups.active.sort(prioSort(dayOrder, 'active', today))
     groups.todo.sort(prioSort(dayOrder, 'todo', today))
+    groups.hold.sort(byUpdated)
     groups.keep.sort(byUpdated)
     groups.done.sort(byCompleted)
-    list = [...groups.active, ...groups.todo, ...groups.keep, ...groups.done]
+    list = [...groups.active, ...groups.todo, ...groups.hold, ...groups.keep, ...groups.done]
   }
   return (
     <div className="mv-table-wrap">
@@ -484,7 +485,7 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
   }
 
   const items = memos
-    .filter((m) => !m.keep)
+    .filter((m) => !m.keep && !m.hold)
     .map((m) => {
       const sp = spanOf(m)
       return sp && { m, s: sp[0], e: sp[1] }
@@ -659,8 +660,11 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
     localStorage.setItem('memo-view', v)
   }
 
-  // 보드에는 보관 메모가 안 나오므로, 검색 중이면 걸린 보관 메모를 아래에 따로 보여준다
-  const keepHits = view === 'board' && words.length ? list.filter((m) => memoStatus(m) === 'keep') : []
+  // 보드에는 보관·보류 메모가 안 나오므로, 검색 중이면 걸린 것들을 아래에 따로 보여준다
+  const keepHits =
+    view === 'board' && words.length
+      ? list.filter((m) => ['keep', 'hold'].includes(memoStatus(m)))
+      : []
 
   return (
     <div className="view">
@@ -670,7 +674,7 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
           className="search-input mv-search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="검색 — 제목·진행기록, 보관·완료까지"
+          placeholder="검색 — 제목·진행기록, 보관·보류·완료까지"
         />
         <div className="mv-toggle">
           {VIEWS.map(([id, label]) => (
@@ -696,15 +700,16 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
       {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (
         <div className="kb-keep">
-          <div className="done-divider">검색에 걸린 보관 메모 · {keepHits.length}건</div>
+          <div className="done-divider">검색에 걸린 보관·보류 메모 · {keepHits.length}건</div>
           {keepHits.map((m) => {
             const d = renderDetail ? renderDetail(m.id) : null
+            const st = memoStatus(m)
             return (
               <Fragment key={m.id}>
                 {d || (
                   <div className="kb-card" onClick={() => onOpen(m.id)}>
                     <div className="kb-meta" style={{ marginTop: 0 }}>
-                      <span className="badge st-keep">보관</span>
+                      <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
                       <span className="kb-title">{m.title}</span>
                     </div>
                   </div>

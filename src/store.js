@@ -26,8 +26,8 @@ function migrate(memos) {
       m.due = null
     }
     // 날짜 없는 미완료 메모는 오늘 기한으로 — 완료 전까지 오늘 화면에서 괴롭힌다
-    // (보관·삭제된 메모는 예외)
-    if (!m.due && !m.period && m.status !== 'done' && !m.keep && !m.deleted) {
+    // (보관·보류·삭제된 메모는 예외)
+    if (!m.due && !m.period && m.status !== 'done' && !m.keep && !m.hold && !m.deleted) {
       m.due = todayStr()
     }
     return m
@@ -425,6 +425,45 @@ export function unkeepMemos(ids, due) {
     ...state,
     memos: state.memos.map((m) =>
       ids.includes(m.id) ? { ...m, keep: false, due, updatedAt: now } : m
+    ),
+  })
+  if (!hasSupabase || !session) return
+  pushMemoRows(state.memos.filter((m) => ids.includes(m.id)))
+    .then(() => setAuth({ syncError: false }))
+    .catch((e) => {
+      console.error('동기화 실패', e)
+      setAuth({ syncError: true })
+    })
+}
+
+// 보류함으로 보내기 — 날짜를 떼고 보류(hold) 표식을 단다. 진행기록·설명은 그대로 남고
+// 보드·달력에서만 사라진다. "하다가 멈췄는데 언제 다시 할지 모르는 일"을 넣어두는 곳.
+export function holdMemos(ids) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      ids.includes(m.id)
+        ? { ...m, hold: true, holdAt: todayStr(), due: null, period: null, deadline: false, snoozeUntil: null, updatedAt: now }
+        : m
+    ),
+  })
+  if (!hasSupabase || !session) return
+  pushMemoRows(state.memos.filter((m) => ids.includes(m.id)))
+    .then(() => setAuth({ syncError: false }))
+    .catch((e) => {
+      console.error('동기화 실패', e)
+      setAuth({ syncError: true })
+    })
+}
+
+// 보류함에서 꺼내기 — 지정한 날짜(예정)를 달아 다시 할 일로 보낸다 (여러 개 한 번에 가능)
+export function unholdMemos(ids, due) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      ids.includes(m.id) ? { ...m, hold: false, due, updatedAt: now } : m
     ),
   })
   if (!hasSupabase || !session) return

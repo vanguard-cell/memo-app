@@ -75,6 +75,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
       due: period ? null : form.due || null,
       period,
       deadline: period ? memo.deadline || false : false,
+      // 보류 메모에 날짜를 달면 보류가 풀린다 — 날짜가 생겼는데 화면에 안 보이면 이상하니까
+      ...(memo.hold && (period || form.due) ? { hold: false } : {}),
     })
     setEditing(false)
   }
@@ -154,6 +156,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               )}
             </span>
           )}
+          {memo.hold && (
+            <span className="meta-date">
+              보류 {fmtDate(memo.holdAt || (memo.updatedAt || '').slice(0, 10))}
+            </span>
+          )}
           {linkedWork && onOpen && (
             <button className="linkish" onClick={() => onOpen(linkedWork.id)} title="연결된 점검 열기">
               점검: {linkedWork.title}
@@ -165,7 +172,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           </span>
         </div>
         {/* 폰: 드래그가 없으니 여기서 보드 열을 옮긴다 (PC는 드래그로 — 버튼 안 보임) */}
-        {inline && !memo.keep && (
+        {inline && !memo.keep && !memo.hold && (
           <div className="stage-row">
             <span className="stage-label">상태</span>
             {[
@@ -198,6 +205,21 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               >
                 오늘 할 일로 꺼내기
               </button>
+            ) : memo.hold ? (
+              <>
+                <button
+                  className="btn-done"
+                  title="보류를 풀고 오늘 할 일로 보냅니다"
+                  onClick={() => updateMemo(memo.id, { hold: false, due: todayStr() })}
+                >
+                  오늘 할 일로 꺼내기
+                </button>
+                <SendToDateBtn
+                  label="날짜 지정"
+                  min={todayStr()}
+                  onPick={(d) => updateMemo(memo.id, { hold: false, due: d })}
+                />
+              </>
             ) : (
               !inline && <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
             )
@@ -241,6 +263,22 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   마감 해제
                 </button>
               )}
+              {/* 기약 없어진 일은 날짜를 떼고 보류함으로 — "N일 지남"이 달력을 계속 어지럽히지 않게 */}
+              <button
+                title="날짜를 떼고 보류함으로 보냅니다 — 기록은 그대로, 언제든 다시 꺼낼 수 있습니다"
+                onClick={() =>
+                  updateMemo(memo.id, {
+                    hold: true,
+                    holdAt: today,
+                    due: null,
+                    period: null,
+                    deadline: false,
+                    snoozeUntil: null,
+                  })
+                }
+              >
+                보류
+              </button>
             </>
           )}
           <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>

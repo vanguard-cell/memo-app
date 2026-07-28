@@ -11,6 +11,7 @@ import Login from './components/Login'
 import MemosView from './views/MemosView'
 import TrashView from './views/TrashView'
 import KeepView from './views/KeepView'
+import HoldView from './views/HoldView'
 
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
 // 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
@@ -61,9 +62,11 @@ export default function App() {
   const [openId, setOpenId] = useState(null)
   const [showTrash, setShowTrash] = useState(false)
   const [showKeep, setShowKeep] = useState(false)
+  const [showHold, setShowHold] = useState(false)
   const [closing, setClosing] = useState(false)
   const closeTimer = useRef(null)
   const keeps = memos.filter((m) => m.keep)
+  const holds = memos.filter((m) => m.hold)
   const narrow = useIsNarrow()
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
@@ -73,7 +76,7 @@ export default function App() {
   function discardIfEmptyDraft(id) {
     // 최신 store 상태를 직접 읽는다 (제목 저장 직후 닫힘 등 타이밍에서 stale 방지)
     const m = getMemos().find((x) => x.id === id)
-    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && !m.keep) {
+    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && !m.keep && !m.hold) {
       purgeMemos([m.id])
     }
   }
@@ -103,6 +106,7 @@ export default function App() {
   function backToMemo() {
     setOpenId(null)
     setShowKeep(false)
+    setShowHold(false)
     setShowTrash(false)
   }
 
@@ -185,7 +189,7 @@ export default function App() {
             {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
           </div>
           <button
-            className={'stab' + (!showKeep && !showTrash ? ' on' : '')}
+            className={'stab' + (!showKeep && !showHold && !showTrash ? ' on' : '')}
             onClick={backToMemo}
           >
             메모
@@ -198,15 +202,22 @@ export default function App() {
             )}
             <button
               className="stab stab-foot"
+              title="하다가 멈췄거나 기약이 없어진 일 — 날짜를 떼서 넣어두고 필요할 때 꺼내는 곳"
+              onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }}
+            >
+              보류함{holds.length > 0 ? ` ${holds.length}` : ''}
+            </button>
+            <button
+              className="stab stab-foot"
               title="날짜 없이 넣어둔 메모 모음 — 필요할 때 꺼내 보는 곳"
-              onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep((v) => !v) }}
+              onClick={() => { setOpenId(null); setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }}
             >
               보관함{keeps.length > 0 ? ` ${keeps.length}` : ''}
             </button>
             <button
               className="stab stab-foot"
               title="삭제한 메모는 30일 보관 후 자동 삭제 — 그 안에 복구 가능"
-              onClick={() => { setOpenId(null); setShowKeep(false); setShowTrash((v) => !v) }}
+              onClick={() => { setOpenId(null); setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }}
             >
               휴지통{trash.length > 0 ? ` ${trash.length}` : ''}
             </button>
@@ -234,10 +245,13 @@ export default function App() {
                   {auth.email}
                 </button>
               )}
-              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep((v) => !v) }}>
+              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }}>
+                보류함{holds.length > 0 ? ` ${holds.length}` : ''}
+              </button>
+              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }}>
                 보관함{keeps.length > 0 ? ` ${keeps.length}` : ''}
               </button>
-              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowKeep(false); setShowTrash((v) => !v) }}>
+              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }}>
                 휴지통{trash.length > 0 ? ` ${trash.length}` : ''}
               </button>
               <button className="tab tab-logout" onClick={downloadBackup}>
@@ -253,6 +267,20 @@ export default function App() {
         )}
         {showTrash ? (
           <TrashView memos={trash} onClose={() => setShowTrash(false)} />
+        ) : showHold ? (
+          <div className="layout">
+            <main>
+              <HoldView
+                memos={holds}
+                onOpen={openMemo}
+                renderDetail={renderDetail}
+                onClose={() => setShowHold(false)}
+              />
+            </main>
+            {sidePanel && open && (
+              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
+            )}
+          </div>
         ) : showKeep ? (
           <div className="layout">
             <main>

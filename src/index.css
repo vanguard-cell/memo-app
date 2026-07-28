@@ -1449,6 +1449,23 @@ main {
   color: #6b5cb8;
 }
 
+/* 보류 — 잠시 멈춰 있다는 느낌의 차분한 청회색 (할일 주황·진행중 초록과 구분) */
+.st-hold {
+  background: #e7edf2;
+  color: #52708a;
+}
+
+/* 보류함 목록: 제목 아래 마지막 진행기록 한 줄 — 멈춘 지점 떠올리기용 */
+.hold-last {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .filters {
   display: flex;
   gap: 6px;
