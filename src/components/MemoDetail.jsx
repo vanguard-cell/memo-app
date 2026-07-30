@@ -97,7 +97,27 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
       onClick={(e) => e.stopPropagation()}
     >
         <div className="panel-head">
-          <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
+          {/* PC: 상태를 드롭다운 칩으로 바로 변경 — 드래그 없이도 클릭 한 번 (2026-07-30 시안 채택).
+              보관·보류는 상태 개념 밖이라 배지 유지. 폰은 아래 상태 버튼 줄 그대로. */}
+          {!inline && !memo.keep && !memo.hold ? (
+            <select
+              className="stage-select"
+              value={st}
+              onChange={(e) => {
+                const next = e.target.value
+                if (next === st) return
+                if (next === 'done') return completeMemo(memo.id)
+                if (memo.status === 'done') reopenMemo(memo.id)
+                updateMemo(memo.id, { stage: next })
+              }}
+            >
+              <option value="todo">할일</option>
+              <option value="active">진행중</option>
+              <option value="done">완료</option>
+            </select>
+          ) : (
+            <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
+          )}
           <textarea
             className="panel-title-input"
             value={title}

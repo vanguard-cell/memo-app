@@ -32,7 +32,7 @@ function checkInfo(m) {
   const items = (m.history || []).filter((h) => h.type !== 'log')
   if (!items.length) return null
   const done = items.filter((h) => h.done).length
-  return { label: `체크 ${done}/${items.length}`, complete: done === items.length }
+  return { label: `체크 ${done}/${items.length}`, complete: done === items.length, done, total: items.length }
 }
 
 // 체크 배지 색: 진행 중엔 초록, 완료된 메모는 회색 — 단 체크가 남은 채 완료된 건 노랑(놓친 건지 확인용)
@@ -101,6 +101,12 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     >
       <div className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
+      {/* 진행중 카드: 체크 비율을 가는 막대로도 — 어디까지 왔는지 한눈에 (2026-07-30 시안) */}
+      {st === 'active' && chk && (
+        <div className="kb-prog">
+          <span style={{ width: `${Math.round((chk.done / chk.total) * 100)}%` }} />
+        </div>
+      )}
       {(badge || chk || doneDate || nextLine) && (
         <div className="kb-meta">
           {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}>{badge[1]}</span>}
@@ -313,7 +319,11 @@ function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
               {id === 'done' && by.done.length > DONE_SHOWN && (
                 <div className="kb-more">외 {by.done.length - DONE_SHOWN}건 — 표에서 전체 보기</div>
               )}
-              {by[id].length === 0 && <div className="kb-empty">여기로 끌어오기</div>}
+              {/* 칸 맨 아래 고스트 줄 — 그 칸 상태의 새 메모 (2026-07-30 시안, "여기로 끌어오기" 대체) */}
+              {id !== 'done' && onCompose && (
+                <button className="kb-ghost" onClick={() => onCompose(id)}>+ 항목 추가</button>
+              )}
+              {by[id].length === 0 && !onCompose && <div className="kb-empty">여기로 끌어오기</div>}
             </div>
           )
         })}
@@ -668,14 +678,9 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
 
   return (
     <div className="view">
-      {/* 위쪽: 검색 + 보기전환 한 줄. 새 메모는 보드 칸의 + 로 만든다 (던지기 입력은 2026-07-24 제거) */}
+      {/* 위쪽: 보기전환 탭(왼쪽) + 검색(오른쪽) 한 줄 — 밑줄 탭 바 (2026-07-30 시안).
+          새 메모는 보드 칸의 + 로 만든다 (던지기 입력은 2026-07-24 제거) */}
       <div className="mv-head">
-        <input
-          className="search-input mv-search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="검색 — 제목·진행기록, 보관·보류·완료까지"
-        />
         <div className="mv-toggle">
           {VIEWS.map(([id, label]) => (
             <button key={id} className={'pill' + (view === id ? ' on' : '')} onClick={() => pick(id)}>
@@ -683,6 +688,12 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
             </button>
           ))}
         </div>
+        <input
+          className="search-input mv-search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="검색 — 제목·진행기록, 보관·보류·완료까지"
+        />
       </div>
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (

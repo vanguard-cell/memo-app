@@ -1,25 +1,28 @@
+/* 2026-07-30 리디자인(스티치 시안 기준): 종이색 → 순백 + 쿨그레이 헤어라인 + 블루 악센트.
+   "웹앱이 아니라 프로그램" — 배경 전부 흰색, 영역은 1px 세로줄로만 구분. */
 :root {
-  --bg: #f6f6f2;
+  --bg: #fff;
   --card: #fff;
-  --border: #e4e3dc;
-  --border-hover: #c9c8c0;
-  --text: #211f1a;
-  --muted: #75736b;
-  --faint: #a3a19a;
-  --purple-bg: #eeedfe;
-  --purple: #3c3489;
-  --blue-bg: #e6f1fb;
-  --blue: #185fa5;
-  --blue-strong: #378add;
-  --teal-bg: #e1f5ee;
-  --teal: #0f6e56;
-  --teal-strong: #1d9e75;
-  --amber-bg: #faeeda;
-  --amber: #854f0b;
-  --amber-strong: #ef9f27;
-  --red-bg: #fcebeb;
-  --red: #a32d2d;
-  --red-strong: #e24b4a;
+  --fill: #f2f4f6; /* 호버·선택 등 옅은 회색 채움 */
+  --border: #e5e7ea;
+  --border-hover: #c6ccd2;
+  --text: #1f2329;
+  --muted: #6e747c;
+  --faint: #9aa1a9;
+  --purple-bg: #ece9f7;
+  --purple: #5b4bb0;
+  --blue-bg: #e8effc;
+  --blue: #2456c4;
+  --blue-strong: #3568e0;
+  --teal-bg: #e2f5ea;
+  --teal: #157347;
+  --teal-strong: #22a45f;
+  --amber-bg: #fdf2d9;
+  --amber: #92610a;
+  --amber-strong: #f0a11f;
+  --red-bg: #fdecea;
+  --red: #b3261e;
+  --red-strong: #e2483d;
 }
 
 * {
@@ -102,7 +105,7 @@ body {
 }
 
 :hover::-webkit-scrollbar-thumb:hover {
-  background: #a9a8a0;
+  background: #a3aab1;
 }
 
 /* 파이어폭스: 가는 막대, 마우스 올린 영역에서만 */
@@ -126,21 +129,21 @@ button {
   cursor: pointer;
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 5px 10px;
   color: var(--text);
 }
 
 button:hover {
   border-color: var(--border-hover);
-  background: #fafaf7;
+  background: #f7f8fa;
 }
 
 input {
   font: inherit;
   font-size: 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 8px 10px;
   color: var(--text);
   background: var(--card);
@@ -181,13 +184,14 @@ main {
     padding: 0;
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);
-    /* 화면 정중앙(50vw)까지가 "왼쪽 절반" — 어떤 화면 크기·배율에서도 분할선이 정확히 가운데.
-       사이드바 200 + 본문 왼쪽 여백 26 + 가운데 여백 12 = 238을 뺀 나머지 (2026-07-24) */
-    --half: calc(50vw / var(--zoom) - 238px);
+    /* 분할선 = 사이드바를 뺀 영역의 정중앙(50vw + 사이드바 절반 100px) — 스티치 시안 비율
+       (2026-07-30, 화면 정중앙 50vw에서 변경). 사이드바 200 + 본문 왼쪽 여백 26 + 가운데 여백 12 = 238. */
+    --split: calc(50vw / var(--zoom) + 100px);
+    --half: calc(var(--split) - 238px);
   }
 
   .workarea {
-    padding: 28px 26px 90px;
+    padding: 14px 26px 90px;
   }
 
   .inputbar,
@@ -221,39 +225,62 @@ main {
   height: calc(100vh / var(--zoom));
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 28px 12px 18px;
+  gap: 2px;
+  padding: 16px 12px 40px; /* 아래 40px = 하단 상태줄 위 여유 */
   border-right: 1px solid var(--border);
 }
 
 .sidenav .brand {
-  padding: 0 8px 16px;
+  padding: 2px 8px 4px;
+}
+
+/* 브랜드 아래 작은 이메일 — 누르면 진단 (시안: 브랜드 밑 이메일) */
+.sidenav .who {
+  align-self: flex-start;
+  padding: 0 8px 14px;
+  max-width: 100%;
 }
 
 .stab {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   text-align: left;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 14.5px;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 14px;
   color: var(--muted);
 }
 
 .stab:hover {
-  background: #efeee8;
+  background: var(--fill);
   border-color: transparent;
 }
 
 .stab.on {
-  background: var(--card);
-  border-color: var(--border);
+  background: var(--fill);
+  border-color: transparent;
   color: var(--text);
   font-weight: 600;
+}
+
+/* 메뉴 아이콘 + 오른쪽 끝 건수 */
+.stab-ic {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--faint);
+}
+
+.stab.on .stab-ic {
+  color: var(--text);
+}
+
+.stab-n {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--faint);
 }
 
 /* 새 버전 감지 배너 — 새로고침 전까지 상단 중앙에 떠 있는다 */
@@ -283,7 +310,7 @@ main {
   font-weight: 600;
 }
 
-/* 사이드바 맨 아래 묶음: 백업 · 로그아웃 */
+/* 사이드바 맨 아래 묶음: 로그아웃 */
 .sidenav-foot {
   margin-top: auto;
   display: flex;
@@ -292,8 +319,54 @@ main {
 }
 
 .stab-foot {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--faint);
+}
+
+/* ---------- 하단 상태줄 — 엑셀식: 왼쪽 건수, 오른쪽 동기화 상태 (2026-07-30 시안) ---------- */
+.statusbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--faint);
+  z-index: 45;
+}
+
+.sb-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal-strong);
+}
+
+.sb-dot.bad {
+  background: var(--red-strong);
+}
+
+.sb-dot.off {
+  background: var(--faint);
+}
+
+/* 상태줄은 PC 전용 — 폰은 화면이 아깝다 */
+@media (max-width: 899px) {
+  .statusbar {
+    display: none;
+  }
 }
 
 .topbar {
@@ -326,7 +399,7 @@ main {
 }
 
 .tab:hover {
-  background: #efeeea;
+  background: var(--fill);
   border-color: transparent;
 }
 
@@ -869,22 +942,60 @@ main {
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
-/* 위쪽 줄: 검색(왼쪽, 늘어남) + 보기전환(오른쪽). 새 메모는 보드 칸의 + 로 만든다 */
+/* 위쪽 줄: 보기전환 탭(왼쪽) + 검색(오른쪽) — 밑줄 탭 바, 아래 헤어라인 (2026-07-30 시안) */
 .mv-head {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
 }
 
 .mv-head .mv-search {
-  flex: 1;
-  min-width: 0;
-  margin-bottom: 0;
+  flex-shrink: 0;
+  width: 280px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  padding: 5px 10px;
+  background: #f7f8fa;
+  border-color: transparent;
+}
+
+.mv-head .mv-search:focus {
+  background: var(--card);
+  border-color: var(--blue-strong);
 }
 
 .mv-head .mv-toggle {
   flex-shrink: 0;
+  margin-right: auto;
+  margin-left: 0;
+  gap: 2px;
+}
+
+/* 보기전환을 밑줄 탭으로 — 활성 탭만 파란 글씨 + 2px 밑줄 */
+.mv-toggle .pill {
+  border: none;
+  background: none;
+  border-radius: 0;
+  padding: 9px 10px 10px;
+  font-size: 13.5px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* 밑줄이 바의 헤어라인을 덮게 */
+}
+
+.mv-toggle .pill:hover {
+  color: var(--text);
+  background: none;
+}
+
+.mv-toggle .pill.on {
+  background: none;
+  border-color: transparent;
+  border-bottom-color: var(--blue);
+  color: var(--blue);
+  font-weight: 700;
 }
 
 .mv-search {
@@ -899,6 +1010,9 @@ main {
 
   .mv-head .mv-search {
     flex-basis: 100%;
+    width: 100%;
+    order: 2;
+    margin-bottom: 10px;
   }
 
   .mv-head .mv-toggle {
@@ -993,17 +1107,18 @@ main {
   margin-top: 8px;
 }
 
+/* 칼럼 배경 없음 — 흰 바탕에 카드·헤어라인만 (2026-07-30 시안) */
 .kb-col {
-  background: #f1f0ea;
-  border-radius: 10px;
-  padding: 8px;
+  background: none;
+  border-radius: 8px;
+  padding: 2px;
   min-height: 140px;
 }
 
 .kb-col.kb-over {
-  outline: 2px dashed var(--teal-strong);
+  outline: 2px dashed var(--blue-strong);
   outline-offset: -2px;
-  background: var(--teal-bg);
+  background: var(--blue-bg);
 }
 
 .kb-head {
@@ -1021,13 +1136,48 @@ main {
 .kb-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 9px 11px;
   margin-bottom: 6px;
   cursor: grab;
   font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* 진행중 카드의 가는 진행 막대 — 체크 n/m을 눈으로도 (2026-07-30 시안 채택) */
+.kb-prog {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--fill);
+  margin-top: 7px;
+  overflow: hidden;
+}
+
+.kb-prog span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--teal-strong);
+}
+
+/* 칼럼 맨 아래 "+ 항목 추가" 고스트 줄 — 그 칸에 새 메모 (2026-07-30 시안) */
+.kb-ghost {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--faint);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 6px 11px;
+  border-radius: 6px;
+}
+
+.kb-ghost:hover {
+  background: var(--fill);
+  color: var(--muted);
+  border: none;
 }
 
 .kb-card:active {
@@ -1082,7 +1232,7 @@ main {
 }
 
 .b-gray {
-  background: #efeeea;
+  background: #f0f2f4;
   color: var(--muted);
 }
 
@@ -1430,7 +1580,7 @@ main {
 }
 
 .st-done {
-  background: #efeeea;
+  background: #f0f2f4;
   color: var(--muted);
 }
 
@@ -1868,18 +2018,21 @@ main {
   overflow-y: auto;
 }
 
-/* PC: 본문을 밀지 않는 고정 패널 — 오른쪽 여백 위에 뜬다 (좁은 화면에선 본문을 살짝 덮음) */
+/* PC: 본문을 밀지 않는 고정 패널 — 떠 있는 카드가 아니라 분할선(세로 헤어라인)에 붙은
+   전체 높이 칼럼. 프로그램의 오른쪽 도킹 패널처럼. (2026-07-30 리디자인) */
 @media (min-width: 900px) {
   .detail {
     position: fixed;
-    top: 14px;
-    right: 14px;
-    bottom: 14px;
-    /* 정중앙부터 오른쪽 끝까지 = 오른쪽 절반. 분할선이 화면 가운데 (노션식, 2026-07-24) */
-    left: calc(50vw / var(--zoom) + 12px);
+    top: 0;
+    right: 0;
+    bottom: 26px; /* 하단 상태줄 높이만큼 */
+    left: var(--split);
     width: auto;
     z-index: 40;
-    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.14);
+    border: none;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    padding: 18px 26px 24px;
     /* 오른쪽에서 미끄러져 들어온다 — 어디서 나온 창인지 눈으로 따라가게 (2026-07-22) */
     animation: panel-slide-in 200ms cubic-bezier(0.22, 0.7, 0.3, 1);
   }
@@ -2017,7 +2170,7 @@ main {
 }
 
 .panel-title-input:hover {
-  background: #f4f3ee;
+  background: #f7f8fa;
 }
 
 .panel-title-input:focus {
@@ -2087,16 +2240,70 @@ main {
   font-weight: 600;
 }
 
+/* 액션 줄 — 테두리 없는 조용한 글자 버튼, 위아래 헤어라인 (2026-07-30 시안) */
 .panel-actions {
   display: flex;
-  gap: 8px;
+  gap: 2px;
   flex-wrap: wrap;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #f0efe9;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .panel-actions button {
   font-size: 13px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 4px 9px;
+  border-radius: 6px;
+}
+
+.panel-actions button:hover {
+  background: var(--fill);
+  color: var(--text);
+}
+
+/* 채워진 버튼(꺼내기 등)은 액션 줄 안에서도 그대로 파랗게 */
+.panel-actions .btn-done {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
+  padding: 4px 12px;
+}
+
+.panel-actions .btn-done:hover {
+  background: var(--blue-strong);
+  color: #fff;
+}
+
+.panel-actions .btn-danger {
+  color: var(--red);
+}
+
+.panel-actions .btn-danger:hover {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+/* 상태 드롭다운 칩 — PC 상세 맨 위에서 클릭으로 상태 변경 (2026-07-30 시안 채택) */
+.stage-select {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  margin-top: 1px;
+}
+
+.stage-select:hover {
+  border-color: var(--border-hover);
 }
 
 .btn-done {
@@ -2124,8 +2331,8 @@ main {
 .edit-form {
   margin-top: 14px;
   padding: 12px;
-  background: #fafaf7;
-  border-radius: 10px;
+  background: #f7f8fa;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2213,7 +2420,7 @@ main {
 }
 
 .desc-input:hover {
-  background: #f4f3ee;
+  background: #f7f8fa;
 }
 
 .desc-input:focus {

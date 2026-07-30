@@ -16,6 +16,21 @@ import HoldView from './views/HoldView'
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
 // 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
 
+// 사이드바 아이콘 — 라이브러리 없이 작은 인라인 SVG (2026-07-30 스티치 시안 리디자인)
+const ic = (path) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {path}
+  </svg>
+)
+const ICONS = {
+  memo: ic(<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>),
+  hold: ic(<><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></>),
+  keep: ic(<><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" /><path d="M10 12h4" /></>),
+  trash: ic(<><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" /></>),
+  backup: ic(<path d="M17.5 19a4.5 4.5 0 0 0 .4-9A6 6 0 0 0 6.1 8.5 4.5 4.5 0 0 0 6.5 19Z" />),
+  out: ic(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>),
+}
+
 // 새 버전 감지 — 탭을 오래 열어두면 옛 코드가 계속 돌므로, 탭에 돌아올 때마다
 // 배포본의 스크립트 파일명이 바뀌었는지 확인해서 새로고침 배너를 띄운다
 function useUpdateReady() {
@@ -184,49 +199,49 @@ export default function App() {
             backToMemo()
           }}
         >
-          <div className="brand">
-            내 기록
-            {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
-          </div>
+          <div className="brand">내 기록</div>
+          {hasSupabase && auth.loggedIn && (
+            <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
+              {auth.email}
+            </button>
+          )}
           <button
             className={'stab' + (!showKeep && !showHold && !showTrash ? ' on' : '')}
             onClick={backToMemo}
           >
-            메모
+            <span className="stab-ic">{ICONS.memo}</span>메모
+          </button>
+          <button
+            className={'stab' + (showHold ? ' on' : '')}
+            title="하다가 멈췄거나 기약이 없어진 일 — 날짜를 떼서 넣어두고 필요할 때 꺼내는 곳"
+            onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }}
+          >
+            <span className="stab-ic">{ICONS.hold}</span>보류함
+            {holds.length > 0 && <span className="stab-n">{holds.length}</span>}
+          </button>
+          <button
+            className={'stab' + (showKeep ? ' on' : '')}
+            title="날짜 없이 넣어둔 메모 모음 — 필요할 때 꺼내 보는 곳"
+            onClick={() => { setOpenId(null); setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }}
+          >
+            <span className="stab-ic">{ICONS.keep}</span>보관함
+            {keeps.length > 0 && <span className="stab-n">{keeps.length}</span>}
+          </button>
+          <button
+            className={'stab' + (showTrash ? ' on' : '')}
+            title="삭제한 메모는 30일 보관 후 자동 삭제 — 그 안에 복구 가능"
+            onClick={() => { setOpenId(null); setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }}
+          >
+            <span className="stab-ic">{ICONS.trash}</span>휴지통
+            {trash.length > 0 && <span className="stab-n">{trash.length}</span>}
+          </button>
+          <button className="stab" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
+            <span className="stab-ic">{ICONS.backup}</span>백업
           </button>
           <div className="sidenav-foot">
             {hasSupabase && auth.loggedIn && (
-              <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
-                {auth.email}
-              </button>
-            )}
-            <button
-              className="stab stab-foot"
-              title="하다가 멈췄거나 기약이 없어진 일 — 날짜를 떼서 넣어두고 필요할 때 꺼내는 곳"
-              onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }}
-            >
-              보류함{holds.length > 0 ? ` ${holds.length}` : ''}
-            </button>
-            <button
-              className="stab stab-foot"
-              title="날짜 없이 넣어둔 메모 모음 — 필요할 때 꺼내 보는 곳"
-              onClick={() => { setOpenId(null); setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }}
-            >
-              보관함{keeps.length > 0 ? ` ${keeps.length}` : ''}
-            </button>
-            <button
-              className="stab stab-foot"
-              title="삭제한 메모는 30일 보관 후 자동 삭제 — 그 안에 복구 가능"
-              onClick={() => { setOpenId(null); setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }}
-            >
-              휴지통{trash.length > 0 ? ` ${trash.length}` : ''}
-            </button>
-            <button className="stab stab-foot" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
-              백업
-            </button>
-            {hasSupabase && auth.loggedIn && (
               <button className="stab stab-foot" title={auth.email} onClick={signOut}>
-                로그아웃
+                <span className="stab-ic">{ICONS.out}</span>로그아웃
               </button>
             )}
           </div>
@@ -306,6 +321,27 @@ export default function App() {
           </div>
         )}
       </div>
+      {/* 하단 상태줄 — 엑셀식: 건수 + 동기화 상태 (PC 전용, 2026-07-30 시안) */}
+      {!narrow && (
+        <div className="statusbar">
+          <span>메모 {memos.length}건</span>
+          <span className="sb-sync">
+            <span
+              className={
+                'sb-dot' +
+                (!hasSupabase || !auth.loggedIn ? ' off' : auth.syncError ? ' bad' : '')
+              }
+            />
+            {!hasSupabase
+              ? '로컬 저장'
+              : !auth.loggedIn
+                ? '로그인 안 됨'
+                : auth.syncError
+                  ? '동기화 안 됨'
+                  : '동기화 정상'}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
