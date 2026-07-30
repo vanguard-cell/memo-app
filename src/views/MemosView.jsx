@@ -348,86 +348,169 @@ function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
 
 // ---------- 표 ----------
 
-function TableView({ memos, dayOrder, words, flat, onOpen, renderDetail }) {
+// 컬럼 헤더가 곧 정렬·필터 (2026-07-30 시안): 제목·날짜·체크·작성일 클릭 = ▲→▼→해제,
+// 상태 클릭 = 상태별 걸러 보기(전체→진행중→할일→보류→보관→완료 순환). 별도 버튼 줄 없음.
+const SORT_VAL = {
+  title: (m) => (m.title || '').toLowerCase(),
+  date: (m) => m.due || (m.period && m.period.end) || '9999-99-99',
+  check: (m) => {
+    const c = checkInfo(m)
+    return c ? c.done / c.total : -1
+  },
+  created: (m) => m.createdAt || '',
+}
+const ST_ORDER = ['active', 'todo', 'hold', 'keep', 'done']
+const FILTER_CYCLE = [null, ...ST_ORDER]
+
+function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDetail }) {
   const today = todayStr()
-  let list
-  if (flat) {
+  const [sort, setSort] = useState(null) // { key, dir: 1(▲)|-1(▼) } — 정렬 중엔 그룹 대신 통짜
+  const [stFilter, setStFilter] = useState(null)
+  const [folded, setFolded] = useState(() => new Set())
+
+  const shown = stFilter ? memos.filter((m) => memoStatus(m) === stFilter) : memos
+
+  function clickSort(key) {
+    setSort((s) => (!s || s.key !== key ? { key, dir: 1 } : s.dir === 1 ? { key, dir: -1 } : null))
+  }
+
+  function toggleFold(st) {
+    setFolded((prev) => {
+      const next = new Set(prev)
+      if (next.has(st)) next.delete(st)
+      else next.add(st)
+      return next
+    })
+  }
+
+  // 표시는 [그룹 머리줄 + 줄들] 묶음의 나열 — 정렬·flat이면 머리줄 없는 묶음 하나
+  let sections
+  if (sort) {
+    const val = SORT_VAL[sort.key]
+    const rows = [...shown].sort((a, b) => {
+      const av = val(a)
+      const bv = val(b)
+      return (av < bv ? -1 : av > bv ? 1 : 0) * sort.dir || byUpdated(a, b)
+    })
+    sections = [{ st: null, items: rows }]
+  } else if (flat) {
     // 만기 타일 등에서: 상태 구분 없이 가까운 날짜부터 촤르륵
-    list = [...memos].sort((a, b) => urgency(a, today) - urgency(b, today) || byUpdated(a, b))
+    sections = [
+      { st: null, items: [...shown].sort((a, b) => urgency(a, today) - urgency(b, today) || byUpdated(a, b)) },
+    ]
   } else {
-    // 진행중 → 할일 → 보류 → 보관 → 완료 순. 진행중·할일 안에서는 보드와 같은 우선순위.
+    // 진행중 → 할일 → 보류 → 보관 → 완료 그룹. 진행중·할일 안에서는 보드와 같은 우선순위.
     const groups = { active: [], todo: [], hold: [], keep: [], done: [] }
-    for (const m of memos) groups[memoStatus(m)].push(m)
+    for (const m of shown) groups[memoStatus(m)].push(m)
     groups.active.sort(prioSort(dayOrder, 'active', today))
     groups.todo.sort(prioSort(dayOrder, 'todo', today))
     groups.hold.sort(byUpdated)
     groups.keep.sort(byUpdated)
     groups.done.sort(byCompleted)
-    list = [...groups.active, ...groups.todo, ...groups.hold, ...groups.keep, ...groups.done]
+    sections = ST_ORDER.filter((st) => groups[st].length > 0).map((st) => ({ st, items: groups[st] }))
   }
+  const total = sections.reduce((n, s) => n + s.items.length, 0)
+  const arrow = (key) => (sort && sort.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : '')
+
+  const renderRow = (m) => {
+    const st = memoStatus(m)
+    const badge = dueBadge(m, today)
+    const chk = checkInfo(m)
+    const matched = words.length
+      ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
+      : []
+    // 폰: 누른 줄이 그 자리에서 상세로 바뀐다 (제목 중복 방지)
+    const d = renderDetail ? renderDetail(m.id) : null
+    if (d) {
+      return (
+        <tr className="mv-detail-row" key={m.id}>
+          <td colSpan={5}>{d}</td>
+        </tr>
+      )
+    }
+    return (
+      <Fragment key={m.id}>
+        <tr className={st === 'done' ? 'mv-done' : ''} onClick={() => onOpen(m.id)}>
+          <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
+          <td className="mv-title">{m.title}</td>
+          <td className="mv-date">
+            {/* 마감형은 배지("7.30까지 D-n")가 날짜를 이미 담고 있어 따로 안 쓴다 */}
+            {m.period ? (m.deadline ? '' : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
+            {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}> {badge[1]}</span>}
+          </td>
+          <td className="mv-date">
+            {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
+          </td>
+          <td className="mv-date">{fmtDate(m.createdAt.slice(0, 10))}</td>
+        </tr>
+        {matched.length > 0 && (
+          <tr className="mv-hit">
+            <td colSpan={5}>
+              <div className="hit-lines">
+                {matched.map((h, i) => (
+                  <div key={i} className="hit-line">
+                    <span>{fmtDate(h.date)}</span> {h.text}
+                  </div>
+                ))}
+              </div>
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    )
+  }
+
   return (
     <div className="mv-table-wrap">
       <table className="mv-table">
         <thead>
           <tr>
-            <th>상태</th>
-            <th>제목</th>
-            <th>날짜·기간</th>
-            <th>체크</th>
-            <th>작성일</th>
+            <th
+              className="mv-th"
+              title="누르면 상태별로 걸러 봅니다 — 한 번씩 눌러 순환, 전체로 돌아옵니다"
+              onClick={() =>
+                setStFilter((cur) => FILTER_CYCLE[(FILTER_CYCLE.indexOf(cur) + 1) % FILTER_CYCLE.length])
+              }
+            >
+              {stFilter ? `상태: ${STATUS_LABEL[stFilter]}` : '상태'} <span className="mv-filter-ic">▽</span>
+            </th>
+            <th className="mv-th" title="누르면 정렬 (다시 누르면 역순→해제)" onClick={() => clickSort('title')}>
+              제목{arrow('title')}
+            </th>
+            <th className="mv-th" title="누르면 정렬 (다시 누르면 역순→해제)" onClick={() => clickSort('date')}>
+              날짜·기간{arrow('date')}
+            </th>
+            <th className="mv-th" title="누르면 정렬 (다시 누르면 역순→해제)" onClick={() => clickSort('check')}>
+              체크{arrow('check')}
+            </th>
+            <th className="mv-th" title="누르면 정렬 (다시 누르면 역순→해제)" onClick={() => clickSort('created')}>
+              작성일{arrow('created')}
+            </th>
           </tr>
         </thead>
         <tbody>
-          {list.map((m) => {
-            const st = memoStatus(m)
-            const badge = dueBadge(m, today)
-            const chk = checkInfo(m)
-            const matched = words.length
-              ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
-              : []
-            // 폰: 누른 줄이 그 자리에서 상세로 바뀐다 (제목 중복 방지)
-            const d = renderDetail ? renderDetail(m.id) : null
-            if (d) {
-              return (
-                <tr className="mv-detail-row" key={m.id}>
-                  <td colSpan={5}>{d}</td>
-                </tr>
-              )
-            }
-            return (
-              <Fragment key={m.id}>
-                <tr className={st === 'done' ? 'mv-done' : ''} onClick={() => onOpen(m.id)}>
-                  <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
-                  <td className="mv-title">{m.title}</td>
-                  <td className="mv-date">
-                    {/* 마감형은 배지("7.30까지 D-n")가 날짜를 이미 담고 있어 따로 안 쓴다 */}
-                    {m.period ? (m.deadline ? '' : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
-                    {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}> {badge[1]}</span>}
+          {sections.map((sec) => (
+            <Fragment key={sec.st || 'all'}>
+              {sec.st && (
+                <tr className="mv-group" onClick={() => toggleFold(sec.st)}>
+                  <td colSpan={5}>
+                    <span className="mv-group-chev">{folded.has(sec.st) ? '▸' : '▾'}</span>
+                    {STATUS_LABEL[sec.st]}
+                    <span className="mv-group-n">{sec.items.length}</span>
                   </td>
-                  <td className="mv-date">
-                    {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
-                  </td>
-                  <td className="mv-date">{fmtDate(m.createdAt.slice(0, 10))}</td>
                 </tr>
-                {matched.length > 0 && (
-                  <tr className="mv-hit">
-                    <td colSpan={5}>
-                      <div className="hit-lines">
-                        {matched.map((h, i) => (
-                          <div key={i} className="hit-line">
-                            <span>{fmtDate(h.date)}</span> {h.text}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            )
-          })}
+              )}
+              {!(sec.st && folded.has(sec.st)) && sec.items.map(renderRow)}
+            </Fragment>
+          ))}
+          {onCompose && (
+            <tr className="mv-ghost" onClick={() => onCompose('todo')}>
+              <td colSpan={5}>+ 항목 추가</td>
+            </tr>
+          )}
         </tbody>
       </table>
-      {list.length === 0 && <div className="empty small">해당하는 메모가 없습니다.</div>}
+      {total === 0 && <div className="empty small">해당하는 메모가 없습니다.</div>}
     </div>
   )
 }
@@ -706,7 +789,7 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
         />
       )}
       {view === 'table' && (
-        <TableView memos={list} dayOrder={dayOrder} words={words} flat={false} onOpen={onOpen} renderDetail={renderDetail} />
+        <TableView memos={list} dayOrder={dayOrder} words={words} flat={false} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />
       )}
       {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (

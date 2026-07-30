@@ -1282,7 +1282,7 @@ main {
   overflow-x: auto;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .mv-table {
@@ -1304,7 +1304,7 @@ main {
 
 .mv-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid #f0efe9;
+  border-bottom: 1px solid #f0f2f4;
   vertical-align: top;
 }
 
@@ -1313,7 +1313,58 @@ main {
 }
 
 .mv-table tbody tr:hover {
-  background: #fafaf7;
+  background: #f7f8fa;
+}
+
+/* 컬럼 헤더 = 정렬·필터 자리 (2026-07-30 시안): 제목·날짜·체크·작성일 클릭 = 정렬(▲▼ 토글→해제),
+   상태 클릭 = 상태별 걸러 보기(순환). 별도 필터·정렬 버튼 줄은 두지 않는다. */
+.mv-th {
+  cursor: pointer;
+  user-select: none;
+}
+
+.mv-th:hover {
+  color: var(--text);
+  background: #f7f8fa;
+}
+
+.mv-filter-ic {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* 상태 그룹 머리줄 — 누르면 접힘/펼침 */
+.mv-group td {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  background: #fafbfc;
+  padding: 6px 10px;
+}
+
+.mv-group-chev {
+  display: inline-block;
+  width: 14px;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.mv-group-n {
+  color: var(--faint);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* 맨 아래 고스트 줄 — 새 항목 (보드 칸의 + 항목 추가와 동일) */
+.mv-ghost td {
+  color: var(--faint);
+  font-size: 12.5px;
+  border-bottom: none;
+}
+
+.mv-ghost:hover td {
+  background: #f7f8fa;
+  color: var(--muted);
 }
 
 .mv-table .mv-title {
@@ -1701,10 +1752,16 @@ main {
   font-size: 13px;
 }
 
+/* 달력 격자 — 칸 사이 여백 없이 헤어라인으로만 (스프레드시트식, 2026-07-30 시안) */
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-rows: auto; /* 첫 줄(요일)만 내용 높이 */
+  grid-auto-rows: 1fr; /* 주 줄들은 남은 높이를 균등하게 */
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .cal-filter-note {
@@ -1720,7 +1777,14 @@ main {
   text-align: center;
   font-size: 12px;
   color: var(--faint);
-  padding: 2px 0;
+  padding: 5px 0;
+  background: #f7f8fa;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-dow:nth-child(7n) {
+  border-right: none;
 }
 
 .cal-dow.sun {
@@ -1735,8 +1799,10 @@ main {
   position: relative;
   min-height: 108px;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
   padding: 6px;
   font-size: 12px;
   cursor: pointer;
@@ -1768,18 +1834,21 @@ main {
 .cal-cell-add:hover {
   color: var(--text);
   border-color: var(--border-hover);
-  background: #fafaf7;
+  background: #f7f8fa;
 }
 
 /* 빈 곳에 마우스: 칸이 반응 — "날짜를 누르면 그날 목록" */
 .cal-cell:hover {
-  background: #faf9f3;
-  border-color: var(--border-hover);
+  background: #f7f8fa;
+}
+
+/* 매주 마지막(토) 칸은 오른쪽 헤어라인 생략 — 격자 바깥 테두리와 겹치지 않게 */
+.cal-cell:nth-of-type(7n) {
+  border-right: none;
 }
 
 .cal-cell.blank {
-  background: transparent;
-  border: none;
+  background: #fafbfc;
   cursor: default;
 }
 
@@ -1913,7 +1982,7 @@ main {
 
 /* 완료된 메모의 칩: 회색·취소선 — 남은 일과 헷갈리지 않게 */
 .cal-ev.ev-done {
-  background: #efeeea;
+  background: #f0f2f4;
   color: var(--faint);
   text-decoration: line-through;
 }
@@ -1944,17 +2013,37 @@ main {
     max-width: none;
   }
 
+  /* 달력 보기는 한 화면에 딱 — 아래 여백을 없애 페이지 스크롤이 아예 안 생긴다 (2026-07-30) */
+  .workarea:has(.cal-split) {
+    padding-bottom: 0;
+  }
+
   /* 검색·보기전환 줄도 달력 왼쪽 절반(정중앙까지)에 맞춘다 */
   main:has(.cal-split) .mv-head {
     max-width: var(--half);
   }
 
-  /* 우측 절반: 목록(고정 폭) + 상세(나머지). 상세가 열려도 목록이 안 밀린다 */
+  /* 왼쪽: 달력이 화면 높이에 딱 맞게 — 페이지 스크롤 없음. 주 줄들이 남은 높이를 나눠 가진다.
+     (100px = 상단 여백 14 + 탭 바 ~54 + 하단 상태줄 26 + 숨통 6) (2026-07-30) */
+  .cal-split .cal-left {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh / var(--zoom) - 100px);
+  }
+
+  .cal-split .cal-grid {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .cal-split .cal-cell {
+    min-height: 0;
+  }
+
+  /* 우측 절반: 목록↔상세가 한 칸을 공유 — 항목을 누르면 상세가 목록 자리를 덮고,
+     상세 위의 "‹ 날짜" 줄이나 빈 곳 클릭·Esc로 목록으로 돌아온다 (2026-07-30 시안) */
   .cal-split .cal-right {
-    display: grid;
-    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
+    min-width: 0;
     position: sticky;
     top: 8px;
   }
@@ -1962,7 +2051,7 @@ main {
   .cal-split .cal-right > .cal-detail,
   .cal-split .cal-right > .cal-detailcol {
     min-width: 0;
-    max-height: calc(100vh / var(--zoom) - 32px);
+    max-height: calc(100vh / var(--zoom) - 102px);
     overflow-y: auto;
     margin-top: 0;
     animation: panel-fade-in 160ms ease-out;
@@ -1988,6 +2077,32 @@ main {
 
 .cal-detail {
   margin-top: 14px;
+}
+
+/* 상세 위 뒤로가기 줄 — 누르면 그날 목록으로 (우측 칸 공유 구조) */
+.cal-back {
+  display: block;
+  border: none;
+  background: none;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 2px;
+  margin-bottom: 6px;
+  text-align: left;
+}
+
+.cal-back:hover {
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+/* 공유 칸 안의 상세는 카드 테두리 없이 평평하게 — 패널 속 패널처럼 보이지 않게 */
+.cal-detailcol .detail.detail-inline {
+  border: none;
+  border-radius: 0;
+  padding: 0 2px;
 }
 
 .cal-detail-title {

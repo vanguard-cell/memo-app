@@ -361,11 +361,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         })}
       </div>
       </div>{/* cal-left */}
-      {/* 우측 절반: 날짜를 고르면 그날 목록이 왼쪽에, 목록의 항목을 누르면 그 오른쪽에 상세가 나란히.
-          빈 곳 클릭·Esc로 상세→목록→닫힘 순으로 물러난다. 왼쪽 달력은 그대로 (PC, 2026-07-24) */}
+      {/* 우측 절반: 목록↔상세가 한 칸을 공유 (2026-07-30 시안). 날짜를 고르면 그날 목록,
+          항목을 누르면 상세가 그 자리를 덮는다. "‹ 날짜" 줄·빈 곳 클릭·Esc로
+          상세→목록→닫힘 순으로 물러난다. 왼쪽 달력은 그대로. */}
       {(sel || localOpen) && (
         <div className="cal-right">
-          {sel && (
+          {!localOpen && sel && (
         <div className="cal-detail">
           <div className="cal-detail-title">
             {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
@@ -439,6 +440,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           )}
           {localOpen && (
             <div className="cal-detailcol">
+              {sel && (
+                <button className="cal-back" title="그날 목록으로 돌아갑니다" onClick={closeLocal}>
+                  ‹ {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
+                </button>
+              )}
               <MemoDetail
                 key={localOpen.id}
                 inline
