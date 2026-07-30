@@ -160,21 +160,23 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             </span>
           )}
           {memo.due && !memo.period && (
-            <span className="meta-date">
-              예정{' '}
-              {/* 날짜를 바로 고른다 — 새 메모는 기본이 오늘이라 안 건드리고 넘어가도 된다 */}
-              <input
-                type="date"
-                className="meta-date-input"
-                value={memo.due}
-                onChange={(e) => e.target.value && updateMemo(memo.id, { due: e.target.value })}
-              />
-              {dueD !== null && (
-                <b className={dueD < 0 ? 't-red' : ''}>
-                  {dueD < 0 ? `${-dueD}일 지남` : dueD === 0 ? '오늘' : `D-${dueD}`}
-                </b>
-              )}
-            </span>
+            <div className="meta-block">
+              <div className="panel-sec-label">예정</div>
+              <span className="meta-row">
+                {/* 날짜를 바로 고른다 — 새 메모는 기본이 오늘이라 안 건드리고 넘어가도 된다 */}
+                <input
+                  type="date"
+                  className="meta-date-input"
+                  value={memo.due}
+                  onChange={(e) => e.target.value && updateMemo(memo.id, { due: e.target.value })}
+                />
+                {dueD !== null && (
+                  <b className={'meta-dday' + (dueD < 0 ? ' t-red' : '')}>
+                    {dueD < 0 ? `${-dueD}일 지남` : dueD === 0 ? '오늘' : `D-${dueD}`}
+                  </b>
+                )}
+              </span>
+            </div>
           )}
           {memo.hold && (
             <span className="meta-date">
@@ -216,35 +218,32 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           </div>
         )}
         <div className="panel-actions">
-          {memo.status !== 'done' ? (
-            memo.keep ? (
+          {/* 완료 처리·다시 열기 버튼은 제거(2026-07-30 시안) — 상단 상태 드롭다운(PC)·상태 버튼(폰)이
+              대신한다. 보관·보류 메모의 꺼내기만 여기 남긴다. */}
+          {memo.status !== 'done' && memo.keep && (
+            <button
+              className="btn-done"
+              title="보관에서 꺼내 오늘 할 일로 보냅니다"
+              onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
+            >
+              오늘 할 일로 꺼내기
+            </button>
+          )}
+          {memo.status !== 'done' && memo.hold && (
+            <>
               <button
                 className="btn-done"
-                title="보관에서 꺼내 오늘 할 일로 보냅니다"
-                onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
+                title="보류를 풀고 오늘 할 일로 보냅니다"
+                onClick={() => updateMemo(memo.id, { hold: false, due: todayStr() })}
               >
                 오늘 할 일로 꺼내기
               </button>
-            ) : memo.hold ? (
-              <>
-                <button
-                  className="btn-done"
-                  title="보류를 풀고 오늘 할 일로 보냅니다"
-                  onClick={() => updateMemo(memo.id, { hold: false, due: todayStr() })}
-                >
-                  오늘 할 일로 꺼내기
-                </button>
-                <SendToDateBtn
-                  label="날짜 지정"
-                  min={todayStr()}
-                  onPick={(d) => updateMemo(memo.id, { hold: false, due: d })}
-                />
-              </>
-            ) : (
-              !inline && <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
-            )
-          ) : (
-            !inline && <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
+              <SendToDateBtn
+                label="날짜 지정"
+                min={todayStr()}
+                onPick={(d) => updateMemo(memo.id, { hold: false, due: d })}
+              />
+            </>
           )}
           {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
             <>

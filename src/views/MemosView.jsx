@@ -7,15 +7,8 @@ import useIsNarrow from '../useIsNarrow'
 
 const pad = (n) => String(n).padStart(2, '0')
 
-// 기한 배지: 며칠 밀림 / 오늘 / D-n (마감형은 "마감 D-n"으로 구분)
-// D-n은 가까울수록 따뜻한 색(주황) → 멀수록 차가운 색(파랑)으로 하루 단위 그라데이션 —
-// D-1과 D-3이 배지 색만으로 구분된다. D-14부터는 같은 파랑.
-function ddStyle(dd) {
-  const t = Math.min(Math.max(dd - 1, 0), 13) / 13
-  const hue = Math.round(26 + t * (215 - 26))
-  return { background: `hsl(${hue} 85% 90%)`, color: `hsl(${hue} 80% 30%)` }
-}
-
+// 기한 배지: 며칠 밀림(빨강) / 오늘(주황) / D-n(은은한 파랑 하나) — 마감형은 "7.30까지 D-n".
+// 날짜별 색 그라데이션은 2026-07-30 제거 — 보드가 알록달록해지는 주범이었다 (스티치 시안 톤).
 function dueBadge(m, today) {
   if (m.status === 'done' || m.keep) return null
   const end = m.due || (m.period && m.period.end)
@@ -25,7 +18,7 @@ function dueBadge(m, today) {
   const md = `${Number(end.slice(5, 7))}.${Number(end.slice(8, 10))}`
   if (dd < 0) return ['b-red', m.deadline ? `${md}까지 · ${-dd}일 지남` : `${-dd}일째`]
   if (dd === 0) return ['b-amber', m.deadline ? '마감 오늘' : '오늘']
-  return ['', m.deadline ? `${md}까지 D-${dd}` : `D-${dd}`, ddStyle(dd)]
+  return ['b-blue', m.deadline ? `${md}까지 D-${dd}` : `D-${dd}`]
 }
 
 function checkInfo(m) {
@@ -107,14 +100,15 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
           <span style={{ width: `${Math.round((chk.done / chk.total) * 100)}%` }} />
         </div>
       )}
-      {(badge || chk || doneDate || nextLine) && (
+      {(badge || chk || doneDate) && (
         <div className="kb-meta">
-          {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}>{badge[1]}</span>}
+          {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
           {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
-          {nextLine && <span className="kb-next">{nextLine.text}</span>}
           {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
         </div>
       )}
+      {/* 다음 할 일 힌트는 배지 줄과 분리해 제일 흐린 한 줄로 — 카드 소음 줄이기 (2026-07-30) */}
+      {nextLine && <div className="kb-next">{nextLine.text}</div>}
     </div>
   )
 }
@@ -436,7 +430,7 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
           <td className="mv-date">
             {/* 마감형은 배지("7.30까지 D-n")가 날짜를 이미 담고 있어 따로 안 쓴다 */}
             {m.period ? (m.deadline ? '' : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
-            {badge && <span className={'kb-badge ' + badge[0]} style={badge[2]}> {badge[1]}</span>}
+            {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
           </td>
           <td className="mv-date">
             {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
