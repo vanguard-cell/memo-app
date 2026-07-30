@@ -2024,11 +2024,11 @@ main {
   }
 
   /* 왼쪽: 달력이 화면 높이에 딱 맞게 — 페이지 스크롤 없음. 주 줄들이 남은 높이를 나눠 가진다.
-     (100px = 상단 여백 14 + 탭 바 ~54 + 하단 상태줄 26 + 숨통 6) (2026-07-30) */
+     (118px = 상단 여백 14 + 탭 바 ~54 + 하단 상태줄 26 + 아래 숨통 24) (2026-07-30) */
   .cal-split .cal-left {
     display: flex;
     flex-direction: column;
-    height: calc(100vh / var(--zoom) - 100px);
+    height: calc(100vh / var(--zoom) - 118px);
   }
 
   .cal-split .cal-grid {
@@ -2051,7 +2051,8 @@ main {
   .cal-split .cal-right > .cal-detail,
   .cal-split .cal-right > .cal-detailcol {
     min-width: 0;
-    max-height: calc(100vh / var(--zoom) - 102px);
+    /* 달력과 아랫단을 맞춘다 — 둘 다 상태줄 위 24px에서 끝남 */
+    max-height: calc(100vh / var(--zoom) - 118px);
     overflow-y: auto;
     margin-top: 0;
     animation: panel-fade-in 160ms ease-out;
