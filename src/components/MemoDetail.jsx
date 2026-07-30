@@ -84,11 +84,18 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const dday = memo.period?.end && memo.status !== 'done' ? diffDays(memo.period.end, today) : null
   const dueD = memo.due && memo.status !== 'done' ? diffDays(memo.due, today) : null
 
-  // 미루기: 기한은 그 날짜로 이동, 기간(만기) 메모는 만기일 안 건드리고 그날까지 숨김
+  // 미루기: 기한은 그 날짜로 이동, 기간(만기) 메모는 만기일 안 건드리고 그날까지 숨김.
+  // 단 마감·만기가 이미 오늘이거나 지났으면 숨길 창(내일~마감)이 비어서 날짜 지정이
+  // 아무 날도 못 고르는 먹통이 된다 — 이때는 끝 날짜 자체를 옮긴다 (2026-07-31 버그 수정)
   const tomorrow = addDays(today, 1)
+  const endPassed = !memo.due && !!memo.period && memo.period.end <= today
   function postpone(d) {
-    if (!memo.due && memo.period) updateMemo(memo.id, { snoozeUntil: d })
-    else updateMemo(memo.id, { due: d })
+    if (!memo.due && memo.period) {
+      if (endPassed) {
+        const start = memo.period.start <= d ? memo.period.start : d
+        updateMemo(memo.id, { period: { start, end: d } })
+      } else updateMemo(memo.id, { snoozeUntil: d })
+    } else updateMemo(memo.id, { due: d })
   }
 
   return (
@@ -251,12 +258,17 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               {memo.due && memo.due > today ? (
                 <button title="날짜를 하루 뒤로 미룹니다" onClick={() => postpone(addDays(memo.due, 1))}>하루 미루기</button>
               ) : (
-                <button title="날짜를 내일로 미룹니다" onClick={() => postpone(tomorrow)}>하루 미루기</button>
+                <button
+                  title={endPassed ? '마감·만기 날짜를 내일로 미룹니다' : '날짜를 내일로 미룹니다'}
+                  onClick={() => postpone(tomorrow)}
+                >
+                  하루 미루기
+                </button>
               )}
               <SendToDateBtn
                 label="날짜 지정"
                 min={memo.due && memo.due < today ? today : tomorrow}
-                max={!memo.due && memo.period ? memo.period.end : undefined}
+                max={!memo.due && memo.period && !endPassed ? memo.period.end : undefined}
                 onPick={postpone}
               />
               {/* 예정 ↔ 마감 전환 — "까지"로 안 던진 것도 나중에 진짜 마감으로 바꿀 수 있게 (2026-07-22) */}
