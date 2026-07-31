@@ -182,6 +182,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                     {dueD < 0 ? `${-dueD}일 지남` : dueD === 0 ? '오늘' : `D-${dueD}`}
                   </b>
                 )}
+                {/* 기간 설정이 정보 수정 폼 안에만 있어 못 찾는 문제 — 바로가기 (2026-07-31) */}
+                {memo.status !== 'done' && !memo.keep && !memo.hold && (
+                  <button
+                    className="linkish"
+                    title="시작~끝이 있는 기간 일정으로 바꿉니다 — 달력에 이어진 띠로 표시"
+                    onClick={startEdit}
+                  >
+                    기간으로
+                  </button>
+                )}
               </span>
             </div>
           )}

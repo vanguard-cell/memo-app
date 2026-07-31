@@ -2158,13 +2158,14 @@ main {
   text-decoration: underline;
 }
 
-/* 공유 칸 안의 상세 — 옅은 회색 카드로 "어디까지가 패널인지" 경계를 보여준다.
-   카드 밖 흰 여백 클릭 = 목록으로. 안쪽 위아래 여유를 넉넉히 둬서 진행기록 입력줄
-   근처를 찍다가 실수로 닫히지 않게 (2026-07-31 사용자 지적) */
+/* 공유 칸 안의 상세 — 흰 카드에 테두리 + 옅은 그림자만으로 "어디까지가 패널인지" 경계를
+   보여준다 (회색 채움은 과하다는 지적으로 제거, 2026-07-31). 안쪽 위아래 여유를 넉넉히 둬서
+   진행기록 입력줄 근처를 찍다가 실수로 닫히지 않게. */
 .cal-detailcol .detail.detail-inline {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f7f8fa;
+  background: var(--card);
+  box-shadow: 0 1px 6px rgba(31, 35, 41, 0.07);
   padding: 22px 24px 34px;
 }
 
