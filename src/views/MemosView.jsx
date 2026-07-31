@@ -94,22 +94,25 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       onDrop={onCardDrop}
       onClick={() => onOpen(m.id)}
     >
-      <div className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</div>
+      {/* 제목 줄 오른쪽에 D-배지(완료 카드는 완료 날짜) — 공간이 모자라면 배지가 자동으로
+          아랫줄 오른쪽으로 떨어진다. 체크는 진행 막대와 한 줄로 합체 (2026-07-31 사용자 안) */}
+      <div className="kb-trow">
+        <div className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</div>
+        {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
+        {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
+      </div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
-      {/* 진행중 카드: 체크 비율을 가는 막대로도 — 어디까지 왔는지 한눈에 (2026-07-30 시안) */}
-      {st === 'active' && chk && (
-        <div className="kb-prog">
-          <span style={{ width: `${Math.round((chk.done / chk.total) * 100)}%` }} />
+      {chk && (
+        <div className={'kb-prog-row' + (st === 'done' ? ' done' : '')}>
+          <div className="kb-prog">
+            <span style={{ width: `${Math.round((chk.done / chk.total) * 100)}%` }} />
+          </div>
+          <span className={'kb-chk' + (st === 'done' && !chk.complete ? ' warn' : '')}>
+            {chk.done}/{chk.total}
+          </span>
         </div>
       )}
-      {(badge || chk || doneDate) && (
-        <div className="kb-meta">
-          {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
-          {chk && <span className={'kb-badge ' + checkCls(st, chk)}>{chk.label}</span>}
-          {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
-        </div>
-      )}
-      {/* 다음 할 일 힌트는 배지 줄과 분리해 제일 흐린 한 줄로 — 카드 소음 줄이기 (2026-07-30) */}
+      {/* 다음 할 일 힌트 — 제일 흐린 한 줄 (2026-07-30) */}
       {nextLine && <div className="kb-next">{nextLine.text}</div>}
     </div>
   )

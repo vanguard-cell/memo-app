@@ -1160,12 +1160,38 @@ main {
   -webkit-user-select: none;
 }
 
-/* 진행중 카드의 가는 진행 막대 — 체크 n/m을 눈으로도 (2026-07-30 시안 채택) */
+/* 제목 줄 — 제목 + 오른쪽 D-배지(완료 날짜). 공간이 모자라면 배지가 아랫줄 오른쪽으로 (2026-07-31) */
+.kb-trow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 8px;
+}
+
+.kb-trow .kb-title {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.kb-trow .kb-badge,
+.kb-trow .kb-done-date {
+  margin-left: auto;
+  margin-top: 3px;
+}
+
+/* 체크 있는 카드의 진행 줄 — 가는 막대 + 숫자(n/m) 한 줄 (2026-07-31 배지와 합체) */
+.kb-prog-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+
 .kb-prog {
+  flex: 1;
   height: 4px;
   border-radius: 999px;
   background: var(--fill);
-  margin-top: 9px;
   overflow: hidden;
 }
 
@@ -1174,6 +1200,22 @@ main {
   height: 100%;
   border-radius: 999px;
   background: var(--teal-strong);
+}
+
+.kb-prog-row.done .kb-prog span {
+  background: #c9ced4;
+}
+
+.kb-chk {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* 완료했는데 체크가 남은 카드 — 놓친 건지 확인하라는 노랑 */
+.kb-chk.warn {
+  color: var(--amber);
 }
 
 /* 칼럼 맨 아래 "+ 항목 추가" 고스트 줄 — 그 칸에 새 메모 (2026-07-30 시안) */
