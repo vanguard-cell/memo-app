@@ -65,15 +65,22 @@
   }
 }
 
-/* 2026-07-30 밀도 하향(사용자 지시): 글씨 한 치수 작게 + 여백은 크게 — "빽빽해서 일하기 싫은" 화면 금지 */
+/* 2026-07-30 밀도 하향(사용자 지시): 글씨 한 치수 작게 + 여백은 크게 — "빽빽해서 일하기 싫은" 화면 금지.
+   2026-07-31 한 치수 더 (사용자: "글씨가 커서 정돈된 느낌이 없다") */
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+/* 체크박스·라디오는 앱 파랑으로 — 액션 아이콘·탭과 같은 색 언어 (2026-07-31) */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--blue);
 }
 
 /* ---------- 스크롤바 — 프로그램처럼 ----------
@@ -158,7 +165,7 @@ input:focus {
 /* 폰은 입력 글씨 16px 유지(포커스 시 화면 확대 방지), PC는 UI에 맞춰 작게 */
 @media (min-width: 900px) {
   input {
-    font-size: 13.5px;
+    font-size: 13px;
   }
 }
 
@@ -249,6 +256,7 @@ main {
   max-width: 100%;
 }
 
+/* 메뉴 글씨는 본문색으로 또렷하게 — 흐리면 시안 대비 물빠져 보인다 (2026-07-31) */
 .stab {
   display: flex;
   align-items: center;
@@ -258,8 +266,8 @@ main {
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 8px 12px;
-  font-size: 13.5px;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--text);
 }
 
 .stab:hover {
@@ -278,7 +286,7 @@ main {
 .stab-ic {
   flex-shrink: 0;
   display: inline-flex;
-  color: var(--faint);
+  color: var(--muted);
 }
 
 .stab.on .stab-ic {
@@ -386,7 +394,7 @@ main {
 }
 
 .brand {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -963,7 +971,7 @@ main {
   flex-shrink: 0;
   width: 300px;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 12.5px;
   padding: 5px 10px 5px 30px;
   background: #f7f8fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa1a9' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") 9px center no-repeat;
   border-color: transparent;
@@ -987,7 +995,7 @@ main {
   background: none;
   border-radius: 0;
   padding: 10px 12px 11px;
-  font-size: 13px;
+  font-size: 12.5px;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px; /* 밑줄이 바의 헤어라인을 덮게 */
 }
@@ -1147,7 +1155,7 @@ main {
   padding: 13px 15px;
   margin-bottom: 10px;
   cursor: grab;
-  font-size: 12.5px;
+  font-size: 12px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1296,7 +1304,7 @@ main {
   width: 100%;
   min-width: 560px;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .mv-table th {
@@ -1748,7 +1756,7 @@ main {
 }
 
 .cal-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   min-width: 110px;
   text-align: center;
@@ -2323,7 +2331,7 @@ main {
 
 .panel-title {
   flex: 1;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
   word-break: break-all;
@@ -2334,7 +2342,7 @@ main {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
   color: var(--text);
@@ -2377,7 +2385,7 @@ main {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .meta-dday {
@@ -2386,7 +2394,7 @@ main {
 
 .meta-date-input {
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -2432,7 +2440,7 @@ main {
 }
 
 .meta-date {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
@@ -2543,6 +2551,15 @@ main {
 
 .pa-tipwrap {
   display: inline-flex;
+}
+
+/* 아이콘 드래그 순서 변경 — 놓일 자리 표시 (왼쪽/오른쪽 파란 선) */
+.pa-drop-l {
+  box-shadow: -2px 0 0 var(--blue-strong);
+}
+
+.pa-drop-r {
+  box-shadow: 2px 0 0 var(--blue-strong);
 }
 
 /* 즉시 뜨는 설명 말풍선 — 브라우저 기본 title은 1초 기다려야 해서 CSS로 (팝업 아님, hover 전용) */
@@ -2688,7 +2705,7 @@ main {
   resize: none;
   overflow: hidden;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.65;
   color: var(--text);
   background: transparent;
@@ -2716,7 +2733,7 @@ main {
   display: flex;
   gap: 10px;
   padding: 7px 0;
-  font-size: 13.5px;
+  font-size: 13px;
   align-items: flex-start;
 }
 

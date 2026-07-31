@@ -8,10 +8,62 @@ import FileSection from './FileSection'
 import { attachFile, detachFile } from '../store'
 import { ICONS } from '../icons'
 
+// 액션 아이콘 기본 순서 — 세로 구분선(div)도 한 자리를 차지해 같이 끌 수 있다
+const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'flag', 'hold', 'keep', 'edit', 'del']
+
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, closing }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
+  // 액션 아이콘 순서 — 드래그로 바꿀 수 있고 이 기기(localStorage)에 저장된다 (2026-07-31 사용자 요청)
+  const [paOrder, setPaOrder] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('pa-order'))
+      if (Array.isArray(saved)) return [...saved, ...PA_DEFAULT.filter((k) => !saved.includes(k))]
+    } catch (e) {
+      console.error('아이콘 순서 읽기 실패', e)
+    }
+    return PA_DEFAULT
+  })
+  const [paDrop, setPaDrop] = useState(null)
+
+  function movePa(src, target, after) {
+    setPaOrder((cur) => {
+      const next = cur.filter((k) => k !== src)
+      let pos = next.indexOf(target)
+      if (pos === -1) pos = next.length
+      else if (after) pos += 1
+      next.splice(pos, 0, src)
+      localStorage.setItem('pa-order', JSON.stringify(next))
+      return next
+    })
+  }
+
+  // 각 아이콘에 붙는 드래그 핸들러 묶음 — 아이콘을 끌어 다른 아이콘 위에 놓으면 순서가 바뀐다
+  const paDrag = (key) => ({
+    draggable: true,
+    onDragStart: (e) => {
+      e.dataTransfer.setData('text/plain', 'pa:' + key)
+      e.dataTransfer.effectAllowed = 'move'
+    },
+    onDragOver: (e) => {
+      e.preventDefault()
+      const r = e.currentTarget.getBoundingClientRect()
+      setPaDrop({ key, after: e.clientX > r.left + r.width / 2 })
+    },
+    onDragLeave: () => setPaDrop((c) => (c && c.key === key ? null : c)),
+    onDrop: (e) => {
+      e.preventDefault()
+      const data = e.dataTransfer.getData('text/plain')
+      const cur = paDrop
+      setPaDrop(null)
+      if (!data.startsWith('pa:')) return
+      const src = data.slice(3)
+      if (src !== key) movePa(src, key, cur ? cur.after : false)
+    },
+  })
+  const paCls = (key, base) =>
+    base + (paDrop && paDrop.key === key ? (paDrop.after ? ' pa-drop-r' : ' pa-drop-l') : '')
   // 작업 설명 — 진행기록(시간순 줄)과 달리 "이 일이 뭔지"를 적어두는 고정 칸.
   // 저장 버튼 없이 자동 저장한다: 타이핑이 멎으면 0.7초 뒤, 포커스가 빠질 때, 패널이 닫힐 때.
   const [desc, setDesc] = useState(memo.desc || '')
@@ -237,21 +289,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             ))}
           </div>
         )}
-        {/* 액션 줄 — 전부 아이콘 + 마우스 설명 (2026-07-31 확정). 세로줄 왼쪽 = 자주 쓰는 것
-            (완료·하루 미루기·날짜 지정), 오른쪽 = 가끔 쓰는 것(마감·보류·보관·수정·삭제).
-            보류·보관·삭제 아이콘은 사이드바의 보류함·보관함·휴지통과 같은 그림 —
-            누르면 어디로 가는지 그림이 말해준다. 보관·보류 메모의 꺼내기만 글자 버튼 유지. */}
+        {/* 액션 줄 — 전부 아이콘 + 마우스 설명 (2026-07-31 확정). 아이콘은 드래그로 순서를
+            바꿀 수 있다(세로 구분선 포함, 기기별 저장). 보류·보관·삭제 아이콘은 사이드바의
+            보류함·보관함·휴지통과 같은 그림 — 누르면 어디로 가는지 그림이 말해준다.
+            보관·보류 메모의 꺼내기만 글자 버튼 유지. */}
         <div className="panel-actions">
-          {!inline && !memo.keep && !memo.hold &&
-            (memo.status !== 'done' ? (
-              <button className="pa-ic pa-done" data-tip="완료 처리" onClick={() => completeMemo(memo.id)}>
-                {ICONS.check}
-              </button>
-            ) : (
-              <button className="pa-ic" data-tip="다시 열기" onClick={() => reopenMemo(memo.id)}>
-                {ICONS.undo}
-              </button>
-            ))}
           {memo.status !== 'done' && memo.keep && (
             <button
               className="btn-done"
@@ -277,64 +319,97 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               />
             </>
           )}
-          {memo.status !== 'done' && !memo.keep && (memo.due || memo.period) && (
-            <>
-              {/* 밀림·오늘이면 내일로, 이미 미래 날짜면 하루 더 — 마감·만기가 지났으면 끝 날짜를 옮김 */}
-              <button
-                className="pa-ic"
-                data-tip={
-                  memo.due && memo.due > today
-                    ? '하루 미루기 — 하루 뒤로'
-                    : endPassed
-                      ? '하루 미루기 — 마감·만기를 내일로'
-                      : '하루 미루기 — 내일로'
-                }
-                onClick={() => postpone(memo.due && memo.due > today ? addDays(memo.due, 1) : tomorrow)}
-              >
-                {ICONS.next}
-              </button>
-              <span className="pa-tipwrap" data-tip="날짜 지정 — 고른 날짜로">
-                <SendToDateBtn
-                  className="pa-ic"
-                  label={ICONS.calendar}
-                  min={memo.due && memo.due < today ? today : tomorrow}
-                  max={!memo.due && memo.period && !endPassed ? memo.period.end : undefined}
-                  onPick={postpone}
-                />
-              </span>
-            </>
-          )}
-          <span className="pa-div" />
-          {memo.status !== 'done' && !memo.keep && !memo.hold && (
-            <>
-              {memo.due && !memo.period && (
+          {paOrder.map((k) => {
+            if (k === 'done') {
+              if (inline || memo.keep || memo.hold) return null
+              return memo.status !== 'done' ? (
+                <button key={k} className={paCls(k, 'pa-ic pa-done')} data-tip="완료 처리" {...paDrag(k)} onClick={() => completeMemo(memo.id)}>
+                  {ICONS.check}
+                </button>
+              ) : (
+                <button key={k} className={paCls(k, 'pa-ic')} data-tip="다시 열기" {...paDrag(k)} onClick={() => reopenMemo(memo.id)}>
+                  {ICONS.undo}
+                </button>
+              )
+            }
+            const dated = memo.status !== 'done' && !memo.keep && !memo.hold && (memo.due || memo.period)
+            if (k === 'postpone') {
+              if (!dated) return null
+              return (
                 <button
-                  className="pa-ic"
-                  data-tip="마감으로 지정 — 그날까지 끝낼 일로 (⚑)"
-                  onClick={() =>
-                    updateMemo(memo.id, {
-                      due: null,
-                      period: { start: today < memo.due ? today : memo.due, end: memo.due },
-                      deadline: true,
-                    })
+                  key={k}
+                  className={paCls(k, 'pa-ic')}
+                  data-tip={
+                    memo.due && memo.due > today
+                      ? '하루 미루기 — 하루 뒤로'
+                      : endPassed
+                        ? '하루 미루기 — 마감·만기를 내일로'
+                        : '하루 미루기 — 내일로'
                   }
+                  {...paDrag(k)}
+                  onClick={() => postpone(memo.due && memo.due > today ? addDays(memo.due, 1) : tomorrow)}
                 >
-                  {ICONS.flag}
+                  {ICONS.next}
                 </button>
-              )}
-              {memo.deadline && memo.period && (
+              )
+            }
+            if (k === 'date') {
+              if (!dated) return null
+              return (
+                <span key={k} className={paCls(k, 'pa-tipwrap')} data-tip="날짜 지정 — 고른 날짜로" {...paDrag(k)}>
+                  <SendToDateBtn
+                    className="pa-ic"
+                    label={ICONS.calendar}
+                    min={memo.due && memo.due < today ? today : tomorrow}
+                    max={!memo.due && memo.period && !endPassed ? memo.period.end : undefined}
+                    onPick={postpone}
+                  />
+                </span>
+              )
+            }
+            if (k === 'div') return <span key={k} className={paCls(k, 'pa-div')} {...paDrag(k)} />
+            const openPlain = memo.status !== 'done' && !memo.keep && !memo.hold
+            if (k === 'flag') {
+              if (openPlain && memo.due && !memo.period)
+                return (
+                  <button
+                    key={k}
+                    className={paCls(k, 'pa-ic')}
+                    data-tip="마감으로 지정 — 그날까지 끝낼 일로 (⚑)"
+                    {...paDrag(k)}
+                    onClick={() =>
+                      updateMemo(memo.id, {
+                        due: null,
+                        period: { start: today < memo.due ? today : memo.due, end: memo.due },
+                        deadline: true,
+                      })
+                    }
+                  >
+                    {ICONS.flag}
+                  </button>
+                )
+              if (openPlain && memo.deadline && memo.period)
+                return (
+                  <button
+                    key={k}
+                    className={paCls(k, 'pa-ic')}
+                    data-tip="마감 해제 — 날짜만 잡힌 예정으로"
+                    {...paDrag(k)}
+                    onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
+                  >
+                    {ICONS.flagOff}
+                  </button>
+                )
+              return null
+            }
+            if (k === 'hold') {
+              if (!openPlain || !(memo.due || memo.period)) return null
+              return (
                 <button
-                  className="pa-ic"
-                  data-tip="마감 해제 — 날짜만 잡힌 예정으로"
-                  onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
-                >
-                  {ICONS.flagOff}
-                </button>
-              )}
-              {(memo.due || memo.period) && (
-                <button
-                  className="pa-ic"
+                  key={k}
+                  className={paCls(k, 'pa-ic')}
                   data-tip="보류 — 날짜를 떼고 보류함으로"
+                  {...paDrag(k)}
                   onClick={() =>
                     updateMemo(memo.id, {
                       hold: true,
@@ -348,43 +423,63 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 >
                   {ICONS.hold}
                 </button>
-              )}
-              <button
-                className="pa-ic"
-                data-tip="보관 — 자료로 보관함에"
-                onClick={() =>
-                  updateMemo(memo.id, {
-                    keep: true,
-                    due: null,
-                    period: null,
-                    deadline: false,
-                    snoozeUntil: null,
-                  })
-                }
-              >
-                {ICONS.keep}
-              </button>
-            </>
-          )}
-          <button
-            className={'pa-ic' + (editing ? ' on' : '')}
-            data-tip={editing ? '수정 취소' : '정보 수정 — 제목·예정일·기간'}
-            onClick={editing ? () => setEditing(false) : startEdit}
-          >
-            {ICONS.memo}
-          </button>
-          <button
-            className="pa-ic pa-danger"
-            data-tip="삭제 — 휴지통으로 (30일 보관)"
-            onClick={() => {
-              if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
-                deleteMemo(memo.id)
-                onClose()
-              }
-            }}
-          >
-            {ICONS.trash}
-          </button>
+              )
+            }
+            if (k === 'keep') {
+              if (!openPlain) return null
+              return (
+                <button
+                  key={k}
+                  className={paCls(k, 'pa-ic')}
+                  data-tip="보관 — 자료로 보관함에"
+                  {...paDrag(k)}
+                  onClick={() =>
+                    updateMemo(memo.id, {
+                      keep: true,
+                      due: null,
+                      period: null,
+                      deadline: false,
+                      snoozeUntil: null,
+                    })
+                  }
+                >
+                  {ICONS.keep}
+                </button>
+              )
+            }
+            if (k === 'edit') {
+              return (
+                <button
+                  key={k}
+                  className={paCls(k, 'pa-ic' + (editing ? ' on' : ''))}
+                  data-tip={editing ? '수정 취소' : '정보 수정 — 제목·예정일·기간'}
+                  {...paDrag(k)}
+                  onClick={editing ? () => setEditing(false) : startEdit}
+                >
+                  {ICONS.memo}
+                </button>
+              )
+            }
+            if (k === 'del') {
+              return (
+                <button
+                  key={k}
+                  className={paCls(k, 'pa-ic pa-danger')}
+                  data-tip="삭제 — 휴지통으로 (30일 보관)"
+                  {...paDrag(k)}
+                  onClick={() => {
+                    if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
+                      deleteMemo(memo.id)
+                      onClose()
+                    }
+                  }}
+                >
+                  {ICONS.trash}
+                </button>
+              )
+            }
+            return null
+          })}
         </div>
         {editing && form && (
           <div className="edit-form">
