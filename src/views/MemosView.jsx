@@ -7,18 +7,20 @@ import useIsNarrow from '../useIsNarrow'
 
 const pad = (n) => String(n).padStart(2, '0')
 
-// 기한 배지: 며칠 밀림(빨강) / 오늘(주황) / D-n(은은한 파랑 하나) — 마감형은 "7.30까지 D-n".
+// 기한 배지: 며칠 밀림(빨강) / 오늘(주황) / D-n(은은한 파랑 하나).
 // 날짜별 색 그라데이션은 2026-07-30 제거 — 보드가 알록달록해지는 주범이었다 (스티치 시안 톤).
-function dueBadge(m, today) {
+// withDate: 보드 카드는 날짜 칸이 없어 마감형 배지에 날짜를 같이 담고("7.30까지 D-11"),
+// 표는 날짜 칸이 따로 있어 D-n만 담는다 (마감형만 표기가 튀던 문제, 2026-08-01 통일)
+function dueBadge(m, today, withDate = true) {
   if (m.status === 'done' || m.keep) return null
   const end = m.due || (m.period && m.period.end)
   if (!end) return null
   const dd = diffDays(end, today)
-  // 마감형은 배지에 마감 날짜를 같이 — "7.30까지 D-11"이면 어느 날이 마감인지 카드에서 바로 보인다
   const md = `${Number(end.slice(5, 7))}.${Number(end.slice(8, 10))}`
-  if (dd < 0) return ['b-red', m.deadline ? `${md}까지 · ${-dd}일 지남` : `${-dd}일째`]
+  const pre = m.deadline && withDate ? `${md}까지` : ''
+  if (dd < 0) return ['b-red', m.deadline ? (pre ? `${pre} · ${-dd}일 지남` : `${-dd}일 지남`) : `${-dd}일째`]
   if (dd === 0) return ['b-amber', m.deadline ? '마감 오늘' : '오늘']
-  return ['b-blue', m.deadline ? `${md}까지 D-${dd}` : `D-${dd}`]
+  return ['b-blue', pre ? `${pre} D-${dd}` : `D-${dd}`]
 }
 
 function checkInfo(m) {
@@ -408,7 +410,7 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
 
   const renderRow = (m) => {
     const st = memoStatus(m)
-    const badge = dueBadge(m, today)
+    const badge = dueBadge(m, today, false) // 표는 날짜 칸이 따로 있어 배지는 D-n만
     const chk = checkInfo(m)
     const matched = words.length
       ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
@@ -428,8 +430,8 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
           <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
           <td className="mv-title">{m.title}</td>
           <td className="mv-date">
-            {/* 마감형은 배지("7.30까지 D-n")가 날짜를 이미 담고 있어 따로 안 쓴다 */}
-            {m.period ? (m.deadline ? '' : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
+            {/* 마감형도 날짜는 텍스트로(⚑ 표시), 배지는 D-n만 — 예정·기간과 같은 꼴 (2026-08-01) */}
+            {m.period ? (m.deadline ? '⚑ ' + fmtDate(m.period.end) : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
             {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
           </td>
           <td className="mv-date">
