@@ -7,6 +7,7 @@ import SendToDateBtn from './SendToDateBtn'
 import FileSection from './FileSection'
 import { attachFile, detachFile } from '../store'
 import { ICONS } from '../icons'
+import useIsNarrow from '../useIsNarrow'
 
 // 액션 아이콘 기본 순서 — 세로 구분선(div)도 한 자리를 차지해 같이 끌 수 있다
 const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'flag', 'hold', 'keep', 'edit', 'del']
@@ -76,6 +77,9 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const titleSaved = useRef(memo.title || '')
   const st = memoStatus(memo)
   const today = todayStr()
+  // 상태 UI 기준은 "인라인이냐"가 아니라 "폰이냐" (2026-07-31) — 달력 우측 상세는 인라인이지만
+  // PC라면 보드 패널과 똑같이 상태 드롭다운 + 완료 아이콘을 쓴다. 폰만 상태 버튼 줄.
+  const narrow = useIsNarrow()
 
   function fitTA(el) {
     if (!el) return
@@ -161,7 +165,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
         <div className="panel-head">
           {/* PC: 상태를 드롭다운 칩으로 바로 변경 — 드래그 없이도 클릭 한 번 (2026-07-30 시안 채택).
               보관·보류는 상태 개념 밖이라 배지 유지. 폰은 아래 상태 버튼 줄 그대로. */}
-          {!inline && !memo.keep && !memo.hold ? (
+          {!narrow && !memo.keep && !memo.hold ? (
             <select
               className="stage-select"
               value={st}
@@ -265,8 +269,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
           </span>
         </div>
-        {/* 폰: 드래그가 없으니 여기서 보드 열을 옮긴다 (PC는 드래그로 — 버튼 안 보임) */}
-        {inline && !memo.keep && !memo.hold && (
+        {/* 폰: 드래그가 없으니 여기서 보드 열을 옮긴다 (PC는 상태 드롭다운 — 버튼 안 보임) */}
+        {narrow && !memo.keep && !memo.hold && (
           <div className="stage-row">
             <span className="stage-label">상태</span>
             {[
@@ -321,7 +325,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           )}
           {paOrder.map((k) => {
             if (k === 'done') {
-              if (inline || memo.keep || memo.hold) return null
+              if (narrow || memo.keep || memo.hold) return null
               return memo.status !== 'done' ? (
                 <button key={k} className={paCls(k, 'pa-ic pa-done')} data-tip="완료 처리" {...paDrag(k)} onClick={() => completeMemo(memo.id)}>
                   {ICONS.check}
