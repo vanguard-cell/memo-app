@@ -76,11 +76,18 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     st === 'done' && m.completedAt
       ? `${Number(m.completedAt.slice(5, 7))}.${Number(m.completedAt.slice(8, 10))}`
       : null
-  // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단)
-  const dayLine = m.period ? (m.history || []).find((h) => h.date === today && h.text) : null
-  // 다음 할 일 힌트: 입력 순서상 아직 체크 안 된 첫 줄 — 다음 작업일 가능성이 높다
+  // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단).
+  // 단 마감형은 제외하고, 오늘이 기간 안일 때만 — 오늘 추가한 일반 기록까지 걸려서
+  // 아래 힌트 줄과 같은 내용이 두 번 보이던 버그 (2026-07-31)
+  const dayLine =
+    m.period && !m.deadline && m.period.start <= today && today <= m.period.end
+      ? (m.history || []).find((h) => h.date === today && h.text)
+      : null
+  // 다음 할 일 힌트: 입력 순서상 아직 체크 안 된 첫 줄 — 오늘 기록 줄과 같으면 건너뛴다(중복 방지)
   const nextLine =
-    st !== 'done' ? (m.history || []).find((h) => h.type !== 'log' && !h.done && h.text) : null
+    st !== 'done'
+      ? (m.history || []).find((h) => h.type !== 'log' && !h.done && h.text && h !== dayLine)
+      : null
   return (
     <div
       className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
