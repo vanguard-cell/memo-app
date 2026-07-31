@@ -91,7 +91,7 @@ export default function App() {
   function discardIfEmptyDraft(id) {
     // 최신 store 상태를 직접 읽는다 (제목 저장 직후 닫힘 등 타이밍에서 stale 방지)
     const m = getMemos().find((x) => x.id === id)
-    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && !m.keep && !m.hold) {
+    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && (!m.files || m.files.length === 0) && !m.keep && !m.hold) {
       purgeMemos([m.id])
     }
   }

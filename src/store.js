@@ -514,6 +514,31 @@ export function downloadBackup() {
   URL.revokeObjectURL(a.href)
 }
 
+// ---------- 파일 첨부 (2026-07-31 부활) ----------
+// 실물은 Storage 'files' 버킷에, 여기서는 메모에 실리는 메타데이터만 다룬다 (동기화 그대로 탐)
+
+export function attachFile(id, file) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      m.id === id ? { ...m, files: [...(m.files || []), file], updatedAt: now } : m
+    ),
+  })
+  remoteUpsert(id)
+}
+
+export function detachFile(id, path) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    memos: state.memos.map((m) =>
+      m.id === id ? { ...m, files: (m.files || []).filter((f) => f.path !== path), updatedAt: now } : m
+    ),
+  })
+  remoteUpsert(id)
+}
+
 // ---------- 점검(안전관리 캘린더) ----------
 // work = { id, type:'work', area, title, cycle, owner, evidence, months:[1..12], risk,
 //          runs: { '2026-07': { done, note } }, order, createdAt, updatedAt }

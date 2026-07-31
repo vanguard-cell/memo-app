@@ -4,6 +4,8 @@ import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../deriv
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
 import SendToDateBtn from './SendToDateBtn'
+import FileSection from './FileSection'
+import { attachFile, detachFile } from '../store'
 
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, closing }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
@@ -391,6 +393,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           onToggle={(i) => toggleHistory(memo.id, i)}
           onUpdate={(i, p) => updateHistory(memo.id, i, p)}
           onRemove={(i) => removeHistory(memo.id, i)}
+        />
+        {/* 파일 — 계약서·견적서·캡처 등. 2026-07-15 제거했다가 2026-07-31 부활
+            (캡처 붙여넣기·썸네일 미리보기·다운로드 추가) */}
+        <FileSection
+          files={memo.files || []}
+          onAttach={(f) => attachFile(memo.id, f)}
+          onRemove={(p) => detachFile(memo.id, p)}
         />
     </aside>
   )

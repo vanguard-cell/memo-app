@@ -70,7 +70,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   // 제목·기록·설명이 모두 빈 "초안"(칸 + 로 만들었다가 안 쓴 것)은 완전히 지운다 (휴지통 안 남김)
   const discardIfEmptyDraft = (id) => {
     const m = getMemos().find((x) => x.id === id)
-    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && !m.keep) {
+    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && (!m.files || m.files.length === 0) && !m.keep) {
       purgeMemos([m.id])
     }
   }
