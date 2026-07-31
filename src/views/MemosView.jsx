@@ -83,11 +83,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
     m.period && !m.deadline && m.period.start <= today && today <= m.period.end
       ? (m.history || []).find((h) => h.date === today && h.text)
       : null
-  // 다음 할 일 힌트: 입력 순서상 아직 체크 안 된 첫 줄 — 오늘 기록 줄과 같으면 건너뛴다(중복 방지)
-  const nextLine =
-    st !== 'done'
-      ? (m.history || []).find((h) => h.type !== 'log' && !h.done && h.text && h !== dayLine)
-      : null
+  // "다음 할 일" 흐린 힌트 줄은 2026-07-31 제거 — 실제로 안 읽게 되어 자리만 차지 (사용자 결정)
   return (
     <div
       className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
@@ -119,8 +115,6 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
           </span>
         </div>
       )}
-      {/* 다음 할 일 힌트 — 제일 흐린 한 줄 (2026-07-30) */}
-      {nextLine && <div className="kb-next">{nextLine.text}</div>}
     </div>
   )
 }

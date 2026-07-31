@@ -945,15 +945,7 @@ main {
   margin-top: 3px;
 }
 
-/* 다음 할 일 힌트 — 배지 줄 아래 별도의 가장 흐린 한 줄 (2026-07-30: 배지 줄에서 분리) */
-.kb-next {
-  font-size: 11px;
-  color: #b3b9c0;
-  margin-top: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* "다음 할 일" 힌트 줄(.kb-next)은 2026-07-31 제거 — 안 읽게 되어 자리만 차지 */
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
