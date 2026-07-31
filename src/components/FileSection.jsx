@@ -25,7 +25,12 @@ export default function FileSection({ files = [], onAttach, onRemove }) {
       }
     } catch (e) {
       console.error('업로드 실패', e)
-      setError('업로드 실패: ' + (e.message || '알 수 없는 오류'))
+      // "Failed to fetch" = 서버 응답조차 못 받음 — 회사망 보안장비가 브라우저 업로드를
+      // 차단하는 경우가 대표적 (2026-07-31 회사 PC에서 확인). 폰·집에서는 정상.
+      const msg = /Failed to fetch/i.test(e.message || '')
+        ? '네트워크가 업로드를 차단한 것 같습니다 (회사망 보안 정책일 수 있음) — 폰이나 집에서 다시 시도해 보세요'
+        : e.message || '알 수 없는 오류'
+      setError('업로드 실패: ' + msg)
     }
     setBusy(false)
   }
