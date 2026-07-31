@@ -205,7 +205,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               }
             }}
           />
-          {inline ? (
+          {/* 접기는 폰의 아코디언 상세에서만 — PC는 어디서 열리든 × 로 통일 (2026-07-31) */}
+          {inline && narrow ? (
             <button className="fold-btn" onClick={onClose}>접기</button>
           ) : (
             <button className="x" onClick={onClose} aria-label="닫기" title="닫기">×</button>
