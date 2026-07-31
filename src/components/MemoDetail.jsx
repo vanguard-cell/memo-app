@@ -346,6 +346,22 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                     보류
                   </button>
                 )}
+                {/* 할 일이 아니라 자료였던 것 — 보관함으로. (던지기 줄의 "보관함에 넣기"가
+                    2026-07-24 던지기 제거와 함께 사라졌던 것 복원, 2026-07-31) */}
+                <button
+                  title="할 일이 아니라 알아둘 자료로 — 날짜를 떼고 보관함에 넣습니다"
+                  onClick={() =>
+                    updateMemo(memo.id, {
+                      keep: true,
+                      due: null,
+                      period: null,
+                      deadline: false,
+                      snoozeUntil: null,
+                    })
+                  }
+                >
+                  보관
+                </button>
               </>
             )}
             <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
