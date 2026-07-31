@@ -2487,6 +2487,25 @@ main {
   color: var(--red);
 }
 
+/* ⋯ — 마감·보류·정보 수정·삭제를 접어두는 버튼 (오른쪽 끝) */
+.pa-more {
+  margin-left: auto;
+  font-size: 15px;
+  line-height: 1;
+  padding: 3px 9px;
+  letter-spacing: 1px;
+}
+
+.pa-more.on {
+  background: var(--fill);
+  color: var(--text);
+}
+
+/* ⋯을 누르면 첫 줄 바로 아래 붙는 접힌 줄 — 헤어라인 하나로 이어져 보이게 */
+.panel-actions.pa-more-row {
+  border-top: none;
+}
+
 /* 상태 드롭다운 칩 — PC 상세 맨 위에서 클릭으로 상태 변경 (2026-07-30 시안 채택) */
 .stage-select {
   font: inherit;

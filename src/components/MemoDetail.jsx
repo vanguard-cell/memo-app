@@ -11,6 +11,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(null)
+  // 액션 줄 다이어트(2026-07-31 "너저분" 지적): 자주 쓰는 것만 첫 줄, 나머지는 ⋯ 뒤 접힌 줄
+  const [more, setMore] = useState(false)
   // 작업 설명 — 진행기록(시간순 줄)과 달리 "이 일이 뭔지"를 적어두는 고정 칸.
   // 저장 버튼 없이 자동 저장한다: 타이핑이 멎으면 0.7초 뒤, 포커스가 빠질 때, 패널이 닫힐 때.
   const [desc, setDesc] = useState(memo.desc || '')
@@ -236,9 +238,15 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             ))}
           </div>
         )}
+        {/* 첫 줄: 자주 쓰는 것만 — 완료(PC)·하루 미루기·날짜 지정. 마감·보류·정보 수정·삭제는
+            ⋯ 뒤 접힌 줄로 (2026-07-31 "너저분" 지적 + 완료 버튼 복원 요청) */}
         <div className="panel-actions">
-          {/* 완료 처리·다시 열기 버튼은 제거(2026-07-30 시안) — 상단 상태 드롭다운(PC)·상태 버튼(폰)이
-              대신한다. 보관·보류 메모의 꺼내기만 여기 남긴다. */}
+          {!inline && !memo.keep && !memo.hold &&
+            (memo.status !== 'done' ? (
+              <button className="btn-done" onClick={() => completeMemo(memo.id)}>완료 처리</button>
+            ) : (
+              <button onClick={() => reopenMemo(memo.id)}>다시 열기</button>
+            ))}
           {memo.status !== 'done' && memo.keep && (
             <button
               className="btn-done"
@@ -283,60 +291,77 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 max={!memo.due && memo.period && !endPassed ? memo.period.end : undefined}
                 onPick={postpone}
               />
-              {/* 예정 ↔ 마감 전환 — "까지"로 안 던진 것도 나중에 진짜 마감으로 바꿀 수 있게 (2026-07-22) */}
-              {memo.due && !memo.period && (
-                <button
-                  title="그날까지 끝낼 일로 바꿉니다 — 달력에 ⚑ 마감(빨강)으로 표시"
-                  onClick={() =>
-                    updateMemo(memo.id, {
-                      due: null,
-                      period: { start: today < memo.due ? today : memo.due, end: memo.due },
-                      deadline: true,
-                    })
-                  }
-                >
-                  마감으로 지정
-                </button>
-              )}
-              {memo.deadline && memo.period && (
-                <button
-                  title="날짜만 잡힌 예정으로 되돌립니다"
-                  onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
-                >
-                  마감 해제
-                </button>
-              )}
-              {/* 기약 없어진 일은 날짜를 떼고 보류함으로 — "N일 지남"이 달력을 계속 어지럽히지 않게 */}
-              <button
-                title="날짜를 떼고 보류함으로 보냅니다 — 기록은 그대로, 언제든 다시 꺼낼 수 있습니다"
-                onClick={() =>
-                  updateMemo(memo.id, {
-                    hold: true,
-                    holdAt: today,
-                    due: null,
-                    period: null,
-                    deadline: false,
-                    snoozeUntil: null,
-                  })
-                }
-              >
-                보류
-              </button>
             </>
           )}
-          <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
           <button
-            className="btn-danger"
-            onClick={() => {
-              if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
-                deleteMemo(memo.id)
-                onClose()
-              }
-            }}
+            className={'pa-more' + (more ? ' on' : '')}
+            title="마감·보류·정보 수정·삭제"
+            onClick={() => setMore((v) => !v)}
           >
-            삭제
+            ⋯
           </button>
         </div>
+        {more && (
+          <div className="panel-actions pa-more-row">
+            {memo.status !== 'done' && !memo.keep && !memo.hold && (
+              <>
+                {/* 예정 ↔ 마감 전환 — "까지"로 안 던진 것도 나중에 진짜 마감으로 바꿀 수 있게 (2026-07-22) */}
+                {memo.due && !memo.period && (
+                  <button
+                    title="그날까지 끝낼 일로 바꿉니다 — 달력에 ⚑ 마감(빨강)으로 표시"
+                    onClick={() =>
+                      updateMemo(memo.id, {
+                        due: null,
+                        period: { start: today < memo.due ? today : memo.due, end: memo.due },
+                        deadline: true,
+                      })
+                    }
+                  >
+                    마감으로 지정
+                  </button>
+                )}
+                {memo.deadline && memo.period && (
+                  <button
+                    title="날짜만 잡힌 예정으로 되돌립니다"
+                    onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
+                  >
+                    마감 해제
+                  </button>
+                )}
+                {/* 기약 없어진 일은 날짜를 떼고 보류함으로 — "N일 지남"이 달력을 계속 어지럽히지 않게 */}
+                {(memo.due || memo.period) && (
+                  <button
+                    title="날짜를 떼고 보류함으로 보냅니다 — 기록은 그대로, 언제든 다시 꺼낼 수 있습니다"
+                    onClick={() =>
+                      updateMemo(memo.id, {
+                        hold: true,
+                        holdAt: today,
+                        due: null,
+                        period: null,
+                        deadline: false,
+                        snoozeUntil: null,
+                      })
+                    }
+                  >
+                    보류
+                  </button>
+                )}
+              </>
+            )}
+            <button onClick={editing ? () => setEditing(false) : startEdit}>{editing ? '수정 취소' : '정보 수정'}</button>
+            <button
+              className="btn-danger"
+              onClick={() => {
+                if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
+                  deleteMemo(memo.id)
+                  onClose()
+                }
+              }}
+            >
+              삭제
+            </button>
+          </div>
+        )}
         {editing && form && (
           <div className="edit-form">
             <label>
