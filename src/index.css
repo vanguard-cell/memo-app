@@ -2148,7 +2148,7 @@ main {
   font-size: 13px;
   font-weight: 600;
   padding: 4px 2px;
-  margin-bottom: 6px;
+  margin: 2px 0 10px;
   text-align: left;
 }
 
@@ -2158,11 +2158,14 @@ main {
   text-decoration: underline;
 }
 
-/* 공유 칸 안의 상세는 카드 테두리 없이 평평하게 — 패널 속 패널처럼 보이지 않게 */
+/* 공유 칸 안의 상세 — 옅은 회색 카드로 "어디까지가 패널인지" 경계를 보여준다.
+   카드 밖 흰 여백 클릭 = 목록으로. 안쪽 위아래 여유를 넉넉히 둬서 진행기록 입력줄
+   근처를 찍다가 실수로 닫히지 않게 (2026-07-31 사용자 지적) */
 .cal-detailcol .detail.detail-inline {
-  border: none;
-  border-radius: 0;
-  padding: 0 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7f8fa;
+  padding: 22px 24px 34px;
 }
 
 .cal-detail-title {
