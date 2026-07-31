@@ -1939,6 +1939,58 @@ main {
   opacity: 0.62;
 }
 
+/* ---------- 기간 띠 — 칸 경계를 넘어 쭉 이어진 밴드 (구글 캘린더식, 2026-07-31) ----------
+   음수 마진으로 칸 안쪽 여백을 물고 나가 옆 칸 띠와 맞닿는다 (칸의 1px 헤어라인만 살짝 비침).
+   시작 칸은 왼쪽, 만기 칸은 오른쪽만 둥글게 — 어디서 시작해 어디서 끝나는지 모양으로 보인다. */
+.cal-band {
+  display: block;
+  height: 17px;
+  line-height: 17px;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin: 0 -8px 3px;
+  padding: 0 8px;
+  background: var(--purple-bg);
+  color: var(--purple);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.cal-band.b-s {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  margin-left: 2px;
+}
+
+.cal-band.b-e {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  margin-right: 2px;
+}
+
+/* 진행중인 기간은 초록, 완료된 기간은 회색 취소선 — 칩과 같은 문법 */
+.cal-band.bd-doing {
+  background: var(--teal-bg);
+  color: var(--teal);
+}
+
+.cal-band.bd-done {
+  background: #f0f2f4;
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.cal-band:hover {
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+/* 빈 레인 자리 채움 — 겹치는 기간이 있을 때 같은 메모가 항상 같은 줄 높이에 오게 */
+.cal-band-ghost {
+  visibility: hidden;
+}
+
 /* 진행중인 메모의 조각 — 보드 진행중과 같은 초록. 달력만 훑어도 굴러가는 건이 보인다.
    ⚑ 마감(빨강) 조각은 급한 표시가 우선이라 제외 (2026-07-26) */
 .cal-ev.ev-doing {
