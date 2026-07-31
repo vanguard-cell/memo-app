@@ -200,13 +200,13 @@ main {
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);
     /* 분할선 = 사이드바를 뺀 영역의 정중앙(50vw + 사이드바 절반 100px) — 스티치 시안 비율
-       (2026-07-30, 화면 정중앙 50vw에서 변경). 사이드바 200 + 본문 왼쪽 여백 36 + 가운데 여백 12 = 248. */
+       (2026-07-30, 화면 정중앙 50vw에서 변경). 사이드바 200 + 본문 왼쪽 여백 44 + 가운데 여백 12 = 256. */
     --split: calc(50vw / var(--zoom) + 100px);
-    --half: calc(var(--split) - 248px);
+    --half: calc(var(--split) - 256px);
   }
 
   .workarea {
-    padding: 20px 36px 90px;
+    padding: 26px 44px 90px;
   }
 
   .inputbar,
@@ -240,8 +240,8 @@ main {
   height: calc(100vh / var(--zoom));
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 24px 14px 44px; /* 아래 44px = 하단 상태줄 위 여유 */
+  gap: 4px;
+  padding: 28px 16px 46px; /* 아래 = 하단 상태줄 위 여유 */
   border-right: 1px solid var(--border);
 }
 
@@ -252,7 +252,7 @@ main {
 /* 브랜드 아래 작은 이메일 — 누르면 진단 (시안: 브랜드 밑 이메일) */
 .sidenav .who {
   align-self: flex-start;
-  padding: 0 8px 20px;
+  padding: 0 8px 26px;
   max-width: 100%;
 }
 
@@ -962,7 +962,7 @@ main {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0;
 }
@@ -1085,7 +1085,7 @@ main {
 .kb-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(190px, 1fr));
-  gap: 22px;
+  gap: 28px;
   align-items: start;
 }
 
@@ -1140,7 +1140,7 @@ main {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 4px 2px 14px;
+  margin: 4px 2px 18px;
 }
 
 .kb-count {
@@ -1152,8 +1152,8 @@ main {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 13px 15px;
-  margin-bottom: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
   cursor: grab;
   font-size: 12px;
   user-select: none;
@@ -1312,13 +1312,13 @@ main {
   color: var(--faint);
   font-weight: 600;
   text-align: left;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .mv-table td {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid #f0f2f4;
   vertical-align: top;
 }
@@ -1752,7 +1752,7 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .cal-title {
@@ -2091,11 +2091,11 @@ main {
   }
 
   /* 왼쪽: 달력이 화면 높이에 딱 맞게 — 페이지 스크롤 없음. 주 줄들이 남은 높이를 나눠 가진다.
-     (118px = 상단 여백 14 + 탭 바 ~54 + 하단 상태줄 26 + 아래 숨통 24) (2026-07-30) */
+     (146px = 상단 여백 26 + 탭 바 ~72 + 하단 상태줄 26 + 아래 숨통 22) (2026-07-31 여백 확대) */
   .cal-split .cal-left {
     display: flex;
     flex-direction: column;
-    height: calc(100vh / var(--zoom) - 118px);
+    height: calc(100vh / var(--zoom) - 146px);
   }
 
   .cal-split .cal-grid {
@@ -2118,8 +2118,8 @@ main {
   .cal-split .cal-right > .cal-detail,
   .cal-split .cal-right > .cal-detailcol {
     min-width: 0;
-    /* 달력과 아랫단을 맞춘다 — 둘 다 상태줄 위 24px에서 끝남 */
-    max-height: calc(100vh / var(--zoom) - 118px);
+    /* 달력과 아랫단을 맞춘다 */
+    max-height: calc(100vh / var(--zoom) - 146px);
     overflow-y: auto;
     margin-top: 0;
     animation: panel-fade-in 160ms ease-out;
@@ -2181,13 +2181,13 @@ main {
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .cal-add {
   display: flex;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
 
 .cal-add input {
@@ -2219,7 +2219,7 @@ main {
     border: none;
     border-left: 1px solid var(--border);
     border-radius: 0;
-    padding: 26px 36px 30px;
+    padding: 32px 42px 36px;
     /* 오른쪽에서 미끄러져 들어온다 — 어디서 나온 창인지 눈으로 따라가게 (2026-07-22) */
     animation: panel-slide-in 200ms cubic-bezier(0.22, 0.7, 0.3, 1);
   }
@@ -2436,7 +2436,7 @@ main {
   gap: 8px;
   flex-wrap: wrap;
   align-items: flex-start;
-  margin: 22px 0 24px;
+  margin: 26px 0 28px;
 }
 
 .meta-date {
@@ -2454,7 +2454,7 @@ main {
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
-  padding: 10px 2px;
+  padding: 12px 2px;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
@@ -2688,14 +2688,14 @@ main {
 
 /* 작업 설명 — 진행기록 위에 놓이는 고정 칸 (노션 세부정보의 '작업 설명') */
 .panel-desc {
-  margin: 30px 0 34px;
+  margin: 34px 0 38px;
 }
 
 .panel-sec-label {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .desc-input {
@@ -2732,7 +2732,7 @@ main {
 .tl-item {
   display: flex;
   gap: 10px;
-  padding: 7px 0;
+  padding: 8px 0;
   font-size: 13px;
   align-items: flex-start;
 }
@@ -3110,9 +3110,9 @@ main {
 }
 
 .filebox {
-  margin-top: 28px;
+  margin-top: 34px;
   border-top: 1px solid var(--border);
-  padding-top: 16px;
+  padding-top: 18px;
   border-radius: 8px;
 }
 
