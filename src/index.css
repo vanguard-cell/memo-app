@@ -2487,23 +2487,84 @@ main {
   color: var(--red);
 }
 
-/* ⋯ — 마감·보류·정보 수정·삭제를 접어두는 버튼 (오른쪽 끝) */
-.pa-more {
-  margin-left: auto;
-  font-size: 15px;
+/* 액션 아이콘 버튼 (2026-07-31 전부 아이콘 확정) — 마우스를 올리면 즉시 설명 말풍선 */
+.pa-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 6px 9px;
+  border-radius: 6px;
+  color: var(--muted);
   line-height: 1;
-  padding: 3px 9px;
-  letter-spacing: 1px;
 }
 
-.pa-more.on {
+.pa-ic:hover {
+  background: var(--fill);
+  color: var(--text);
+  border: none;
+}
+
+.pa-ic.on {
   background: var(--fill);
   color: var(--text);
 }
 
-/* ⋯을 누르면 첫 줄 바로 아래 붙는 접힌 줄 — 헤어라인 하나로 이어져 보이게 */
-.panel-actions.pa-more-row {
-  border-top: none;
+/* 완료 처리 — 파란 채움, 흰 체크 */
+.pa-ic.pa-done {
+  background: var(--blue);
+  color: #fff;
+  padding: 6px 12px;
+}
+
+.pa-ic.pa-done:hover {
+  background: var(--blue-strong);
+  color: #fff;
+}
+
+.pa-ic.pa-danger {
+  color: var(--red);
+}
+
+.pa-ic.pa-danger:hover {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+/* 자주 쓰는 것 | 가끔 쓰는 것 사이 세로 구분선 */
+.pa-div {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 7px;
+  flex-shrink: 0;
+}
+
+.pa-tipwrap {
+  display: inline-flex;
+}
+
+/* 즉시 뜨는 설명 말풍선 — 브라우저 기본 title은 1초 기다려야 해서 CSS로 (팝업 아님, hover 전용) */
+.panel-actions [data-tip] {
+  position: relative;
+}
+
+.panel-actions [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 400;
+  padding: 4px 9px;
+  border-radius: 5px;
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
 }
 
 /* 상태 드롭다운 칩 — PC 상세 맨 위에서 클릭으로 상태 변경 (2026-07-30 시안 채택) */

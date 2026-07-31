@@ -12,24 +12,12 @@ import MemosView from './views/MemosView'
 import TrashView from './views/TrashView'
 import KeepView from './views/KeepView'
 import HoldView from './views/HoldView'
+import { ICONS } from './icons'
 
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
 // 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
 
-// 사이드바 아이콘 — 라이브러리 없이 작은 인라인 SVG (2026-07-30 스티치 시안 리디자인)
-const ic = (path) => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {path}
-  </svg>
-)
-const ICONS = {
-  memo: ic(<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>),
-  hold: ic(<><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></>),
-  keep: ic(<><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" /><path d="M10 12h4" /></>),
-  trash: ic(<><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" /></>),
-  backup: ic(<path d="M17.5 19a4.5 4.5 0 0 0 .4-9A6 6 0 0 0 6.1 8.5 4.5 4.5 0 0 0 6.5 19Z" />),
-  out: ic(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>),
-}
+// 사이드바·상세 공용 아이콘은 src/icons.jsx — 같은 그림 언어 (2026-07-31 모듈로 분리)
 
 // 새 버전 감지 — 탭을 오래 열어두면 옛 코드가 계속 돌므로, 탭에 돌아올 때마다
 // 배포본의 스크립트 파일명이 바뀌었는지 확인해서 새로고침 배너를 띄운다
