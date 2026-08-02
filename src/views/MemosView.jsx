@@ -97,12 +97,13 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       onDrop={onCardDrop}
       onClick={() => onOpen(m.id)}
     >
-      {/* 제목 줄 오른쪽에 D-배지(완료 카드는 완료 날짜) — 공간이 모자라면 배지가 자동으로
-          아랫줄 오른쪽으로 떨어진다. 체크는 진행 막대와 한 줄로 합체 (2026-07-31 사용자 안) */}
+      {/* D-배지(완료 카드는 완료 날짜)는 카드 우상단 고정(float) — 제목이 옆을 감아 흐른다.
+          짧은 제목은 같은 줄, 긴 제목은 배지 아래로 자연스럽게 감겨서 배지가 혼자
+          떨어지는 줄이 안 생긴다 (2026-07-31 flex 줄바꿈의 어색함 수정) */}
       <div className="kb-trow">
-        <div className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</div>
         {badge && <span className={'kb-badge ' + badge[0]}>{badge[1]}</span>}
         {doneDate && <span className="kb-done-date">완료 {doneDate}</span>}
+        <span className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</span>
       </div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
       {chk && (

@@ -1152,23 +1152,19 @@ main {
   -webkit-user-select: none;
 }
 
-/* 제목 줄 — 제목 + 오른쪽 D-배지(완료 날짜). 공간이 모자라면 배지가 아랫줄 오른쪽으로 (2026-07-31) */
-.kb-trow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 4px 8px;
-}
-
-.kb-trow .kb-title {
-  flex: 1 1 auto;
-  min-width: 120px;
+/* 제목 줄 — D-배지(완료 날짜)는 카드 우상단 고정(float), 제목이 옆을 감아 흐른다.
+   짧은 제목은 같은 줄, 긴 제목은 배지 아래로 감김 — 배지 혼자 떨어지는 줄 없음 (2026-07-31) */
+.kb-trow::after {
+  content: '';
+  display: block;
+  clear: both;
 }
 
 .kb-trow .kb-badge,
 .kb-trow .kb-done-date {
-  margin-left: auto;
-  margin-top: 3px;
+  float: right;
+  margin-left: 8px;
+  margin-top: 2px;
 }
 
 /* 체크 있는 카드의 진행 줄 — 가는 막대 + 숫자(n/m) 한 줄 (2026-07-31 배지와 합체) */
