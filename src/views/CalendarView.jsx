@@ -25,11 +25,13 @@ function moveEvent(m, type, fromDate, targetDate) {
 
 const pad = (n) => String(n).padStart(2, '0')
 
-// 기간의 끝은 "종료" — "만기"는 ⚑마감과 뜻이 겹쳐 보여 은퇴 (2026-08-03 용어 정리)
+// 날짜 조각 어휘는 딱 셋 (2026-08-03 2차 정리, 사용자: 시작·종료·마감이 계속 거슬림):
+// 예정 = 단일 날짜 + 기간의 시작(시작은 예정에 흡수), 마감 = 기간의 끝("~까지"형은 ⚑ 접두),
+// 기간 = 기간 중간. "시작·종료·만기" 표기는 전부 은퇴.
 const TYPE = {
   due: ['예정', 'ev-due'],
-  start: ['시작', 'ev-start'],
-  end: ['종료', 'ev-end'],
+  start: ['예정', 'ev-due'],
+  end: ['마감', 'ev-end'],
   span: ['기간', 'ev-span'],
 }
 
@@ -509,14 +511,14 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onClick={() => openDetail(e.m.id)}
             >
-              {/* 완료된 줄엔 종류 배지(예정·시작·만기)를 안 단다 — "완료인데 예정?" 모순 방지 (2026-08-03).
-                  오른쪽 상태 배지는 특별할 때만: 진행중(초록)·완료(회색). 할일은 기본이라 무표시. */}
-              {memoStatus(e.m) !== 'done' && (
+              {/* 왼쪽 배지 하나로 통일: 완료된 줄은 종류 대신 회색 "완료", 아니면 예정·마감·기간.
+                  진행중은 줄의 은은한 초록 바탕으로만 (2026-08-03) */}
+              {memoStatus(e.m) === 'done' ? (
+                <span className="badge st-done">{STATUS_LABEL.done}</span>
+              ) : (
                 <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               )}
               <span className="row-title">{e.text}</span>
-              {/* 상태 배지는 완료만 — 진행중은 줄의 은은한 초록 바탕으로 (2026-08-03) */}
-              {memoStatus(e.m) === 'done' && <span className="badge st-done">{STATUS_LABEL.done}</span>}
             </div>
             </Fragment>
             )
