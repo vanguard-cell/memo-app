@@ -1644,6 +1644,7 @@ main {
 
 .row.done .row-title {
   color: var(--muted);
+  text-decoration: line-through;
 }
 
 .row-title {

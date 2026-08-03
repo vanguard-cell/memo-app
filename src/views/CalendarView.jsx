@@ -471,6 +471,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             <div
               className={
                 'row' +
+                (memoStatus(e.m) === 'done' ? ' done' : '') +
                 (localOpenId === e.m.id ? ' row-sel' : '') +
                 (rowDrop && rowDrop.id === e.m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : '')
               }
@@ -504,7 +505,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onClick={() => openDetail(e.m.id)}
             >
-              <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
+              {/* 완료된 줄엔 종류 배지(예정·시작·만기)를 안 단다 — "완료인데 예정?" 모순 방지 (2026-08-03) */}
+              {memoStatus(e.m) !== 'done' && (
+                <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
+              )}
               <span className="row-title">{e.text}</span>
               <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
             </div>
