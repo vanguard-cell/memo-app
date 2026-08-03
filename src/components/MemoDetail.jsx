@@ -12,6 +12,8 @@ import useIsNarrow from '../useIsNarrow'
 // 액션 아이콘 기본 순서 — 세로 구분선(div)도 한 자리를 차지해 같이 끌 수 있다
 const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'flag', 'hold', 'keep', 'edit', 'del']
 
+const REPEAT_LABEL = { weekly: '매주', monthly: '매달', yearly: '매년' }
+
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, closing }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
   const [editing, setEditing] = useState(false)
@@ -118,6 +120,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
       due: memo.due || '',
       start: memo.period?.start || '',
       end: memo.period?.end || '',
+      repeat: memo.repeat || '',
     })
     setEditing(true)
   }
@@ -134,6 +137,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
       due: period ? null : form.due || null,
       period,
       deadline: period ? memo.deadline || false : false,
+      repeat: period ? null : form.repeat || null, // 반복은 예정일 메모 전용
       // 보류 메모에 날짜를 달면 보류가 풀린다 — 날짜가 생겼는데 화면에 안 보이면 이상하니까
       ...(memo.hold && (period || form.due) ? { hold: false } : {}),
     })
@@ -252,6 +256,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                     기간으로
                   </button>
                 )}
+                {memo.repeat && (
+                  <span className="meta-repeat" title="완료하면 예정일이 다음 주기로 굴러갑니다">
+                    ↻ {REPEAT_LABEL[memo.repeat] || memo.repeat}
+                  </span>
+                )}
               </span>
             </div>
           )}
@@ -328,7 +337,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             if (k === 'done') {
               if (narrow || memo.keep || memo.hold) return null
               return memo.status !== 'done' ? (
-                <button key={k} className={paCls(k, 'pa-ic pa-done')} data-tip="완료 처리" {...paDrag(k)} onClick={() => completeMemo(memo.id)}>
+                <button
+                  key={k}
+                  className={paCls(k, 'pa-ic pa-done')}
+                  data-tip={memo.repeat && memo.due ? `이번 회차 완료 — 다음 ${REPEAT_LABEL[memo.repeat] || ''} 예정으로` : '완료 처리'}
+                  {...paDrag(k)}
+                  onClick={() => completeMemo(memo.id)}
+                >
                   {ICONS.check}
                 </button>
               ) : (
@@ -519,6 +534,22 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 </span>
               </label>
             </div>
+            <label>
+              반복
+              <span className="eg-range">
+                <select
+                  className="edit-select"
+                  value={form.repeat || ''}
+                  onChange={(e) => setForm({ ...form, repeat: e.target.value })}
+                >
+                  <option value="">없음</option>
+                  <option value="weekly">매주</option>
+                  <option value="monthly">매달</option>
+                  <option value="yearly">매년</option>
+                </select>
+                <span className="edit-hint">완료하면 예정일이 다음 주기로 굴러갑니다 (공과금·정기점검용)</span>
+              </span>
+            </label>
             <button className="btn-done" onClick={saveEdit}>저장</button>
           </div>
         )}

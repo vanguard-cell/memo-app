@@ -1,4 +1,4 @@
-import { todayStr, parse } from './parser'
+import { todayStr, parse, addDays } from './parser'
 import { supabase, hasSupabase } from './supabase'
 
 const KEY = 'hds-memo-data-v1'
@@ -359,13 +359,40 @@ export function toggleHistory(id, index) {
   remoteUpsert(id)
 }
 
+// 반복 메모의 다음 예정일 — 원래 예정일 기준으로 굴러간다 (늦게 완료해도 주기가 안 밀림).
+// 한 번은 무조건 전진하고, 그래도 과거면 오늘 이후가 될 때까지 굴린다.
+function addMonthsClamped(ymd, n) {
+  const [y, mo, d] = ymd.split('-').map(Number)
+  const t = new Date(y, mo - 1 + n, 1)
+  const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()
+  const pad = (x) => String(x).padStart(2, '0')
+  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(Math.min(d, last))}`
+}
+
+export function nextRepeatDate(due, repeat) {
+  const today = todayStr()
+  let d = due
+  let guard = 0
+  do {
+    if (repeat === 'weekly') d = addDays(d, 7)
+    else if (repeat === 'yearly') d = addMonthsClamped(d, 12)
+    else d = addMonthsClamped(d, 1)
+  } while (d <= today && guard++ < 200)
+  return d
+}
+
 export function completeMemo(id) {
   const now = new Date().toISOString()
   commit({
     ...state,
-    memos: state.memos.map((m) =>
-      m.id === id ? { ...m, status: 'done', completedAt: now, updatedAt: now } : m
-    ),
+    memos: state.memos.map((m) => {
+      if (m.id !== id) return m
+      // 반복 메모(공과금 등): 완료 대신 다음 주기로 굴러간다 — 할일로 복귀, 기록은 계속 쌓임 (2026-07-31)
+      if (m.repeat && m.due) {
+        return { ...m, due: nextRepeatDate(m.due, m.repeat), stage: 'todo', snoozeUntil: null, updatedAt: now }
+      }
+      return { ...m, status: 'done', completedAt: now, updatedAt: now }
+    }),
   })
   remoteUpsert(id)
 }

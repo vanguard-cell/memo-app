@@ -18,9 +18,10 @@ function dueBadge(m, today, withDate = true) {
   const dd = diffDays(end, today)
   const md = `${Number(end.slice(5, 7))}.${Number(end.slice(8, 10))}`
   const pre = m.deadline && withDate ? `${md}까지` : ''
-  if (dd < 0) return ['b-red', m.deadline ? (pre ? `${pre} · ${-dd}일 지남` : `${-dd}일 지남`) : `${-dd}일째`]
-  if (dd === 0) return ['b-amber', m.deadline ? '마감 오늘' : '오늘']
-  return ['b-blue', pre ? `${pre} D-${dd}` : `D-${dd}`]
+  const rp = m.repeat ? '↻ ' : '' // 반복 메모 표시 — 완료하면 다음 주기로 굴러감 (2026-07-31)
+  if (dd < 0) return ['b-red', rp + (m.deadline ? (pre ? `${pre} · ${-dd}일 지남` : `${-dd}일 지남`) : `${-dd}일째`)]
+  if (dd === 0) return ['b-amber', rp + (m.deadline ? '마감 오늘' : '오늘')]
+  return ['b-blue', rp + (pre ? `${pre} D-${dd}` : `D-${dd}`)]
 }
 
 function checkInfo(m) {
@@ -140,8 +141,15 @@ function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
   function moveTo(m, col) {
     if (!m || memoStatus(m) === col) return
     if (col === 'done') {
-      completeMemo(m.id)
-      showUndo(`'${m.title}' 완료`, () => reopenMemo(m.id))
+      if (m.repeat && m.due) {
+        // 반복 메모: 완료 = 다음 주기로 — 되돌리기는 이전 예정일 복원
+        const prev = { due: m.due, stage: m.stage ?? null }
+        completeMemo(m.id)
+        showUndo(`'${m.title}' 다음 주기로`, () => updateMemo(m.id, prev))
+      } else {
+        completeMemo(m.id)
+        showUndo(`'${m.title}' 완료`, () => reopenMemo(m.id))
+      }
       return
     }
     if (m.status === 'done') reopenMemo(m.id)

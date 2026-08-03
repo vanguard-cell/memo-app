@@ -2393,6 +2393,32 @@ main {
   font-weight: 600;
 }
 
+/* 반복 표시 칩 — 완료하면 다음 주기로 굴러가는 메모 (2026-07-31) */
+.meta-repeat {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-bg);
+  padding: 2px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.edit-form .edit-select {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.edit-form .edit-hint {
+  font-size: 11px;
+  color: var(--faint);
+  align-self: center;
+}
+
 .meta-date-input {
   font: inherit;
   font-size: 13px;
