@@ -219,7 +219,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
         <div className="panel-meta">
           {memo.period && (
             <span className="meta-date">
-              {memo.deadline ? `⚑ 마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
+              {memo.deadline ? `마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
               {dday !== null && (
                 <b className={dday < 0 ? 't-red' : 't-blue'}>
                   {' · '}
@@ -393,7 +393,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   <button
                     key={k}
                     className={paCls(k, 'pa-ic')}
-                    data-tip="마감으로 지정 — 그날까지 끝낼 일로 (⚑)"
+                    data-tip="마감으로 지정 — 그날까지 끝낼 일로"
                     {...paDrag(k)}
                     onClick={() =>
                       updateMemo(memo.id, {

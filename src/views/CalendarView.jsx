@@ -26,8 +26,8 @@ function moveEvent(m, type, fromDate, targetDate) {
 const pad = (n) => String(n).padStart(2, '0')
 
 // 날짜 조각 어휘는 딱 셋 (2026-08-03 2차 정리, 사용자: 시작·종료·마감이 계속 거슬림):
-// 예정 = 단일 날짜 + 기간의 시작(시작은 예정에 흡수), 마감 = 기간의 끝("~까지"형은 ⚑ 접두),
-// 기간 = 기간 중간. "시작·종료·만기" 표기는 전부 은퇴.
+// 예정 = 단일 날짜 + 기간의 시작(시작은 예정에 흡수), 마감 = 기간의 끝, 기간 = 기간 중간.
+// "시작·종료·만기" 표기와 깃발(⚑)은 전부 은퇴 — 마감은 어디서 왔든 같은 얼굴.
 const TYPE = {
   due: ['예정', 'ev-due'],
   start: ['예정', 'ev-due'],
@@ -38,7 +38,7 @@ const TYPE = {
 // 마감형 메모는 만기 대신 "마감"으로 표기
 const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.type][0])
 
-// 깃발(⚑)은 마감형("~까지"로 던진 것)에만 — 날짜만 잡힌 예정까지 마감으로 보이던 문제 (2026-07-22)
+// 마감형("~까지"로 던진 것) 판별 — 표기는 일반 마감과 같고, 칩 색 규칙에만 쓴다 (깃발 은퇴 2026-08-03)
 const isDeadline = (e) => e.type === 'end' && e.m.deadline
 
 // 그 날짜의 진행기록 줄 — 있으면 제목 대신 보여준다 (예: 주간 식단 — 월요일 칸엔 월요일 메뉴)
@@ -415,7 +415,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     'cal-ev ' +
                     TYPE[e.type][1] +
                     // 진행중인 메모는 보드 진행중과 같은 초록으로 — 굴러가는 중임이 달력에서도 보인다.
-                    // 단 ⚑ 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
+                    // 단 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
                     (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '')
                   }
                   draggable
@@ -430,7 +430,6 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     openDetail(e.m.id)
                   }}
                 >
-                  {isDeadline(e) && <b>⚑ </b>}
                   {(e.type === 'start' || e.type === 'end') && <b>{typeLabel(e)} </b>}
                   {e.text}
                 </span>
@@ -516,7 +515,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               {memoStatus(e.m) === 'done' ? (
                 <span className="badge st-done">{STATUS_LABEL.done}</span>
               ) : (
-                <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
+                <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
               )}
               <span className="row-title">{e.text}</span>
             </div>

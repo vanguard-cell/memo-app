@@ -443,8 +443,8 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
           <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
           <td className="mv-title">{m.title}</td>
           <td className="mv-date">
-            {/* 마감형도 날짜는 텍스트로(⚑ 표시), 배지는 D-n만 — 예정·기간과 같은 꼴 (2026-08-01) */}
-            {m.period ? (m.deadline ? '⚑ ' + fmtDate(m.period.end) : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
+            {/* 마감형도 날짜는 텍스트로, 배지는 D-n만 — 예정·기간과 같은 꼴 (2026-08-01, 깃발 은퇴 08-03) */}
+            {m.period ? (m.deadline ? fmtDate(m.period.end) : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
             {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
           </td>
           <td className="mv-date">
