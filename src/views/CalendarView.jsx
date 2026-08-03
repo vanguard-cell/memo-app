@@ -25,10 +25,11 @@ function moveEvent(m, type, fromDate, targetDate) {
 
 const pad = (n) => String(n).padStart(2, '0')
 
+// 기간의 끝은 "종료" — "만기"는 ⚑마감과 뜻이 겹쳐 보여 은퇴 (2026-08-03 용어 정리)
 const TYPE = {
   due: ['예정', 'ev-due'],
   start: ['시작', 'ev-start'],
-  end: ['만기', 'ev-end'],
+  end: ['종료', 'ev-end'],
   span: ['기간', 'ev-span'],
 }
 
@@ -267,12 +268,14 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
       return (
         <Fragment key={'ls' + m.id}>
           {d || (
-            <div className={'row' + (localOpenId === m.id ? ' row-sel' : '')} onClick={() => openDetail(m.id)}>
+            <div
+              className={'row' + (memoStatus(m) === 'active' ? ' doing' : '') + (localOpenId === m.id ? ' row-sel' : '')}
+              onClick={() => openDetail(m.id)}
+            >
               <span className="badge ev-span">기간 중</span>
               <span className="row-title">
                 {m.title} <span className="muted-inline">{diffDays(date, m.period.start) + 1}일차</span>
               </span>
-              {memoStatus(m) === 'active' && <span className="badge st-active">{STATUS_LABEL.active}</span>}
             </div>
           )}
         </Fragment>
@@ -472,6 +475,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               className={
                 'row' +
                 (memoStatus(e.m) === 'done' ? ' done' : '') +
+                (memoStatus(e.m) === 'active' ? ' doing' : '') +
                 (localOpenId === e.m.id ? ' row-sel' : '') +
                 (rowDrop && rowDrop.id === e.m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : '')
               }
@@ -511,9 +515,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               )}
               <span className="row-title">{e.text}</span>
-              {memoStatus(e.m) !== 'todo' && (
-                <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
-              )}
+              {/* 상태 배지는 완료만 — 진행중은 줄의 은은한 초록 바탕으로 (2026-08-03) */}
+              {memoStatus(e.m) === 'done' && <span className="badge st-done">{STATUS_LABEL.done}</span>}
             </div>
             </Fragment>
             )

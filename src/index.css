@@ -1647,6 +1647,12 @@ main {
   text-decoration: line-through;
 }
 
+/* 진행중인 줄 — 배지 대신 은은한 초록 바탕 (2026-08-03, 선택 강조가 우선) */
+.row.doing:not(.row-sel) {
+  background: var(--teal-bg);
+  border-color: #cfe9dc;
+}
+
 .row-title {
   flex: 1;
   min-width: 0;

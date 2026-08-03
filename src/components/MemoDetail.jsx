@@ -224,8 +224,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 <b className={dday < 0 ? 't-red' : 't-blue'}>
                   {' · '}
                   {dday < 0
-                    ? `${memo.deadline ? '마감' : '만기'} ${-dday}일 지남`
-                    : `${memo.deadline ? '마감' : '만기'} D-${dday}`}
+                    ? `${memo.deadline ? '마감' : '종료'} ${-dday}일 지남`
+                    : `${memo.deadline ? '마감' : '종료'} D-${dday}`}
                 </b>
               )}
             </span>
@@ -363,7 +363,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                     memo.due && memo.due > today
                       ? '하루 미루기 — 하루 뒤로'
                       : endPassed
-                        ? '하루 미루기 — 마감·만기를 내일로'
+                        ? '하루 미루기 — 마감·종료일을 내일로'
                         : '하루 미루기 — 내일로'
                   }
                   {...paDrag(k)}
