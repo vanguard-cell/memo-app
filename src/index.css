@@ -1782,7 +1782,7 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
 }
 
 .cal-title {
@@ -2099,7 +2099,7 @@ main {
     display: grid;
     /* 왼쪽(달력)은 정중앙까지, 오른쪽(목록·상세)이 나머지 절반 */
     grid-template-columns: var(--half) minmax(0, 1fr);
-    gap: 40px;
+    gap: 56px;
     align-items: start;
   }
 
@@ -2121,12 +2121,12 @@ main {
   }
 
   /* 왼쪽: 달력이 화면 높이에 맞되 아래 숨통을 넉넉히 — 페이지 스크롤 없음.
-     (176px = 상단 여백 26 + 탭 바 ~72 + 하단 상태줄 26 + 아래 숨통 52) (2026-08-03 "꽉 차 보임" 완화) */
+     (200px = 상단 여백 26 + 탭 바 ~72 + 하단 상태줄 26 + 아래 숨통 76) (2026-08-03 한 단계 더) */
   .cal-split .cal-left {
     display: flex;
     flex-direction: column;
-    height: calc(100vh / var(--zoom) - 176px);
-    padding-right: 6px;
+    height: calc(100vh / var(--zoom) - 200px);
+    padding-right: 14px;
   }
 
   .cal-split .cal-grid {
@@ -2149,7 +2149,7 @@ main {
   .cal-split .cal-right > .cal-detail {
     min-width: 0;
     /* 달력과 아랫단을 맞춘다 */
-    max-height: calc(100vh / var(--zoom) - 176px);
+    max-height: calc(100vh / var(--zoom) - 200px);
     overflow-y: auto;
     margin-top: 0;
     animation: panel-fade-in 160ms ease-out;
