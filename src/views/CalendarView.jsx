@@ -272,7 +272,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               <span className="row-title">
                 {m.title} <span className="muted-inline">{diffDays(date, m.period.start) + 1}일차</span>
               </span>
-              <span className={'badge st-' + memoStatus(m)}>{STATUS_LABEL[memoStatus(m)]}</span>
+              {memoStatus(m) === 'active' && <span className="badge st-active">{STATUS_LABEL.active}</span>}
             </div>
           )}
         </Fragment>
@@ -505,12 +505,15 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onClick={() => openDetail(e.m.id)}
             >
-              {/* 완료된 줄엔 종류 배지(예정·시작·만기)를 안 단다 — "완료인데 예정?" 모순 방지 (2026-08-03) */}
+              {/* 완료된 줄엔 종류 배지(예정·시작·만기)를 안 단다 — "완료인데 예정?" 모순 방지 (2026-08-03).
+                  오른쪽 상태 배지는 특별할 때만: 진행중(초록)·완료(회색). 할일은 기본이라 무표시. */}
               {memoStatus(e.m) !== 'done' && (
                 <span className={'badge ' + TYPE[e.type][1]}>{isDeadline(e) && '⚑ '}{typeLabel(e)}</span>
               )}
               <span className="row-title">{e.text}</span>
-              <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
+              {memoStatus(e.m) !== 'todo' && (
+                <span className={'badge st-' + memoStatus(e.m)}>{STATUS_LABEL[memoStatus(e.m)]}</span>
+              )}
             </div>
             </Fragment>
             )
