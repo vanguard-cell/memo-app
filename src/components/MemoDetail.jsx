@@ -162,6 +162,19 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   }
 
   return (
+    <>
+    {/* 분할선에 걸친 접기 손잡이 — 누르면 패널이 오른쪽으로 접히고 목록으로 돌아간다.
+        ×·빈 곳 누르기와 같은 동작이지만 "왼쪽(목록)으로 돌아간다"가 눈에 보인다 (2026-08-04) */}
+    {!inline && !narrow && (
+      <button
+        className={'panel-fold' + (closing ? ' pf-out' : '')}
+        data-tip="접기 — 목록으로"
+        aria-label="접기"
+        onClick={onClose}
+      >
+        {ICONS.chevronR}
+      </button>
+    )}
     <aside
       className={'detail' + (inline ? ' detail-inline' : '') + (closing ? ' detail-out' : '')}
       onClick={(e) => e.stopPropagation()}
@@ -580,5 +593,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           onRemove={(p) => detachFile(memo.id, p)}
         />
     </aside>
+    </>
   )
 }

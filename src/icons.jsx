@@ -29,4 +29,5 @@ export const ICONS = {
   calendar: ic(<><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M16 3v4M8 3v4M4 11h16" /></>),
   flag: ic(<><path d="M5 21V4" /><path d="M5 4c4-2 6 2 10 0v9c-4 2-6-2-10 0" /></>),
   flagOff: ic(<><path d="M5 21V4" /><path d="M5 4c4-2 6 2 10 0v9c-4 2-6-2-10 0" /><path d="M3 3l18 18" /></>),
+  chevronR: ic(<path d="M9 6l6 6-6 6" />),
 }
