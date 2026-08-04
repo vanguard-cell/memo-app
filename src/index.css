@@ -232,6 +232,23 @@ main {
   .app.with-detail main {
     max-width: var(--half);
   }
+
+  /* 세로 분할선 — 화면이 좌우로 나뉘는 달력·보드에서는 상세를 닫아도 선이 남는다.
+     예전엔 상세 패널의 왼쪽 테두리가 유일한 선이라 패널을 닫으면 선까지 사라졌다.
+     자리는 패널 테두리와 같은 --split이라 패널이 열려도 선이 움직이지 않는다.
+     (표·타임라인은 본문이 넓게 퍼져 선을 넘으므로 제외) (2026-08-04) */
+  .workarea:has(.cal-split)::before,
+  .workarea:has(.kb-grid-wrap)::before {
+    content: '';
+    position: fixed;
+    left: var(--split);
+    top: 0;
+    bottom: 26px; /* 하단 상태줄 위까지 */
+    width: 1px;
+    background: var(--border);
+    z-index: 1;
+    pointer-events: none;
+  }
 }
 
 .sidenav {
@@ -2151,6 +2168,10 @@ main {
     min-width: 0;
     position: sticky;
     top: 8px;
+    /* 목록 아래 빈 곳을 눌러도 목록이 닫히지 않게, 우측 칸이 상세 패널처럼 아랫단(하단 상태줄
+       바로 위)까지 자리를 차지한다 — 목록이 짧으면 밑이 "빈 화면"이라 다 닫히던 문제.
+       (124px = 상단 여백 26 + 탭 바 ~72 + 하단 상태줄 26) (2026-08-04) */
+    height: calc(100vh / var(--zoom) - 124px);
   }
 
   .cal-split .cal-right > .cal-detail {
