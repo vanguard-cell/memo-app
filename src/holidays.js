@@ -2,14 +2,18 @@
 //
 // 외부 API(공공데이터포털 특일정보)를 안 쓰는 이유: 이 앱은 정적 배포(GitHub Pages) +
 // 오프라인에서도 켜지는 도구라 키를 둘 데가 없고, 달력을 넘길 때마다 네트워크를 타면 안 된다.
-// 대신 음력 명절(설날·추석·부처님오신날)의 양력 날짜만 표로 박고, 나머지는 규칙으로 계산한다.
 //
-// ⚠️ 해가 지나면 두 군데를 손봐야 한다: 아래 LUNAR 표(음력 명절)와 EXTRA(선거일·임시공휴일).
+// 음력 명절(설날·추석·부처님오신날)은 브라우저에 내장된 **단기(dangi) 달력**으로 계산한다.
+// Intl에는 각국 역법이 들어 있고 그중 'dangi'가 한국 공식 음력(한국천문연구원 기준, 한국 표준시
+// 자정으로 삭·절기를 끊은 것)이다. 중국 음력('chinese')과는 기준 자오선이 달라 드물게 하루 어긋나므로
+// 반드시 dangi를 쓸 것. 이러면 표를 해마다 갱신할 필요가 없다 — 몇 년 뒤 달력을 넘겨도 맞는다.
+//
+// ⚠️ 그래도 EXTRA(선거일·임시공휴일)는 사람이 정하는 거라 손으로 넣어야 한다.
 
 import { addDays } from './parser'
 
-// 음력 명절의 양력 날짜. seol/chuseok은 "연휴 가운데 날"(설날 당일·추석 당일).
-const LUNAR = {
+// 아주 오래된 브라우저용 대비표 — dangi를 못 쓸 때만 쓴다 (위 계산값으로 채워둔 것).
+const LUNAR_FALLBACK = {
   2020: { seol: '01-25', chuseok: '10-01', buddha: '04-30' },
   2021: { seol: '02-12', chuseok: '09-21', buddha: '05-19' },
   2022: { seol: '02-01', chuseok: '09-10', buddha: '05-08' },
@@ -17,10 +21,75 @@ const LUNAR = {
   2024: { seol: '02-10', chuseok: '09-17', buddha: '05-15' },
   2025: { seol: '01-29', chuseok: '10-06', buddha: '05-05' },
   2026: { seol: '02-17', chuseok: '09-25', buddha: '05-24' },
-  2027: { seol: '02-06', chuseok: '09-15', buddha: '05-13' },
-  2028: { seol: '01-26', chuseok: '10-03', buddha: '05-02' },
+  2027: { seol: '02-07', chuseok: '09-15', buddha: '05-13' },
+  2028: { seol: '01-27', chuseok: '10-03', buddha: '05-02' },
   2029: { seol: '02-13', chuseok: '09-22', buddha: '05-20' },
   2030: { seol: '02-03', chuseok: '09-12', buddha: '05-09' },
+  2031: { seol: '01-23', chuseok: '10-01', buddha: '05-28' },
+  2032: { seol: '02-11', chuseok: '09-19', buddha: '05-16' },
+  2033: { seol: '01-31', chuseok: '09-08', buddha: '05-06' },
+  2034: { seol: '02-19', chuseok: '09-27', buddha: '05-25' },
+  2035: { seol: '02-08', chuseok: '09-16', buddha: '05-15' },
+}
+
+// 단기 달력 포맷터. 'ca-dangi'를 모르는 환경은 조용히 양력으로 떨어지므로(예외가 안 난다)
+// 아는 정답 하나로 찍어보고 판별한다 — 2025-01-29는 음력 2025년 1월 1일(설날).
+const dangi = (() => {
+  try {
+    const f = new Intl.DateTimeFormat('en-u-ca-dangi', {
+      year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Seoul',
+    })
+    const p = f.formatToParts(new Date('2025-01-29T03:00:00Z'))
+    const g = (t) => {
+      const x = p.find((q) => q.type === t)
+      return x && x.value
+    }
+    if (g('relatedYear') === '2025' && g('month') === '1' && g('day') === '1') return f
+  } catch {
+    /* Intl에 역법이 없는 구형 브라우저 */
+  }
+  return null
+})()
+
+// 그 양력 날짜의 음력 — { y, m, d }. m은 문자열(윤달이면 'bis' 같은 표기가 붙어 안 맞게 된다)
+function toLunar(date) {
+  // 정오(KST)로 찍어야 시간대 때문에 하루 밀리지 않는다
+  const p = dangi.formatToParts(new Date(date + 'T03:00:00Z'))
+  const g = (t) => {
+    const x = p.find((q) => q.type === t)
+    return x && x.value
+  }
+  return { y: Number(g('relatedYear')), m: g('month'), d: Number(g('day')) }
+}
+
+// 그 해의 음력 (lm월 ld일)이 양력 며칠인지 — 창(from~to) 안을 앞에서부터 훑는다.
+// 앞에서부터라서 윤달(있는 해)은 자동으로 건너뛰고 평달이 먼저 잡힌다.
+function solarOf(year, lm, ld, from, to) {
+  let d = `${year}-${from}`
+  const end = `${year}-${to}`
+  while (d <= end) {
+    const L = toLunar(d)
+    if (L.y === year && L.m === lm && L.d === ld) return d
+    d = addDays(d, 1)
+  }
+  return null
+}
+
+const lunarCache = {}
+
+// 그 해의 음력 명절 양력 날짜 { seol, chuseok, buddha }
+function lunarHolidays(year) {
+  if (lunarCache[year]) return lunarCache[year]
+  let r = null
+  if (dangi) {
+    // 창은 넉넉히 — 설날은 1/21~2/21, 부처님오신날은 4/25~5/28, 추석은 9/7~10/8 사이에만 온다
+    const seol = solarOf(year, '1', 1, '01-18', '02-25')
+    const buddha = solarOf(year, '4', 8, '04-20', '06-05')
+    const chuseok = solarOf(year, '8', 15, '09-01', '10-15')
+    if (seol && buddha && chuseok) r = { seol: seol.slice(5), chuseok: chuseok.slice(5), buddha: buddha.slice(5) }
+  }
+  lunarCache[year] = r || LUNAR_FALLBACK[year] || null
+  return lunarCache[year]
 }
 
 // 양력 고정 공휴일. 세 번째 값은 "대체공휴일이 적용되기 시작한 해"(0이면 대체 없음) —
@@ -60,7 +129,7 @@ function build(year) {
     ;(names[date] = names[date] || []).push(name)
   }
 
-  const L = LUNAR[year]
+  const L = lunarHolidays(year)
   const runs = [] // 설·추석 연휴 (3일 묶음)
   const runDays = new Set()
   if (L) {
