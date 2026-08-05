@@ -5,7 +5,7 @@
       "name": "memo-app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "C:\\HDS\\memo-app",
+      "cwd": "C:\\HDS\\App_data\\memo-app",
       "port": 5173
     }
   ]
