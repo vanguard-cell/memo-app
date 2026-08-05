@@ -376,7 +376,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               </span>
             )
           }
-          // 칩 표시 수는 띠가 차지한 줄만큼 줄인다 (칸 높이 안에서)
+          // 칸에 들어가는 칩 수 어림 — 칩은 이제 전부 그리고 넘치면 스크롤이라,
+          // 이 값은 "몇 개가 안 보이는지"(+N 표시)를 가늠하는 데만 쓴다
           const chipLimit = Math.max(1, 4 - laneEls.length)
           return (
             <div
@@ -395,13 +396,22 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               }}
               onDragLeave={() => setDropTarget((cur) => (cur === date ? null : cur))}
               onDrop={(e) => onDrop(date, e)}
+              onWheel={(ev) => {
+                // 날짜 숫자·띠 위에 마우스를 둬도 그 칸 목록이 굴러가게 — 칩 영역 위라면
+                // 브라우저가 알아서 굴리므로 두 번 움직이지 않게 넘긴다
+                const list = ev.currentTarget.querySelector('.cal-chips')
+                if (!list || list.contains(ev.target)) return
+                list.scrollTop += ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY
+              }}
             >
-              <span className={'cal-day' + (hol || dw === 0 ? ' d-red' : dw === 6 ? ' d-blue' : '')}>{d}</span>
-              {hol && (
-                <span className="cal-holname" title={holidayLabel(date)}>
-                  {hol.name}
-                </span>
-              )}
+              <div className="cal-cell-head">
+                <span className={'cal-day' + (hol || dw === 0 ? ' d-red' : dw === 6 ? ' d-blue' : '')}>{d}</span>
+                {hol && (
+                  <span className="cal-holname" title={holidayLabel(date)}>
+                    {hol.name}
+                  </span>
+                )}
+              </div>
               {/* 칸 우측 상단 + — 그 날짜로 새 메모. PC에서 칸에 마우스를 올리면 나타난다 */}
               {!narrow && (
                 <button
@@ -416,7 +426,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 </button>
               )}
               {laneEls}
-              {evs.slice(0, chipLimit).map((e, j) => {
+              {/* 칩은 전부 그리고 넘치면 이 안에서만 스크롤된다 (칸에 마우스 올리고 휠).
+                  띠(laneEls)는 칸 경계를 넘어 이어져야 해서 밖에 고정 — 같이 굴리면 옆 칸과 어긋난다 */}
+              <div className="cal-chips">
+              {/* 폰은 칸 높이가 내용에 따라 늘어나는 구조라 전부 그리면 주 줄이 통째로 커진다 —
+                  폰은 예전처럼 자르고, 넘치는 건 날짜를 탭해 아래 목록에서 본다 */}
+              {(narrow ? evs.slice(0, chipLimit) : evs).map((e, j) => {
                 const st = memoStatus(e.m)
                 return (
                 <span
@@ -445,6 +460,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 </span>
                 )
               })}
+              </div>
+              {/* 안 보이는 칩이 있다는 표시 — 마우스를 올리면(=굴릴 수 있으면) 비켜준다 */}
               {evs.length > chipLimit && <span className="cal-more">+{evs.length - chipLimit}</span>}
             </div>
           )

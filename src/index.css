@@ -1835,6 +1835,8 @@ main {
 
 .cal-cell {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 108px;
   background: var(--card);
   border: none;
@@ -1845,6 +1847,39 @@ main {
   font-size: 11.5px;
   cursor: pointer;
   overflow: hidden;
+}
+
+/* 날짜 숫자 + 공휴일 이름 — 칩이 굴러가도 여기는 안 움직인다 */
+.cal-cell-head {
+  flex: none;
+}
+
+/* 칩 목록만 스크롤. overscroll-behavior로 끝까지 굴려도 뒤 화면이 안 딸려간다 */
+.cal-chips {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* 스크롤 막대는 칸에 마우스를 올렸을 때만 — 평소엔 격자가 지저분해지지 않게 */
+.cal-cell:hover .cal-chips {
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.cal-chips::-webkit-scrollbar {
+  width: 5px;
+}
+
+.cal-chips::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: transparent;
+}
+
+.cal-cell:hover .cal-chips::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
 }
 
 /* 칸 우측 상단 + — 평소엔 숨고, 칸에 마우스를 올리면 나타난다 */
@@ -2112,11 +2147,23 @@ main {
   text-decoration: line-through;
 }
 
+/* "+3" — 칸에 안 들어간 칩이 있다는 표시. 칩 줄을 하나 잡아먹지 않게 우측 아래 모서리에 얹고,
+   마우스를 올리면(=휠로 굴릴 수 있으면) 사라져 가려진 칩을 드러낸다 */
 .cal-more {
-  display: block;
-  font-size: 11px;
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+  font-size: 10px;
   color: var(--faint);
-  margin-top: 1px;
+  pointer-events: none;
+}
+
+.cal-cell:hover .cal-more {
+  display: none;
 }
 
 /* PC: 화면을 좌우 절반으로 — 왼쪽 절반은 달력(본문), 오른쪽 절반은 목록·상세.
@@ -3540,6 +3587,18 @@ main {
 
   .cal-ev b {
     display: none;
+  }
+
+  /* 폰은 칸 안 스크롤을 막는다 — 56px 칸에서 손가락 스크롤이 화면 스크롤과 싸운다.
+     넘치는 건 원래대로 날짜를 탭해 아래 목록에서 본다 */
+  .cal-chips {
+    overflow: hidden;
+    overscroll-behavior: auto;
+  }
+
+  /* 탭한 뒤 :hover가 남아 "+N"이 사라지는 일이 없게 (숨기기는 PC 휠 전용) */
+  .cal-cell:hover .cal-more {
+    display: block;
   }
 
   /* 폰: + 버튼이 없어 이름표가 칸 폭을 거의 다 쓴다. 그래도 좁으니 "설날 연휴" 정도는 잘린다 */
