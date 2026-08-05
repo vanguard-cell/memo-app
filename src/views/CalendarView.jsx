@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import { addMemo, updateMemo, setDayOrder, getMemos, purgeMemos } from '../store'
+import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
 import useIsNarrow from '../useIsNarrow'
 
@@ -326,6 +327,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         {cells.map((d, i) => {
           if (d === null) return <div key={'e' + i} className="cal-cell blank" />
           const date = `${y}-${pad(mo + 1)}-${pad(d)}`
+          // 공휴일·대체공휴일: 날짜를 빨갛게 + 이름표. 일요일 빨강·토요일 파랑은 요일 머리와 같은 규칙
+          const hol = holiday(date)
+          const dw = i % 7 // 칸 index = 열 = 요일 (0=일)
           // 띠로 그리는 기간 메모는 칸 조각(시작·중간·만기 칩)에서 뺀다 — 날짜 목록엔 그대로 남는다
           const evs = orderedEvents(date, events[date] || []).filter((e) => !isBanded(e.m.id))
           // 이 날짜를 지나는 띠들 — 레인 순서대로, 빈 레인은 투명 칸으로 높이를 맞춘다
@@ -381,7 +385,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 'cal-cell' +
                 (date === today ? ' cal-now' : '') +
                 (sel === date ? ' cal-sel' : '') +
-                (dropTarget === date ? ' cal-drop' : '')
+                (dropTarget === date ? ' cal-drop' : '') +
+                (hol ? ' cal-hol' : '')
               }
               onClick={() => selectDay(date)}
               onDragOver={(e) => {
@@ -391,7 +396,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               onDragLeave={() => setDropTarget((cur) => (cur === date ? null : cur))}
               onDrop={(e) => onDrop(date, e)}
             >
-              <span className="cal-day">{d}</span>
+              <span className={'cal-day' + (hol || dw === 0 ? ' d-red' : dw === 6 ? ' d-blue' : '')}>{d}</span>
+              {hol && (
+                <span className="cal-holname" title={holidayLabel(date)}>
+                  {hol.name}
+                </span>
+              )}
               {/* 칸 우측 상단 + — 그 날짜로 새 메모. PC에서 칸에 마우스를 올리면 나타난다 */}
               {!narrow && (
                 <button
@@ -450,6 +460,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
         <div className="cal-detail">
           <div className="cal-detail-title">
             {fmtDate(sel)} ({['일', '월', '화', '수', '목', '금', '토'][new Date(sel + 'T00:00').getDay()]})
+            {holiday(sel) && <span className="cal-hol-tag">{holidayLabel(sel)}</span>}
             {sel === today && <span className="ag-now">오늘</span>}
           </div>
           <div className="cal-add">

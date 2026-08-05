@@ -1923,6 +1923,41 @@ main {
   margin-bottom: 2px;
 }
 
+/* 공휴일: 날짜 숫자를 빨갛게 + 옆에 이름표. 일요일 빨강·토요일 파랑은 요일 머리와 같은 규칙.
+   (오늘 배지는 .cal-now .cal-day가 더 구체적이라 파란 원이 그대로 이긴다) */
+.cal-day.d-red {
+  color: var(--red);
+}
+
+.cal-day.d-blue {
+  color: var(--blue);
+}
+
+.cal-holname {
+  display: inline-block;
+  margin-left: 3px;
+  max-width: calc(100% - 52px); /* 우측 상단 + 버튼 자리를 비워둔다 */
+  vertical-align: top;
+  line-height: 22px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--red);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 우측 날짜 목록 제목 옆 — "26.08.15 (토) 광복절" */
+.cal-hol-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .cal-ev {
   display: block;
   margin-top: 4px;
@@ -3505,6 +3540,13 @@ main {
 
   .cal-ev b {
     display: none;
+  }
+
+  /* 폰: + 버튼이 없어 이름표가 칸 폭을 거의 다 쓴다. 그래도 좁으니 "설날 연휴" 정도는 잘린다 */
+  .cal-holname {
+    margin-left: 1px;
+    max-width: calc(100% - 24px);
+    font-size: 9px;
   }
 
   .cal-more {
