@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { fmtDate } from '../derive'
 import { todayStr } from '../parser'
+
+// textarea 를 내용만큼만 높이게(한 줄 → 여러 줄) 늘린다.
+function grow(el) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
 
 // 진행 기록 공용 UI — 메모 상세(MemoDetail)가 쓴다.
 // onAdd(text, date) / onToggle(i) / onUpdate(i, patch) / onRemove(i)
 export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove }) {
   const today = todayStr()
+  const addRef = useRef(null)
   const [line, setLine] = useState('')
   const [lineDate, setLineDate] = useState(today)
   const [editIdx, setEditIdx] = useState(null)
@@ -17,6 +25,7 @@ export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove 
     if (!t) return
     onAdd(t, lineDate || today)
     setLine('')
+    if (addRef.current) addRef.current.style.height = 'auto'
   }
 
   function startLineEdit(i, h) {
@@ -53,13 +62,22 @@ export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove 
               value={editDate}
               onChange={(e) => setEditDate(e.target.value)}
             />
-            <input
-              className="tl-input"
+            <textarea
+              className="tl-input tl-area"
+              rows={1}
               value={editText}
               autoFocus
-              onChange={(e) => setEditText(e.target.value)}
+              ref={grow}
+              onChange={(e) => {
+                setEditText(e.target.value)
+                grow(e.target)
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') saveLineEdit()
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.nativeEvent.isComposing) return // 한글 조합 중 Enter 무시
+                  e.preventDefault()
+                  saveLineEdit()
+                }
                 if (e.key === 'Escape') setEditIdx(null)
               }}
             />
@@ -99,13 +117,22 @@ export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove 
       )}
       <div className="tl-add">
         <input type="date" className="tl-date-input" value={lineDate} onChange={(e) => setLineDate(e.target.value)} />
-        <input
-          className="tl-input"
+        <textarea
+          className="tl-input tl-area"
+          rows={1}
+          ref={addRef}
           value={line}
-          placeholder="진행사항 한 줄 추가 (Enter)"
-          onChange={(e) => setLine(e.target.value)}
+          placeholder="진행사항 추가 (Enter 등록 · Shift+Enter 줄바꿈)"
+          onChange={(e) => {
+            setLine(e.target.value)
+            grow(e.target)
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') submitLine()
+            if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.nativeEvent.isComposing) return // 한글 조합 중 Enter 무시
+              e.preventDefault()
+              submitLine()
+            }
           }}
         />
         <button onClick={submitLine}>추가</button>

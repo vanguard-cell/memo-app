@@ -2919,6 +2919,7 @@ main {
 .tl-text {
   flex: 1;
   word-break: break-all;
+  white-space: pre-wrap; /* Shift+Enter 줄바꿈 그대로 보이게 */
 }
 
 .tl-editable {
@@ -2952,7 +2953,7 @@ main {
 
 .tl-editing {
   gap: 6px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .tl-editing button {
@@ -2966,7 +2967,12 @@ main {
   display: flex;
   gap: 6px;
   margin-top: 10px;
-  align-items: center;
+  align-items: flex-start; /* 여러 줄로 늘어나도 날짜·버튼은 위에 고정 */
+}
+
+.tl-add .tl-date-input,
+.tl-add > button {
+  margin-top: 1px;
 }
 
 .tl-date-input {
@@ -2981,6 +2987,14 @@ main {
   min-width: 0;
   font-size: 14px;
   padding: 7px 9px;
+}
+
+/* 여러 줄 입력용 textarea — 내용만큼 늘어난다 */
+.tl-area {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.5;
+  font-family: inherit;
 }
 
 /* ---------- 점검 (안전관리 캘린더) ---------- */
