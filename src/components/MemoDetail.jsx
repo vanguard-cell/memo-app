@@ -77,6 +77,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const [title, setTitle] = useState(memo.title || '')
   const titleLatest = useRef(memo.title || '')
   const titleSaved = useRef(memo.title || '')
+  // 되돌리기 기준값 — 칸에 커서를 놓은 순간의 내용. 자동 저장이라 잘못 고치면 되살릴 길이
+  // 없어서, Esc 한 번이면 이 값으로 되돌린다(이미 자동 저장됐어도 되돌린 값으로 다시 저장).
+  // (2026-08-05 사용자 요청)
+  const descBase = useRef(memo.desc || '')
+  const titleBase = useRef(memo.title || '')
   const st = memoStatus(memo)
   const today = todayStr()
   // 상태 UI 기준은 "인라인이냐"가 아니라 "폰이냐" (2026-07-31) — 달력 우측 상세는 인라인이지만
@@ -109,6 +114,26 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     if (v === titleSaved.current) return
     titleSaved.current = v
     updateMemo(memo.id, { title: v })
+  }
+
+  // Esc 되돌리기 공용 — 커서를 놓은 때의 내용으로 돌린다. 되돌릴 게 없으면 칸에서 빠져나간다
+  // (그 다음 Esc는 원래대로 패널 닫기). 되돌린 값이 이미 저장돼 있으면 그 값으로 다시 저장.
+  function revertOnEsc(e, field, { base, latest, saved, set, timer }) {
+    e.preventDefault()
+    const el = e.currentTarget
+    if (timer) clearTimeout(timer.current)
+    if (latest.current === base.current) {
+      el.blur()
+      return
+    }
+    const v = base.current
+    set(v)
+    latest.current = v
+    if (v.trim() !== saved.current) {
+      saved.current = v.trim()
+      updateMemo(memo.id, { [field]: v.trim() })
+    }
+    requestAnimationFrame(() => fitTA(el))
   }
 
   // 패널을 닫거나 다른 메모로 옮겨가도 적던 내용이 날아가지 않게
@@ -213,6 +238,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               titleLatest.current = e.target.value
               fitTA(e.target)
             }}
+            onFocus={() => { titleBase.current = titleLatest.current }}
             onBlur={saveTitle}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -220,6 +246,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 saveTitle()
                 e.target.blur()
               }
+              if (e.key === 'Escape')
+                revertOnEsc(e, 'title', {
+                  base: titleBase,
+                  latest: titleLatest,
+                  saved: titleSaved,
+                  set: setTitle,
+                })
             }}
           />
           {/* 접기는 폰의 아코디언 상세에서만 — PC는 어디서 열리든 × 로 통일 (2026-07-31) */}
@@ -570,12 +603,23 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             ref={fitTA}
             className="desc-input"
             value={desc}
-            placeholder="이 일이 무엇인지 적어두는 칸 — 배경·목적·담당·참고할 내용"
+            placeholder="이 일이 무엇인지 적어두는 칸 — 배경·목적·담당·참고할 내용 (Esc: 고치기 전으로)"
             onChange={(e) => {
               onDescChange(e.target.value)
               fitTA(e.target)
             }}
+            onFocus={() => { descBase.current = latestRef.current }}
             onBlur={saveDesc}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape')
+                revertOnEsc(e, 'desc', {
+                  base: descBase,
+                  latest: latestRef,
+                  saved: savedRef,
+                  set: setDesc,
+                  timer: timerRef,
+                })
+            }}
           />
         </div>
         <Timeline
