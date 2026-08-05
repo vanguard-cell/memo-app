@@ -61,7 +61,10 @@ function withVisible(s) {
     ...s,
     visible: s.memos.filter((m) => !m.deleted),
     // 휴지통: 삭제 표식이 붙은 메모 (최근 삭제한 것부터). 30일 뒤 동기화 때 완전 삭제된다.
-    trash: s.memos.filter((m) => m.deleted).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
+    // purged(완전 삭제한 빈 표식)는 내용이 이미 지워졌으므로 휴지통에도 안 보인다.
+    trash: s.memos
+      .filter((m) => m.deleted && !m.purged)
+      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
   }
 }
 
@@ -502,20 +505,36 @@ export function unholdMemos(ids, due) {
     })
 }
 
-// 휴지통에서 완전 삭제 — 30일을 기다리지 않고 즉시 지운다. 되돌릴 수 없음.
-// 서버 삭제가 실패하면(오프라인 등) 다음 동기화 때 휴지통에 다시 나타나므로 그때 재시도하면 된다.
+// 휴지통에서 완전 삭제 — 30일을 기다리지 않고 지금 내용을 지운다. 되돌릴 수 없음.
+// 행을 통째로 지우지 않고 빈 표식(purged)만 남기는 이유: 서버에서 사라지면 다른 기기에 남아
+// 있던 옛 복사본이 "서버에 없네?" 하며 다시 올려 되살아난다(휴지통에 도로 나타나던 문제).
+// 표식은 화면 어디에도 안 보이고, 30일 뒤 동기화 때 행까지 실제로 지워진다.
 export function purgeMemos(ids) {
-  commit({ ...state, memos: state.memos.filter((m) => !ids.includes(m.id)) })
+  const now = new Date().toISOString()
+  const idSet = new Set(ids)
+  const tombs = []
+  const memos = state.memos.map((m) => {
+    if (!idSet.has(m.id)) return m
+    const tomb = {
+      id: m.id,
+      deleted: true,
+      purged: true,
+      title: '',
+      history: [],
+      createdAt: m.createdAt || now,
+      updatedAt: now,
+    }
+    tombs.push(tomb)
+    return tomb
+  })
+  if (!tombs.length) return
+  commit({ ...state, memos })
   if (!hasSupabase || !session) return
-  supabase
-    .from('memos')
-    .delete()
-    .in('id', ids)
-    .then(({ error }) => {
-      if (error) {
-        console.error('완전 삭제 동기화 실패', error)
-        setAuth({ syncError: true })
-      }
+  pushMemoRows(tombs)
+    .then(() => setAuth({ syncError: false }))
+    .catch((e) => {
+      console.error('완전 삭제 동기화 실패', e)
+      setAuth({ syncError: true })
     })
 }
 
