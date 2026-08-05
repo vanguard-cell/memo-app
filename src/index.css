@@ -415,33 +415,7 @@ main {
   font-weight: 700;
 }
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  margin-left: auto;
-}
-
-.tab {
-  border: 1px solid transparent;
-  background: none;
-  padding: 6px 11px;
-  border-radius: 8px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.tab:hover {
-  background: var(--fill);
-  border-color: transparent;
-}
-
-.tab.on {
-  background: var(--card);
-  border-color: var(--border);
-  color: var(--text);
-  font-weight: 600;
-}
+/* 폰 상단 탭(글자 버튼)은 2026-08-05 아이콘 줄(.ptab)로 교체 — .tabs/.tab 규칙 삭제됨 */
 
 .sync-bad {
   margin-left: 8px;
@@ -452,11 +426,6 @@ main {
   padding: 2px 7px;
   border-radius: 6px;
   vertical-align: 2px;
-}
-
-.tab-logout {
-  font-size: 12px;
-  color: var(--faint);
 }
 
 .login-wrap {
@@ -2660,6 +2629,11 @@ main {
   border: none;
 }
 
+/* 아이콘 옆 이름 — PC는 마우스를 올리면 말풍선이 뜨므로 숨긴다. 폰에서만 보인다 (2026-08-05) */
+.pa-tx {
+  display: none;
+}
+
 .pa-ic.on {
   background: var(--fill);
   color: var(--text);
@@ -3475,11 +3449,6 @@ main {
     font-size: 17px;
   }
 
-  .tabs {
-    margin-left: 0;
-    width: 100%;
-  }
-
   .nag-actions button {
     padding: 4px 7px;
     font-size: 12px;
@@ -3612,4 +3581,348 @@ main {
   margin-left: 6px;
   font-size: 11px;
   font-weight: 600;
+}
+
+/* ==========================================================================
+   폰 화면 정리 (2026-08-05)
+   7/30 리디자인 이후 작업이 전부 PC 기준이어서 폰에 남아 있던 것들을 한 번에 정리했다.
+   ① 상단 메뉴를 PC 사이드바와 같은 아이콘 한 줄로 (예전엔 작은 글자 버튼이 두 줄)
+   ② 손가락 크기 — 누르는 것은 최소 40px, 입력 글씨는 16px(아이폰 자동 확대 방지)
+   ③ 상세 — 아이콘 옆에 이름(폰은 마우스 올리기가 없어 그림만으론 모름), 기록 줄 × 상시 표시
+   ④ 달력 — 기간 띠도 색 막대로 (칸에 글자가 안 들어간다)
+   폰 배율은 1 그대로 — 배율 보정은 PC 전용 (CLAUDE.md).
+   ========================================================================== */
+@media (max-width: 899px) {
+  /* 아래 90px은 없어진 던지기 입력창 자리였다 (입력창은 2026-07-24 제거) */
+  .app {
+    padding-bottom: 28px;
+  }
+
+  /* ---------- ① 상단: 제목 + 아이콘 메뉴 한 줄 ---------- */
+  .topbar {
+    gap: 6px;
+    flex-wrap: nowrap;
+    margin-bottom: 14px;
+  }
+
+  .topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* 동기화 표시 — 초록 점이면 정상, 빨간 점이면 안 맞춰짐.
+     누르면 진단 결과(계정·서버 건수·버전)가 뜬다. 예전 이메일 버튼 자리. */
+  .sync-dot {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+
+  .sync-dot::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: var(--teal-strong);
+  }
+
+  .sync-dot.bad::after {
+    background: var(--red-strong);
+  }
+
+  .ptabs {
+    display: flex;
+    gap: 2px;
+    flex: none;
+  }
+
+  .ptab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    background: none;
+    border-radius: 9px;
+    color: var(--muted);
+  }
+
+  .ptab svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  /* 지금 보고 있는 화면(보류함·보관함·휴지통)이 눌린 채로 보인다 — 예전 폰 상단엔 표시가 없었다 */
+  .ptab.on {
+    background: var(--blue-bg);
+    color: var(--blue);
+  }
+
+  .ptab-n {
+    position: absolute;
+    top: 3px;
+    right: 1px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+  }
+
+  /* ---------- ② 손가락 크기 ---------- */
+  /* 아이폰은 16px보다 작은 입력에 커서를 놓으면 화면을 확대해버린다 — 전부 16px로 */
+  textarea,
+  select,
+  .tl-date-input,
+  .mv-head .mv-search,
+  .desc-input,
+  .tl-input {
+    font-size: 16px;
+  }
+
+  .pill {
+    padding: 8px 15px;
+    font-size: 13.5px;
+  }
+
+  .stage-row {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .kb-add {
+    width: 34px;
+    height: 34px;
+    font-size: 20px;
+  }
+
+  .tlv-fold {
+    padding: 11px;
+    font-size: 13px;
+  }
+
+  .fold-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .row {
+    padding: 12px;
+    min-height: 46px;
+  }
+
+  /* 보관함·보류함·휴지통 줄 — 제목·날짜·버튼 둘을 한 줄에 밀어넣으면 제목이 "엘리베이…"로
+     잘려 무슨 메모인지 알 수가 없다. 버튼만 아랫줄로 내린다 (달력 날짜 목록은 버튼이 없어 그대로) */
+  .row:has(button) {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .row:has(button) > * {
+    order: 1;
+  }
+
+  .row:has(button)::after {
+    content: '';
+    order: 2;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .row:has(button) > button,
+  .row:has(button) > .nag-datewrap {
+    order: 3;
+    min-height: 38px;
+  }
+
+  .row:has(button) > button:first-of-type,
+  .row:has(button) > .nag-datewrap:first-of-type {
+    margin-left: 28px; /* 체크박스 폭만큼 들여써서 제목 줄과 왼쪽을 맞춘다 */
+  }
+
+  .tl-check {
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+  }
+
+  .trash-check {
+    width: 20px;
+    height: 20px;
+  }
+
+  .cal-head button,
+  .cal-add button,
+  .tl-editing button {
+    min-height: 40px;
+    padding: 6px 13px;
+  }
+
+  .cal-add input {
+    min-height: 40px;
+  }
+
+  /* 진행기록 입력 — 한 줄에 날짜+글+버튼을 밀어넣으면 글칸이 손톱만 해진다.
+     글칸을 윗줄 전체 폭으로 올리고, 날짜·추가 버튼을 아랫줄에 둔다 */
+  .tl-add,
+  .tl-editing {
+    flex-wrap: wrap;
+  }
+
+  .tl-add .tl-area,
+  .tl-editing .tl-area {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  /* 안내 문구가 두 줄로 접히면서 잘리던 문제 — 처음부터 두 줄 높이로 */
+  .tl-add .tl-area {
+    min-height: 52px;
+  }
+
+  .tl-date-input {
+    max-width: 200px;
+  }
+
+  .tl-add > button {
+    margin-left: auto;
+  }
+
+  /* 파일 올리기 버튼도 손가락 크기로 */
+  .file-add {
+    font-size: 13px;
+    padding: 7px 13px;
+  }
+
+  /* "끌어다 놓거나 Ctrl+V" 안내는 폰에서 할 수 없는 방법 — [+ 올리기]가 바로 옆에 있다 */
+  .file-hint {
+    display: none;
+  }
+
+  .tl-date-input {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+  }
+
+  .tl-add > button {
+    min-height: 40px;
+    padding: 6px 16px;
+  }
+
+  /* ---------- ③ 상세 ---------- */
+  /* 마우스를 올릴 수 없으니 아이콘 옆에 이름을 같이 쓴다 (PC는 말풍선이라 글자 숨김) */
+  .pa-tx {
+    display: inline;
+    margin-left: 5px;
+    font-size: 12.5px;
+  }
+
+  .panel-actions {
+    gap: 2px;
+    row-gap: 4px;
+    padding: 10px 0;
+  }
+
+  /* .panel-actions button (0,1,1) 보다 세게 잡아야 패딩이 먹는다 */
+  .panel-actions .pa-ic {
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .panel-actions .pa-ic.pa-done {
+    padding: 9px 13px;
+    border-color: var(--blue);
+  }
+
+  .panel-meta .linkish {
+    padding: 7px 6px;
+  }
+
+  /* 아이콘 순서 바꾸기(드래그)는 PC 전용 — 폰에선 구분선이 줄바꿈만 헝클어뜨린다 */
+  .pa-div {
+    display: none;
+  }
+
+  /* 기록 줄의 × 는 PC에선 마우스를 올려야 나오는데, 폰은 올릴 수가 없어
+     한 줄도 지울 수 없었다 — 항상 보이게 (2026-08-05) */
+  .tl-x {
+    visibility: visible;
+    padding: 4px 8px;
+    font-size: 17px;
+  }
+
+  /* ---------- ④ 달력 ---------- */
+  /* 기간 띠(2026-07-31 추가)가 폰에선 그대로 글자로 나와 칸을 잡아먹었다 — 칩과 같이 색 막대로.
+     이어져 보이는 모양(시작만 왼쪽 둥글게, 끝만 오른쪽)은 그대로 살린다. */
+  .cal-band {
+    height: 6px;
+    line-height: 0;
+    font-size: 0;
+    color: transparent;
+    margin: 0 -5px 3px;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .cal-band.b-s {
+    margin-left: 2px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .cal-band.b-e {
+    margin-right: 2px;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .cal-ev {
+    margin-top: 3px;
+  }
+
+  /* 막대 4줄 + 날짜가 잘리지 않는 높이 */
+  .cal-cell {
+    min-height: 66px;
+  }
+
+  .cal-day {
+    width: 19px;
+    height: 19px;
+    line-height: 18px;
+    font-size: 11px;
+    margin-bottom: 1px;
+  }
+
+  /* 달력 아래 "선택한 날짜 하나의 목록" — 달력과 구분되게 선 하나 (아이폰 달력식) */
+  .cal-detail {
+    margin-top: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .cal-detail-title {
+    font-size: 14.5px;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
 }

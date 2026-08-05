@@ -236,33 +236,45 @@ export default function App() {
         </aside>
       )}
       <div className="workarea">
+        {/* 폰 상단 — PC 사이드바와 같은 아이콘 언어로 한 줄에 (2026-08-05).
+            예전엔 이메일+보류함/보관함/휴지통/백업/로그아웃이 작은 글자로 두 줄을 차지했다. */}
         {narrow && (
           <header className="topbar">
             <div className="brand">
               내 기록
+              {hasSupabase && auth.loggedIn && (
+                <button
+                  className={'sync-dot' + (auth.syncError ? ' bad' : '')}
+                  title={auth.email}
+                  aria-label="동기화 상태 — 누르면 진단 결과"
+                  onClick={runDiagnostics}
+                />
+              )}
               {hasSupabase && auth.syncError && <span className="sync-bad">동기화 안 됨</span>}
             </div>
-            <nav className="tabs">
-              {hasSupabase && auth.loggedIn && (
-                <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
-                  {auth.email}
+            <nav className="ptabs">
+              {[
+                ['hold', ICONS.hold, '보류함', holds.length, showHold, () => { setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }],
+                ['keep', ICONS.keep, '보관함', keeps.length, showKeep, () => { setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }],
+                ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => { setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }],
+              ].map(([key, icon, label, n, on, go]) => (
+                <button
+                  key={key}
+                  className={'ptab' + (on ? ' on' : '')}
+                  title={label}
+                  aria-label={label}
+                  onClick={() => { setOpenId(null); go() }}
+                >
+                  {icon}
+                  {n > 0 && <span className="ptab-n">{n}</span>}
                 </button>
-              )}
-              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }}>
-                보류함{holds.length > 0 ? ` ${holds.length}` : ''}
-              </button>
-              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }}>
-                보관함{keeps.length > 0 ? ` ${keeps.length}` : ''}
-              </button>
-              <button className="tab tab-logout" onClick={() => { setOpenId(null); setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }}>
-                휴지통{trash.length > 0 ? ` ${trash.length}` : ''}
-              </button>
-              <button className="tab tab-logout" onClick={downloadBackup}>
-                백업
+              ))}
+              <button className="ptab" title="백업" aria-label="백업" onClick={downloadBackup}>
+                {ICONS.backup}
               </button>
               {hasSupabase && auth.loggedIn && (
-                <button className="tab tab-logout" title={auth.email} onClick={signOut}>
-                  로그아웃
+                <button className="ptab" title="로그아웃" aria-label="로그아웃" onClick={signOut}>
+                  {ICONS.out}
                 </button>
               )}
             </nav>

@@ -389,10 +389,12 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   onClick={() => completeMemo(memo.id)}
                 >
                   {ICONS.check}
+                  <span className="pa-tx">완료</span>
                 </button>
               ) : (
                 <button key={k} className={paCls(k, 'pa-ic')} data-tip="다시 열기" {...paDrag(k)} onClick={() => reopenMemo(memo.id)}>
                   {ICONS.undo}
+                  <span className="pa-tx">다시 열기</span>
                 </button>
               )
             }
@@ -414,6 +416,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   onClick={() => postpone(memo.due && memo.due > today ? addDays(memo.due, 1) : tomorrow)}
                 >
                   {ICONS.next}
+                  <span className="pa-tx">미루기</span>
                 </button>
               )
             }
@@ -423,7 +426,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 <span key={k} className={paCls(k, 'pa-tipwrap')} data-tip="날짜 지정 — 고른 날짜로" {...paDrag(k)}>
                   <SendToDateBtn
                     className="pa-ic"
-                    label={ICONS.calendar}
+                    label={<>{ICONS.calendar}<span className="pa-tx">날짜</span></>}
                     min={memo.due && memo.due < today ? today : tomorrow}
                     max={!memo.due && memo.period && !endPassed ? memo.period.end : undefined}
                     onPick={postpone}
@@ -450,6 +453,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                     }
                   >
                     {ICONS.flag}
+                    <span className="pa-tx">마감</span>
                   </button>
                 )
               if (openPlain && memo.deadline && memo.period)
@@ -462,6 +466,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                     onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
                   >
                     {ICONS.flagOff}
+                    <span className="pa-tx">마감 해제</span>
                   </button>
                 )
               return null
@@ -486,6 +491,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   }
                 >
                   {ICONS.hold}
+                  <span className="pa-tx">보류</span>
                 </button>
               )
             }
@@ -508,6 +514,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   }
                 >
                   {ICONS.keep}
+                  <span className="pa-tx">보관</span>
                 </button>
               )
             }
@@ -521,6 +528,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   onClick={editing ? () => setEditing(false) : startEdit}
                 >
                   {ICONS.memo}
+                  <span className="pa-tx">{editing ? '취소' : '수정'}</span>
                 </button>
               )
             }
@@ -539,6 +547,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   }}
                 >
                   {ICONS.trash}
+                  <span className="pa-tx">삭제</span>
                 </button>
               )
             }
