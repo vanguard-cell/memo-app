@@ -2016,6 +2016,30 @@ main {
   animation: ev-reg 1100ms ease-out;
 }
 
+/* 유령 칩이 날아오는 동안엔 자리를 비워둔다 (자리는 그대로 — opacity만) */
+.cal-ev.ev-incoming {
+  opacity: 0;
+}
+
+/* 등록한 제목이 달력 칸으로 날아가 앉는 유령 칩 — 보드에서 카드를 끌어 옮기는 감각을
+   입력에도. 색은 앉을 칩에서 그대로 가져오고(ev-due 등), 나는 동안만 그림자로 떠 있다 */
+.cal-fly {
+  position: fixed;
+  z-index: 90;
+  box-sizing: border-box;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform-origin: top left;
+  box-shadow: 0 8px 20px rgba(20, 40, 90, 0.25);
+  pointer-events: none;
+}
+
 .cal-ev {
   display: block;
   margin-top: 4px;

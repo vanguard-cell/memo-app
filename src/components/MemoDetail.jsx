@@ -88,6 +88,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const flashTimer = useRef(null)
   const alive = useRef(true)
   const histRef = useRef(null)
+  const titleEl = useRef(null)
 
   function flashSaved(kind) {
     if (!alive.current) return
@@ -139,8 +140,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     titleSaved.current = v
     updateMemo(memo.id, { title: v })
     flashSaved(kind)
-    // 달력이 듣고 그 항목을 한 번 번쩍여 준다 — "내가 쓴 게 저기 가서 붙었구나"
-    if (kind === 'reg') window.dispatchEvent(new CustomEvent('memo-registered', { detail: memo.id }))
+    // 달력이 듣고, 제목 칸에서 그 날짜 칸으로 칩을 날려 보낸 뒤 한 번 번쩍여 준다.
+    // 제목 칸의 위치를 같이 실어 보낸다 — 어디서 출발할지는 여기만 안다.
+    if (kind === 'reg') {
+      const r = titleEl.current && titleEl.current.getBoundingClientRect()
+      window.dispatchEvent(
+        new CustomEvent('memo-registered', {
+          detail: { id: memo.id, from: r && { x: r.left, y: r.top } },
+        })
+      )
+    }
     return kind
   }
 
@@ -259,7 +268,10 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             className={'panel-title-input' + (flash ? ' pti-' + flash : '')}
             value={title}
             rows={1}
-            ref={fitTA}
+            ref={(el) => {
+              titleEl.current = el // 등록 연출이 출발할 자리
+              fitTA(el)
+            }}
             autoFocus={!memo.title}
             placeholder="제목을 입력하세요"
             onChange={(e) => {

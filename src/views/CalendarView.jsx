@@ -65,35 +65,107 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   // 폰은 화면이 좁아 기존대로 누른 줄이 그 자리에서 펼쳐진다(onOpen/renderDetail)
   const [localOpenId, setLocalOpenId] = useState(null)
   const today = todayStr()
-  // 방금 등록된 메모 — 상세에서 빈 제목에 이름이 붙으면 그 항목이 달력에서 한 번 번쩍한다.
-  // "등록됐다"의 진짜 증거는 확인 문구가 아니라 그게 제자리를 찾는 걸 보는 것. (2026-08-06)
+  // 방금 등록된 메모 — 상세에서 빈 제목에 이름이 붙으면, 제목 칸에서 그 날짜 칸으로 칩이
+  // 날아가 앉고 한 번 번쩍한다. "등록됐다"의 증거는 확인 문구가 아니라 그게 제자리를 찾는 걸
+  // 보는 것. 보드에서 카드를 끌어 옮길 때의 감각을 입력에도 준다. (2026-08-06)
   const [justReg, setJustReg] = useState(null)
+  const [flyingId, setFlyingId] = useState(null)
   const regTimer = useRef(null)
+  const flyRef = useRef(null)
+
   useEffect(() => {
-    const on = (e) => {
-      clearTimeout(regTimer.current)
-      setJustReg(e.detail)
-      regTimer.current = setTimeout(() => setJustReg(null), 1200)
+    const on = (ev) => {
+      const { id, from } = ev.detail || {}
+      if (!id) return
+      // 제목이 방금 바뀐 참이라 DOM에 아직 안 붙었을 수 있다 — 한 프레임 뒤에 찾는다
+      requestAnimationFrame(() => {
+        // 옛 데이터의 id가 어떤 모양이든 선택자가 깨져 화면이 죽지는 않게
+        let chip = null
+        try {
+          chip = document.querySelector(`.cal-ev[data-mid="${id}"]`)
+        } catch {
+          /* 선택자로 못 쓰는 id */
+        }
+        // 칸 스크롤 아래에 숨어 있으면 연출이 안 보인다 — 보이는 데까지 끌어올리고 나서 잰다
+        if (chip) chip.scrollIntoView({ block: 'nearest' })
+        const flash = () => {
+          clearTimeout(regTimer.current)
+          setJustReg(id)
+          regTimer.current = setTimeout(() => setJustReg(null), 1200)
+        }
+        // 날려 보내는 건 PC에서 칩이 실제로 보일 때만 — 폰 칩은 6px 색막대라 담을 게 없고,
+        // 다른 달을 보고 있으면 앉을 자리가 아예 없다. 그럴 땐 번쩍임만.
+        if (!chip || !from || narrow || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          flash()
+          return
+        }
+        setFlyingId(id)
+        requestAnimationFrame(() =>
+          flyToChip(from, chip, () => {
+            setFlyingId(null)
+            flash()
+          })
+        )
+      })
     }
     window.addEventListener('memo-registered', on)
     return () => {
       window.removeEventListener('memo-registered', on)
       clearTimeout(regTimer.current)
+      if (flyRef.current) {
+        flyRef.current.getAnimations().forEach((a) => {
+          a.onfinish = null
+          a.cancel()
+        })
+        flyRef.current.remove()
+        flyRef.current = null
+      }
     }
-  }, [])
+  }, [narrow])
 
-  // 칩이 칸 스크롤 아래에 숨어 있으면 번쩍여도 안 보인다 — 보이는 데까지만 끌어올린다
-  useEffect(() => {
-    if (!justReg) return
-    // 옛 데이터의 id가 어떤 모양이든 선택자가 깨져 화면이 죽지는 않게 — 못 찾으면 번쩍임만 뜬다
-    let el = null
-    try {
-      el = document.querySelector(`.cal-ev[data-mid="${justReg}"]`)
-    } catch {
-      /* 선택자로 못 쓰는 id */
+  // 제목 칸 자리에서 출발해 달력 칸의 칩 자리로 날아가 앉는 유령 칩.
+  // 칩 자리에 미리 놓고 출발점까지 밀어낸 뒤 제자리로 되돌리는 식(FLIP)이라 transform만 움직인다.
+  // ⚠️ body에 zoom이 걸려 있어(--zoom) getBoundingClientRect 값은 배율이 섞인 좌표다.
+  //    유령도 body 안에 놓으므로 좌표를 배율로 나눠 같은 공간으로 맞춘다.
+  function flyToChip(from, chip, done) {
+    const t = chip.getBoundingClientRect()
+    if (!t.width || !t.height) return done()
+    const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--zoom')) || 1
+    const g = document.createElement('div')
+    const tone = (chip.className.match(/ev-(due|end|span|start)\b/) || ['ev-due'])[0]
+    g.className = 'cal-fly ' + tone
+    g.textContent = chip.textContent || ''
+    g.style.left = t.left / z + 'px'
+    g.style.top = t.top / z + 'px'
+    g.style.width = t.width / z + 'px'
+    document.body.appendChild(g)
+    flyRef.current = g
+
+    const dx = (from.x - t.left) / z
+    const dy = (from.y - t.top) / z
+    const a = g.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px) scale(1.28)`, opacity: 0.55 },
+        // 가운데를 살짝 띄워 곧게 긋지 않고 던지는 궤적으로
+        {
+          transform: `translate(${dx * 0.42}px, ${dy * 0.42 - 26}px) scale(1.12)`,
+          opacity: 1,
+          offset: 0.55,
+        },
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      ],
+      { duration: 520, easing: 'cubic-bezier(.35,.02,.2,1)' }
+    )
+    const cleanup = () => {
+      g.remove()
+      if (flyRef.current === g) flyRef.current = null
     }
-    if (el) el.scrollIntoView({ block: 'nearest' })
-  }, [justReg])
+    a.onfinish = () => {
+      cleanup()
+      done()
+    }
+    a.oncancel = cleanup
+  }
 
   // PC 진입 시 App 우측 패널은 닫아둔다 — 달력 우측 목록과 이중으로 뜨지 않게
   useEffect(() => {
@@ -470,6 +542,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     'cal-ev ' +
                     TYPE[e.type][1] +
                     (justReg === e.m.id ? ' ev-reg' : '') +
+                    // 날아오는 동안엔 자리를 비워둔다 — 유령이 그대로 이 자리에 앉는다
+                    (flyingId === e.m.id ? ' ev-incoming' : '') +
                     // 진행중인 메모는 보드 진행중과 같은 초록으로 — 굴러가는 중임이 달력에서도 보인다.
                     // 단 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
                     (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '')
