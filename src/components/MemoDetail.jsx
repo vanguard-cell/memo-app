@@ -82,6 +82,26 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   // (2026-08-05 사용자 요청)
   const descBase = useRef(memo.desc || '')
   const titleBase = useRef(memo.title || '')
+  // 제목이 확정되는 순간의 연출 — 'reg'(빈 초안에 이름이 붙는 "등록")는 크게,
+  // 'edit'(이미 있던 제목 고치기)은 아주 약하게. 매번 요란하면 금방 질린다. (2026-08-06)
+  const [flash, setFlash] = useState(null)
+  const flashTimer = useRef(null)
+  const alive = useRef(true)
+  const histRef = useRef(null)
+
+  function flashSaved(kind) {
+    if (!alive.current) return
+    clearTimeout(flashTimer.current)
+    // 클래스를 뺐다 다시 붙여야 연달아 눌러도 애니메이션이 새로 돈다
+    setFlash(null)
+    requestAnimationFrame(() => {
+      if (!alive.current) return
+      setFlash(kind)
+      flashTimer.current = setTimeout(() => {
+        if (alive.current) setFlash(null)
+      }, kind === 'reg' ? 1000 : 450)
+    })
+  }
   const st = memoStatus(memo)
   const today = todayStr()
   // 상태 UI 기준은 "인라인이냐"가 아니라 "폰이냐" (2026-07-31) — 달력 우측 상세는 인라인이지만
@@ -109,11 +129,19 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     timerRef.current = setTimeout(saveDesc, 700)
   }
 
+  // 저장했으면 true(그중 "등록"이면 'reg')를 돌려준다 — 부른 쪽이 뒷처리를 정하게.
   function saveTitle() {
     const v = titleLatest.current.trim()
-    if (v === titleSaved.current) return
+    if (v === titleSaved.current) return null
+    // 빈 초안(+ 로 만들어 이름이 없던 것)에 이름이 붙는 순간이 이 앱의 "등록"이다.
+    // 메모 자체는 + 를 누를 때 이미 만들어져 있어서, 이 순간 말고는 등록이랄 사건이 없다.
+    const kind = !titleSaved.current && v ? 'reg' : 'edit'
     titleSaved.current = v
     updateMemo(memo.id, { title: v })
+    flashSaved(kind)
+    // 달력이 듣고 그 항목을 한 번 번쩍여 준다 — "내가 쓴 게 저기 가서 붙었구나"
+    if (kind === 'reg') window.dispatchEvent(new CustomEvent('memo-registered', { detail: memo.id }))
+    return kind
   }
 
   // Esc 되돌리기 공용 — 커서를 놓은 때의 내용으로 돌린다. 되돌릴 게 없으면 칸에서 빠져나간다
@@ -136,8 +164,9 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     requestAnimationFrame(() => fitTA(el))
   }
 
-  // 패널을 닫거나 다른 메모로 옮겨가도 적던 내용이 날아가지 않게
-  useEffect(() => () => { saveTitle(); saveDesc() }, [])
+  // 패널을 닫거나 다른 메모로 옮겨가도 적던 내용이 날아가지 않게.
+  // (여기서 등록이 일어나면 패널은 사라지지만 달력 번쩍임은 그대로 뜬다 — 그게 맞다)
+  useEffect(() => () => { saveTitle(); saveDesc(); alive.current = false; clearTimeout(flashTimer.current) }, [])
 
   function startEdit() {
     setForm({
@@ -227,7 +256,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
           )}
           <textarea
-            className="panel-title-input"
+            className={'panel-title-input' + (flash ? ' pti-' + flash : '')}
             value={title}
             rows={1}
             ref={fitTA}
@@ -242,9 +271,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             onBlur={saveTitle}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                // 한글 조합 중 Enter는 글자를 맺는 것 — 아래 진행사항 칸과 같은 규칙 (2026-08-06)
+                if (e.nativeEvent.isComposing) return
                 e.preventDefault()
-                saveTitle()
+                const kind = saveTitle()
                 e.target.blur()
+                // 등록됐으면 "제목 정했으니 이제 내용" 으로 커서를 넘겨준다.
+                // 다른 데를 눌러서 저장된 경우(onBlur)엔 그쪽을 누른 거라 뺏지 않는다.
+                if (kind === 'reg') requestAnimationFrame(() => histRef.current && histRef.current.focus())
               }
               if (e.key === 'Escape')
                 revertOnEsc(e, 'title', {
@@ -262,7 +296,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             <button className="x" onClick={onClose} aria-label="닫기" title="닫기">×</button>
           )}
         </div>
-        <div className="panel-meta">
+        {/* 등록되는 순간 예정·D-day 줄이 살짝 떠오르며 자리를 잡는다 — "이 일이 8/12에 걸렸다" */}
+        <div className={'panel-meta' + (flash === 'reg' ? ' meta-settle' : '')}>
           {memo.period && (
             <span className="meta-date">
               {memo.deadline ? `마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
@@ -637,6 +672,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           onToggle={(i) => toggleHistory(memo.id, i)}
           onUpdate={(i, p) => updateHistory(memo.id, i, p)}
           onRemove={(i) => removeHistory(memo.id, i)}
+          inputRef={histRef}
         />
         {/* 파일 — 계약서·견적서·캡처 등. 2026-07-15 제거했다가 2026-07-31 부활
             (캡처 붙여넣기·썸네일 미리보기·다운로드 추가) */}

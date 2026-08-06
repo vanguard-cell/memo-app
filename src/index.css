@@ -1993,6 +1993,29 @@ main {
   font-weight: 600;
 }
 
+/* 방금 등록된 항목 — 달력에서 한 번 번쩍하고 가라앉는다.
+   "저장됨" 같은 글자를 늘리지 않고 "내가 쓴 게 저기 가서 붙었다"를 보여주는 쪽 (2026-08-06) */
+@keyframes ev-reg {
+  0% {
+    box-shadow: 0 0 0 2px var(--blue-strong);
+    transform: scale(1.07);
+  }
+
+  55% {
+    box-shadow: 0 0 0 2px var(--blue-strong);
+    transform: scale(1);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(36, 86, 196, 0);
+    transform: scale(1);
+  }
+}
+
+.cal-ev.ev-reg {
+  animation: ev-reg 1100ms ease-out;
+}
+
 .cal-ev {
   display: block;
   margin-top: 4px;
@@ -2534,6 +2557,60 @@ main {
 .panel-title-input:focus {
   background: var(--card);
   border-color: var(--border);
+}
+
+/* 제목이 확정되는 순간 — 칸이 파랗게 찼다 풀린다. 편집 중과 확정 후의 생김새가 똑같아서
+   Enter를 쳐도 바뀌는 픽셀이 하나도 없던 문제 (2026-08-06 사용자: "쾌감이 없다").
+   등록(pti-reg)은 또렷하게, 이미 있던 제목 고치기(pti-edit)는 눈에 겨우 걸릴 만큼만. */
+@keyframes title-reg {
+  0% {
+    background: var(--blue-bg);
+    border-color: var(--blue-strong);
+  }
+
+  55% {
+    background: var(--blue-bg);
+    border-color: var(--blue-strong);
+  }
+
+  100% {
+    background: transparent;
+    border-color: transparent;
+  }
+}
+
+.panel-title-input.pti-reg {
+  animation: title-reg 900ms ease-out;
+}
+
+.panel-title-input.pti-edit {
+  animation: title-reg 400ms ease-out;
+}
+
+/* 등록되는 순간 예정·D-day 줄이 살짝 떠오르며 자리를 잡는다 */
+@keyframes meta-settle {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.panel-meta.meta-settle {
+  animation: meta-settle 420ms ease-out 80ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-title-input.pti-reg,
+  .panel-title-input.pti-edit,
+  .panel-meta.meta-settle,
+  .cal-ev.ev-reg {
+    animation: none;
+  }
 }
 
 .panel-title-input::placeholder {

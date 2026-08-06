@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import { addMemo, updateMemo, setDayOrder, getMemos, purgeMemos } from '../store'
@@ -65,6 +65,35 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   // 폰은 화면이 좁아 기존대로 누른 줄이 그 자리에서 펼쳐진다(onOpen/renderDetail)
   const [localOpenId, setLocalOpenId] = useState(null)
   const today = todayStr()
+  // 방금 등록된 메모 — 상세에서 빈 제목에 이름이 붙으면 그 항목이 달력에서 한 번 번쩍한다.
+  // "등록됐다"의 진짜 증거는 확인 문구가 아니라 그게 제자리를 찾는 걸 보는 것. (2026-08-06)
+  const [justReg, setJustReg] = useState(null)
+  const regTimer = useRef(null)
+  useEffect(() => {
+    const on = (e) => {
+      clearTimeout(regTimer.current)
+      setJustReg(e.detail)
+      regTimer.current = setTimeout(() => setJustReg(null), 1200)
+    }
+    window.addEventListener('memo-registered', on)
+    return () => {
+      window.removeEventListener('memo-registered', on)
+      clearTimeout(regTimer.current)
+    }
+  }, [])
+
+  // 칩이 칸 스크롤 아래에 숨어 있으면 번쩍여도 안 보인다 — 보이는 데까지만 끌어올린다
+  useEffect(() => {
+    if (!justReg) return
+    // 옛 데이터의 id가 어떤 모양이든 선택자가 깨져 화면이 죽지는 않게 — 못 찾으면 번쩍임만 뜬다
+    let el = null
+    try {
+      el = document.querySelector(`.cal-ev[data-mid="${justReg}"]`)
+    } catch {
+      /* 선택자로 못 쓰는 id */
+    }
+    if (el) el.scrollIntoView({ block: 'nearest' })
+  }, [justReg])
 
   // PC 진입 시 App 우측 패널은 닫아둔다 — 달력 우측 목록과 이중으로 뜨지 않게
   useEffect(() => {
@@ -436,9 +465,11 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 return (
                 <span
                   key={j}
+                  data-mid={e.m.id}
                   className={
                     'cal-ev ' +
                     TYPE[e.type][1] +
+                    (justReg === e.m.id ? ' ev-reg' : '') +
                     // 진행중인 메모는 보드 진행중과 같은 초록으로 — 굴러가는 중임이 달력에서도 보인다.
                     // 단 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
                     (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '')

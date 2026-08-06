@@ -11,9 +11,11 @@ function grow(el) {
 
 // 진행 기록 공용 UI — 메모 상세(MemoDetail)가 쓴다.
 // onAdd(text, date) / onToggle(i) / onUpdate(i, patch) / onRemove(i)
-export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove }) {
+// inputRef: 밖에서 이 칸에 커서를 놓고 싶을 때 (제목을 등록하면 여기로 넘어온다)
+export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove, inputRef }) {
   const today = todayStr()
-  const addRef = useRef(null)
+  const innerRef = useRef(null)
+  const addRef = inputRef || innerRef
   const [line, setLine] = useState('')
   const [lineDate, setLineDate] = useState(today)
   const [editIdx, setEditIdx] = useState(null)
