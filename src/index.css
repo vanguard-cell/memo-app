@@ -945,12 +945,50 @@ main {
   padding-bottom: 0;
 }
 
-.mv-head .mv-search {
+/* 검색칸 — 오른쪽 × 를 칸 안에 얹으려고 감싼 자리. 폭·여백은 이 감싼 쪽이 갖는다 */
+.mv-searchwrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mv-head .mv-searchwrap {
   flex-shrink: 0;
   width: 300px;
   margin-bottom: 8px;
+}
+
+/* 지우기 × — 글자가 있을 때만 나타난다 (빈 칸엔 아무것도 없다).
+   폰엔 hover가 없으니 처음부터 보이게 두고, 크기만 손가락에 맞춘다 */
+.mv-search-x {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--faint);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mv-search-x:hover {
+  background: var(--fill);
+  color: var(--text);
+}
+
+.mv-head .mv-search {
+  width: 100%;
+  margin-bottom: 0;
   font-size: 12.5px;
-  padding: 5px 10px 5px 30px;
+  padding: 5px 28px 5px 30px;
   background: #f7f8fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa1a9' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") 9px center no-repeat;
   border-color: transparent;
 }
@@ -1001,7 +1039,7 @@ main {
     flex-wrap: wrap;
   }
 
-  .mv-head .mv-search {
+  .mv-head .mv-searchwrap {
     flex-basis: 100%;
     width: 100%;
     order: 2;
@@ -3899,6 +3937,17 @@ main {
   .desc-input,
   .tl-input {
     font-size: 16px;
+  }
+
+  /* 검색 지우기 × 도 손가락 크기로 — 글자가 × 밑으로 들어가지 않게 오른쪽을 그만큼 비운다 */
+  .mv-search-x {
+    width: 34px;
+    height: 34px;
+    font-size: 21px;
+  }
+
+  .mv-head .mv-search {
+    padding-right: 40px;
   }
 
   .pill {

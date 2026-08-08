@@ -737,6 +737,7 @@ const VIEWS = [
 
 export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
   const [q, setQ] = useState('')
+  const searchRef = useRef(null)
   // 폰은 들어올 때 항상 보드부터 — 마지막 보기 기억은 PC만 (사용자 요청 2026-07-19)
   const [view, setView] = useState(() =>
     window.matchMedia('(max-width: 899px)').matches
@@ -780,12 +781,37 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
             </button>
           ))}
         </div>
-        <input
-          className="search-input mv-search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="검색 — 제목·진행기록, 보관·보류·완료까지"
-        />
+        {/* 검색칸 오른쪽 × — 한 번에 지운다. 폰은 한 글자씩 지우기가 특히 번거롭다 (2026-08-07).
+            지운 뒤에도 커서를 칸에 남겨둬서 키보드가 닫히지 않고 바로 다시 칠 수 있다. */}
+        <span className="mv-searchwrap">
+          <input
+            ref={searchRef}
+            className="search-input mv-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && q) {
+                e.stopPropagation()
+                setQ('')
+              }
+            }}
+            placeholder="검색 — 제목·진행기록, 보관·보류·완료까지"
+          />
+          {q && (
+            <button
+              className="mv-search-x"
+              title="검색어 지우기 (Esc)"
+              aria-label="검색어 지우기"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setQ('')
+                if (searchRef.current) searchRef.current.focus()
+              }}
+            >
+              ×
+            </button>
+          )}
+        </span>
       </div>
       {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (
