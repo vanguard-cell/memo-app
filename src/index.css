@@ -1892,6 +1892,22 @@ main {
   flex: none;
 }
 
+/* 칩 자리 — 완료된 기간 띠가 칸 맨 아래에 붙어도 "+N" 배지는 칩 영역 오른쪽 아래에 남게
+   감싸는 껍데기 (2026-08-11). 남는 높이를 이 껍데기가 다 먹어 완료 띠를 바닥으로 민다 */
+.cal-chips-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 완료된 기간 띠 묶음 — 칸 맨 아래. 줄 수는 한 주 안에서 같게 그려서 띠가 이어져 보인다 */
+.cal-bands-done {
+  flex: none;
+  margin-top: 3px;
+}
+
 /* 칩 목록만 스크롤. overscroll-behavior로 끝까지 굴려도 뒤 화면이 안 딸려간다 */
 .cal-chips {
   flex: 1;
@@ -2130,6 +2146,7 @@ main {
    시작 칸은 왼쪽, 만기 칸은 오른쪽만 둥글게 — 어디서 시작해 어디서 끝나는지 모양으로 보인다. */
 .cal-band {
   display: block;
+  flex: none; /* 칩이 많은 칸에서도 띠 높이가 눌리지 않게 — 눌리면 옆 칸과 줄이 어긋난다 */
   height: 17px;
   line-height: 17px;
   font-size: 10.5px;

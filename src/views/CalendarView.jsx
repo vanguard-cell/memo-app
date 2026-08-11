@@ -242,7 +242,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
 
   // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
   // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
-  const ST_RANK = { active: 0, todo: 1, keep: 2, done: 3 }
+  const ST_RANK = { active: 0, todo: 1, hold: 2, keep: 3, done: 4 }
+  // 모르는 상태가 섞여도 정렬이 무너지지 않게 (빼기가 NaN이 되면 순서가 뒤죽박죽 된다)
+  const stRank = (m) => ST_RANK[memoStatus(m)] ?? ST_RANK.todo
 
   function orderedEvents(date, evs) {
     const order = (dayOrder && dayOrder[date]) || []
@@ -251,7 +253,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
       return i === -1 ? Number.MAX_SAFE_INTEGER : i
     }
     return [...evs].sort((a, b) => {
-      const r = ST_RANK[memoStatus(a.m)] - ST_RANK[memoStatus(b.m)]
+      const r = stRank(a.m) - stRank(b.m)
       return r !== 0 ? r : idx(a) - idx(b)
     })
   }
@@ -321,36 +323,119 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
   // 기간 띠 — 마감형이 아닌 기간 메모(31일 이하)는 칸마다 조각을 찍는 대신 칸 경계를
   // 넘어 쭉 이어진 밴드로 그린다 (구글 캘린더식, 2026-07-31 사용자 요청: 서류접수 기간 등).
   // 겹치는 기간은 레인을 나눠 같은 메모가 항상 같은 줄 높이에 오게 한다.
+  // 레인은 상태 묶음별로 따로 채운다 (2026-08-11): 진행중 → 시작전은 칸 위(top),
+  // 완료는 칸 맨 아래(done). 묶음끼리 레인을 섞어 쓰지 않으므로 끝난 띠가 남은 일 위로 안 올라온다.
   const bands = useMemo(() => {
-    const list = memos
-      .filter(
-        (m) =>
-          m.period && m.period.start && m.period.end && !m.deadline &&
-          diffDays(m.period.end, m.period.start) <= 31
-      )
-      .sort((a, b) =>
-        a.period.start < b.period.start ? -1 : a.period.start > b.period.start ? 1 :
-        (a.createdAt || '').localeCompare(b.createdAt || '')
-      )
-    const laneEnd = [] // 레인별 마지막 만기 — 빈 레인부터 채운다
-    const lanes = new Map()
-    for (const m of list) {
-      let lane = laneEnd.findIndex((e) => e < m.period.start)
-      if (lane === -1) {
-        lane = laneEnd.length
-        laneEnd.push(m.period.end)
-      } else laneEnd[lane] = m.period.end
-      lanes.set(m.id, lane)
+    const byStart = (a, b) =>
+      a.period.start < b.period.start ? -1 : a.period.start > b.period.start ? 1 :
+      (a.createdAt || '').localeCompare(b.createdAt || '')
+    const all = memos.filter(
+      (m) =>
+        m.period && m.period.start && m.period.end && !m.deadline &&
+        diffDays(m.period.end, m.period.start) <= 31
+    )
+    // 묶음을 순서대로 받아 앞 묶음이 위 레인을 차지하게 채운다.
+    // 레인 재사용(겹치지 않으면 같은 줄)은 같은 묶음 안에서만.
+    const pack = (groups) => {
+      const laneEnd = [] // 레인별 마지막 만기 — 빈 레인부터 채운다
+      const lanes = new Map()
+      for (const g of groups) {
+        const base = laneEnd.length
+        for (const m of [...g].sort(byStart)) {
+          let lane = -1
+          for (let i = base; i < laneEnd.length; i++) {
+            if (laneEnd[i] < m.period.start) {
+              lane = i
+              break
+            }
+          }
+          if (lane === -1) {
+            lane = laneEnd.length
+            laneEnd.push(m.period.end)
+          } else laneEnd[lane] = m.period.end
+          lanes.set(m.id, lane)
+        }
+      }
+      return { list: groups.flat(), lanes }
     }
-    return { list, lanes }
+    const done = all.filter((m) => memoStatus(m) === 'done')
+    const doing = all.filter((m) => memoStatus(m) === 'active')
+    const rest = all.filter((m) => !done.includes(m) && !doing.includes(m))
+    return { top: pack([doing, rest]), done: pack([done]) }
   }, [memos])
-  const isBanded = (id) => bands.lanes.has(id)
+  const isBanded = (id) => bands.top.lanes.has(id) || bands.done.lanes.has(id)
+
+  // 그 날짜를 지나는 띠를 레인 순서대로 그린다. 빈 레인은 투명 칸으로 높이를 맞춰
+  // 같은 메모가 옆 칸에서도 같은 줄에 오게 한다. laneN을 주면 그만큼 줄을 채운다
+  // (칸 아래에 붙는 완료 묶음은 한 주 안에서 줄 수가 같아야 띠가 이어져 보인다).
+  function bandLanes(grp, date, laneN) {
+    const here = grp.list.filter((m) => m.period.start <= date && date <= m.period.end)
+    const n =
+      laneN != null
+        ? laneN
+        : here.length
+          ? Math.max(...here.map((m) => grp.lanes.get(m.id))) + 1
+          : 0
+    const els = []
+    for (let li = 0; li < n; li++) {
+      const bm = here.find((x) => grp.lanes.get(x.id) === li)
+      if (!bm) {
+        els.push(<span key={'g' + li} className="cal-band cal-band-ghost" />)
+        continue
+      }
+      const bst = memoStatus(bm)
+      const isS = date === bm.period.start
+      const isE = date === bm.period.end
+      // 제목은 시작날과 매주 첫 칸(일요일)에만 — 띠가 길어도 어느 주에서든 이름이 보인다
+      const btext = dayLine(bm, date) || (isS || new Date(date + 'T00:00').getDay() === 0 ? bm.title : '')
+      els.push(
+        <span
+          key={bm.id}
+          className={
+            'cal-band' + (isS ? ' b-s' : '') + (isE ? ' b-e' : '') +
+            (bst === 'done' ? ' bd-done' : bst === 'active' ? ' bd-doing' : '')
+          }
+          title={bm.title}
+          draggable
+          onDragStart={(ev) => {
+            // 시작·만기 칸을 끌면 그쪽 끝만, 중간을 끌면 기간 전체 평행이동 (조각 때와 동일)
+            ev.dataTransfer.setData(
+              'text/plain',
+              JSON.stringify({ id: bm.id, type: isS ? 'start' : isE ? 'end' : 'span', date })
+            )
+            ev.dataTransfer.effectAllowed = 'move'
+          }}
+          onClick={(ev) => {
+            ev.stopPropagation()
+            setSel(date)
+            openDetail(bm.id)
+          }}
+        >
+          {btext}
+        </span>
+      )
+    }
+    return els
+  }
 
   const startDow = new Date(y, mo, 1).getDay()
   const dim = new Date(y, mo + 1, 0).getDate()
   const cells = []
   for (let i = 0; i < startDow; i++) cells.push(null)
   for (let d = 1; d <= dim; d++) cells.push(d)
+
+  // 완료 띠 묶음의 줄 수는 주(가로 한 줄) 단위로 정한다 — 그 주에 완료 띠가 없으면
+  // 아예 안 그려 칸을 안 잡아먹고, 있으면 그 주의 모든 칸이 같은 줄 수를 가진다
+  const doneLaneN = []
+  for (let r = 0; r * 7 < cells.length; r++) {
+    const ds = cells.slice(r * 7, r * 7 + 7).filter(Boolean).map((d) => `${y}-${pad(mo + 1)}-${pad(d)}`)
+    let n = 0
+    if (ds.length)
+      for (const m of bands.done.list)
+        if (m.period.start <= ds[ds.length - 1] && ds[0] <= m.period.end)
+          n = Math.max(n, bands.done.lanes.get(m.id) + 1)
+    doneLaneN.push(n)
+  }
 
   const first = `${y}-${pad(mo + 1)}-01`
   const last = `${y}-${pad(mo + 1)}-${pad(dim)}`
@@ -433,53 +518,12 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           const dw = i % 7 // 칸 index = 열 = 요일 (0=일)
           // 띠로 그리는 기간 메모는 칸 조각(시작·중간·만기 칩)에서 뺀다 — 날짜 목록엔 그대로 남는다
           const evs = orderedEvents(date, events[date] || []).filter((e) => !isBanded(e.m.id))
-          // 이 날짜를 지나는 띠들 — 레인 순서대로, 빈 레인은 투명 칸으로 높이를 맞춘다
-          const cellBands = bands.list.filter((m) => m.period.start <= date && date <= m.period.end)
-          const maxLane = cellBands.length
-            ? Math.max(...cellBands.map((m) => bands.lanes.get(m.id)))
-            : -1
-          const laneEls = []
-          for (let li = 0; li <= maxLane; li++) {
-            const bm = cellBands.find((x) => bands.lanes.get(x.id) === li)
-            if (!bm) {
-              laneEls.push(<span key={'g' + li} className="cal-band cal-band-ghost" />)
-              continue
-            }
-            const bst = memoStatus(bm)
-            const isS = date === bm.period.start
-            const isE = date === bm.period.end
-            // 제목은 시작날과 매주 첫 칸(일요일)에만 — 띠가 길어도 어느 주에서든 이름이 보인다
-            const btext = dayLine(bm, date) || (isS || new Date(date + 'T00:00').getDay() === 0 ? bm.title : '')
-            laneEls.push(
-              <span
-                key={bm.id}
-                className={
-                  'cal-band' + (isS ? ' b-s' : '') + (isE ? ' b-e' : '') +
-                  (bst === 'done' ? ' bd-done' : bst === 'active' ? ' bd-doing' : '')
-                }
-                title={bm.title}
-                draggable
-                onDragStart={(ev) => {
-                  // 시작·만기 칸을 끌면 그쪽 끝만, 중간을 끌면 기간 전체 평행이동 (조각 때와 동일)
-                  ev.dataTransfer.setData(
-                    'text/plain',
-                    JSON.stringify({ id: bm.id, type: isS ? 'start' : isE ? 'end' : 'span', date })
-                  )
-                  ev.dataTransfer.effectAllowed = 'move'
-                }}
-                onClick={(ev) => {
-                  ev.stopPropagation()
-                  setSel(date)
-                  openDetail(bm.id)
-                }}
-              >
-                {btext}
-              </span>
-            )
-          }
+          // 이 날짜를 지나는 띠들 — 남은 것(진행중·시작전)은 칸 위, 완료된 것은 칸 맨 아래
+          const laneEls = bandLanes(bands.top, date)
+          const doneLaneEls = bandLanes(bands.done, date, doneLaneN[Math.floor(i / 7)])
           // 칸에 들어가는 칩 수 어림 — 칩은 이제 전부 그리고 넘치면 스크롤이라,
           // 이 값은 "몇 개가 안 보이는지"(+N 표시)를 가늠하는 데만 쓴다
-          const chipLimit = Math.max(1, 4 - laneEls.length)
+          const chipLimit = Math.max(1, 4 - laneEls.length - doneLaneEls.length)
           return (
             <div
               key={date}
@@ -529,6 +573,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               {laneEls}
               {/* 칩은 전부 그리고 넘치면 이 안에서만 스크롤된다 (칸에 마우스 올리고 휠).
                   띠(laneEls)는 칸 경계를 넘어 이어져야 해서 밖에 고정 — 같이 굴리면 옆 칸과 어긋난다 */}
+              <div className="cal-chips-wrap">
               <div className="cal-chips">
               {/* 폰은 칸 높이가 내용에 따라 늘어나는 구조라 전부 그리면 주 줄이 통째로 커진다 —
                   폰은 예전처럼 자르고, 넘치는 건 날짜를 탭해 아래 목록에서 본다 */}
@@ -568,6 +613,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
               </div>
               {/* 안 보이는 칩이 있다는 표시 — 마우스를 올리면(=굴릴 수 있으면) 비켜준다 */}
               {evs.length > chipLimit && <span className="cal-more">+{evs.length - chipLimit}</span>}
+              </div>
+              {/* 완료된 기간 띠는 칸 맨 아래 — 끝난 일이 남은 일 위에 앉지 않게 (2026-08-11).
+                  한 주 안에서 칸 높이가 같으므로 아래에 붙여도 옆 칸과 줄이 이어진다 */}
+              {doneLaneEls.length > 0 && <div className="cal-bands-done">{doneLaneEls}</div>}
             </div>
           )
         })}
