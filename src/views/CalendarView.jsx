@@ -583,6 +583,8 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 <span
                   key={j}
                   data-mid={e.m.id}
+                  // 칸이 좁아 제목이 잘리는 건 어쩔 수 없다 — 마우스를 올리면 전체가 보이게
+                  title={e.text}
                   className={
                     'cal-ev ' +
                     TYPE[e.type][1] +
