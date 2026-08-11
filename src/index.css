@@ -4,6 +4,7 @@
   --bg: #fff;
   --card: #fff;
   --fill: #f2f4f6; /* 호버·선택 등 옅은 회색 채움 */
+  --field: #f7f8fa; /* 쓰는 칸(제목·설명·진행사항)의 평소 바탕 — 흰 화면에서 "여기 쓴다"가 보이게 */
   --border: #e5e7ea;
   --border-hover: #c6ccd2;
   --text: #1f2329;
@@ -23,6 +24,14 @@
   --red-bg: #fdecea;
   --red: #b3261e;
   --red-strong: #e2483d;
+
+  /* 글씨 크기는 이 네 단계만 쓴다 (2026-08-11 사용자: "글씨 크기에 통일성이 없다").
+     곳곳에 11·12·12.5·13·13.5·14가 섞여 있던 것을 정리한 것 — 새 규칙을 넣을 때도
+     여기서 고른다. 폰은 입력칸만 16px로 따로 키운다(아이폰 확대 방지). */
+  --fs-title: 15px; /* 상세·화면 제목 */
+  --fs-base: 12.5px; /* 본문·목록·쓰는 칸 */
+  --fs-sm: 11.5px; /* 날짜·부가정보·힌트 */
+  --fs-label: 11px; /* 칸 이름표 (작업 설명·진행 기록·파일) */
 }
 
 * {
@@ -71,8 +80,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  font-size: 13.5px;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-size: var(--fs-base);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -165,7 +175,7 @@ input:focus {
 /* 폰은 입력 글씨 16px 유지(포커스 시 화면 확대 방지), PC는 UI에 맞춰 작게 */
 @media (min-width: 900px) {
   input {
-    font-size: 13px;
+    font-size: var(--fs-base);
   }
 }
 
@@ -283,7 +293,7 @@ main {
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--text);
 }
 
@@ -312,7 +322,7 @@ main {
 
 .stab-n {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
 }
 
@@ -327,7 +337,7 @@ main {
   gap: 10px;
   background: var(--text);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 8px 14px;
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
@@ -338,7 +348,7 @@ main {
   background: #fff;
   border-color: #fff;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 3px 10px;
   font-weight: 600;
 }
@@ -352,7 +362,7 @@ main {
 }
 
 .stab-foot {
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--faint);
 }
 
@@ -369,7 +379,7 @@ main {
   padding: 0 12px;
   background: var(--card);
   border-top: 1px solid var(--border);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   z-index: 45;
 }
@@ -419,7 +429,7 @@ main {
 
 .sync-bad {
   margin-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 600;
   color: var(--red);
   background: var(--red-bg);
@@ -454,7 +464,7 @@ main {
 }
 
 .login-desc {
-  font-size: 14px;
+  font-size: var(--fs-base);
   color: var(--muted);
   margin: 0;
   line-height: 1.6;
@@ -465,7 +475,7 @@ main {
 }
 
 .login-error {
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--red);
   margin: 0;
 }
@@ -482,7 +492,7 @@ main {
 }
 
 .login-desc.small {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   text-align: center;
 }
@@ -490,7 +500,7 @@ main {
 .linkish {
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--muted);
   text-decoration: underline;
   padding: 2px;
@@ -506,7 +516,7 @@ main {
   margin-left: 5px;
   background: var(--red-strong);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 700;
   border-radius: 9px;
   padding: 1px 6px;
@@ -536,7 +546,7 @@ main {
 }
 
 .who {
-  font-size: 11px;
+  font-size: var(--fs-label);
   color: var(--faint);
   max-width: 140px;
   overflow: hidden;
@@ -579,7 +589,7 @@ main {
 }
 
 .chips-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
 }
 
@@ -587,7 +597,7 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 2px 8px;
   border-radius: 6px;
   white-space: nowrap;
@@ -602,7 +612,7 @@ main {
   border: none;
   background: none;
   padding: 0 0 0 2px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   line-height: 1;
   color: inherit;
   opacity: 0.6;
@@ -614,7 +624,7 @@ main {
 }
 
 .chips-none {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
 }
 
@@ -627,7 +637,7 @@ main {
 }
 
 .chips-right .pill {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 3px 11px;
 }
 
@@ -653,7 +663,7 @@ main {
   background: var(--blue-bg);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--blue);
 }
 
@@ -661,7 +671,7 @@ main {
   background: var(--blue);
   border-color: var(--blue);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .btn-attach:hover {
@@ -670,12 +680,12 @@ main {
 }
 
 .attach-bar button {
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .flash {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--teal);
 }
 
@@ -685,7 +695,7 @@ main {
 }
 
 .sec-title {
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--muted);
   margin: 0 0 6px 2px;
@@ -694,7 +704,7 @@ main {
 .sec-toggle {
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--muted);
   padding: 0 2px;
@@ -762,7 +772,7 @@ main {
 }
 
 .nag-tag {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   min-width: 46px;
   white-space: nowrap;
@@ -791,7 +801,7 @@ main {
 
 .nag-desc {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .nag-actions {
@@ -800,7 +810,7 @@ main {
 }
 
 .nag-actions button {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 4px 9px;
   white-space: nowrap;
 }
@@ -825,7 +835,7 @@ main {
 
 /* 달력 상세 줄의 "이동" 버튼 */
 .row .nag-datewrap button {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 3px 8px;
   white-space: nowrap;
 }
@@ -845,7 +855,7 @@ main {
   padding: 10px 16px;
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   z-index: 60;
 }
 
@@ -861,7 +871,7 @@ main {
   padding: 0;
   color: #8ec5ff;
   font-weight: 700;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   flex-shrink: 0;
 }
 
@@ -881,7 +891,7 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 6px 14px;
   border-radius: 9px;
   background: var(--card);
@@ -926,7 +936,7 @@ main {
 }
 
 .kb-dayline {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-top: 3px;
 }
@@ -987,7 +997,7 @@ main {
 .mv-head .mv-search {
   width: 100%;
   margin-bottom: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 5px 28px 5px 30px;
   background: #f7f8fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa1a9' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") 9px center no-repeat;
   border-color: transparent;
@@ -1011,7 +1021,7 @@ main {
   background: none;
   border-radius: 0;
   padding: 10px 12px 11px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px; /* 밑줄이 바의 헤어라인을 덮게 */
 }
@@ -1081,7 +1091,7 @@ main {
 
 .kb-done-date {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-label);
   color: var(--faint);
   white-space: nowrap;
 }
@@ -1160,7 +1170,7 @@ main {
 }
 
 .kb-count {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
 }
 
@@ -1171,7 +1181,7 @@ main {
   padding: 14px 16px;
   margin-bottom: 12px;
   cursor: grab;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1237,7 +1247,7 @@ main {
   border: none;
   background: none;
   color: var(--faint);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   text-align: left;
   padding: 6px 11px;
   border-radius: 6px;
@@ -1322,12 +1332,12 @@ main {
 }
 
 .kb-actions button {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   padding: 2px 8px;
 }
 
 .kb-empty {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   text-align: center;
   padding: 14px 4px;
@@ -1336,7 +1346,7 @@ main {
 }
 
 .kb-more {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   text-align: center;
   padding: 6px 4px;
@@ -1358,11 +1368,11 @@ main {
   width: 100%;
   min-width: 560px;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .mv-table th {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   font-weight: 600;
   text-align: left;
@@ -1404,7 +1414,7 @@ main {
 
 /* 상태 그룹 머리줄 — 누르면 접힘/펼침 */
 .mv-group td {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--muted);
   background: #fafbfc;
@@ -1415,7 +1425,7 @@ main {
   display: inline-block;
   width: 14px;
   color: var(--faint);
-  font-size: 11px;
+  font-size: var(--fs-label);
 }
 
 .mv-group-n {
@@ -1427,7 +1437,7 @@ main {
 /* 맨 아래 고스트 줄 — 새 항목 (보드 칸의 + 항목 추가와 동일) */
 .mv-ghost td {
   color: var(--faint);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   border-bottom: none;
 }
 
@@ -1444,7 +1454,7 @@ main {
 .mv-date {
   white-space: nowrap;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 .mv-done td {
@@ -1500,7 +1510,7 @@ main {
 }
 
 .tlv-title {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1509,7 +1519,7 @@ main {
 }
 
 .tlv-sub {
-  font-size: 11px;
+  font-size: var(--fs-label);
   color: var(--faint);
   margin-top: 1px;
 }
@@ -1524,7 +1534,7 @@ main {
 .tlv-fold {
   width: 100%;
   margin-top: 12px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   border: 1px dashed var(--border);
   background: transparent;
@@ -1577,16 +1587,16 @@ main {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
   padding: 10px 12px;
   pointer-events: none;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 .tlv-tip-title {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .tlv-tip-sub {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   margin: 1px 0 6px;
 }
@@ -1600,7 +1610,7 @@ main {
 
 .tlv-tip-line .d {
   color: var(--faint);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -1610,7 +1620,7 @@ main {
 }
 
 .tlv-tip-more {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   margin-top: 4px;
 }
@@ -1634,12 +1644,12 @@ main {
   padding: 26px 16px;
   text-align: center;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .empty.small {
-  padding: 12px;
-  font-size: 13px;
+  padding: 10px;
+  font-size: var(--fs-sm);
 }
 
 .row {
@@ -1686,20 +1696,20 @@ main {
 }
 
 .row-date {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   white-space: nowrap;
 }
 
 .row-check {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--teal);
   white-space: nowrap;
   font-weight: 600;
 }
 
 .badge {
-  font-size: 11px;
+  font-size: var(--fs-label);
   padding: 2px 8px;
   border-radius: 5px;
   font-weight: 600;
@@ -1735,7 +1745,7 @@ main {
 /* 보류함 목록: 제목 아래 마지막 진행기록 한 줄 — 멈춘 지점 떠올리기용 */
 .hold-last {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-top: 2px;
   overflow: hidden;
@@ -1759,7 +1769,7 @@ main {
 .pill {
   border-radius: 999px;
   padding: 4px 13px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -1772,11 +1782,11 @@ main {
 
 .pill-n {
   opacity: 0.7;
-  font-size: 11px;
+  font-size: var(--fs-label);
 }
 
 .count {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   margin-left: 4px;
 }
@@ -1787,7 +1797,7 @@ main {
 }
 
 .done-divider {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--faint);
   margin: 16px 2px 6px;
@@ -1799,14 +1809,14 @@ main {
   margin: -2px 0 10px 14px;
   padding: 4px 10px;
   border-left: 2px solid var(--border);
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--muted);
 }
 
 .hit-line span {
   color: var(--faint);
   margin-right: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .cal-head {
@@ -1825,7 +1835,7 @@ main {
 
 .cal-today-btn {
   margin-left: auto;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 /* 달력 격자 — 칸 사이 여백 없이 헤어라인으로만 (스프레드시트식, 2026-07-30 시안) */
@@ -1841,7 +1851,7 @@ main {
 }
 
 .cal-filter-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--amber);
   background: var(--amber-bg);
   border-radius: 8px;
@@ -1851,7 +1861,7 @@ main {
 
 .cal-dow {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   padding: 5px 0;
   background: #f7f8fa;
@@ -1882,7 +1892,7 @@ main {
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   padding: 8px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   overflow: hidden;
 }
@@ -2006,7 +2016,7 @@ main {
   padding-top: 1px;
   padding-right: 2px;
   text-align: center;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   border-radius: 50%;
   color: var(--muted);
   margin-bottom: 2px;
@@ -2043,7 +2053,7 @@ main {
   border-radius: 10px;
   background: var(--red-bg);
   color: var(--red);
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 600;
 }
 
@@ -2083,7 +2093,7 @@ main {
   box-sizing: border-box;
   padding: 2px 6px;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 600;
   line-height: 1.35;
   white-space: nowrap;
@@ -2099,7 +2109,7 @@ main {
   margin-top: 4px;
   padding: 2px 6px;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: var(--fs-label);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2212,7 +2222,7 @@ main {
 }
 
 .cal-periods-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
 }
 
@@ -2222,18 +2232,18 @@ main {
   border: none;
   border-radius: 6px;
   padding: 3px 9px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 .cal-period-chip span {
   opacity: 0.75;
   margin-left: 5px;
-  font-size: 11px;
+  font-size: var(--fs-label);
 }
 
 .muted-inline {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 400;
 }
 
@@ -2361,7 +2371,7 @@ main {
    — 카드 래핑·뒤로가기 줄 제거. 패널을 닫으면 밑의 그날 목록이 드러난다. */
 
 .cal-detail-title {
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--muted);
   margin-bottom: 10px;
@@ -2376,7 +2386,7 @@ main {
 .cal-add input {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--fs-base);
   padding: 7px 10px;
 }
 
@@ -2498,7 +2508,7 @@ main {
     right: calc(100% + 9px);
     background: var(--text);
     color: #fff;
-    font-size: 11.5px;
+    font-size: var(--fs-sm);
     padding: 4px 9px;
     border-radius: 5px;
     white-space: nowrap;
@@ -2604,38 +2614,59 @@ main {
 
 .panel-title {
   flex: 1;
-  font-size: 16px;
+  font-size: var(--fs-title);
   font-weight: 700;
   line-height: 1.45;
   word-break: break-all;
 }
 
-/* 제목을 상세 맨 위에서 바로 편집 — 평소엔 테두리 없이 제목처럼 보이다가 포커스 때만 칸이 뜬다 */
+/* ---------- 쓰는 칸은 전부 같은 얼굴 (2026-08-11) ----------
+   사용자: "제목·본문·추가가 뭔지 명확히 안 보인다, 여기 써야겠군! 하는 느낌이 안 든다".
+   예전엔 제목·작업 설명이 테두리 없이 글자처럼만 보여서 눌러야 칸인 줄 알 수 있었다.
+   이제 쓰는 곳은 평소에도 연회색 칸으로 보이고, 커서를 놓으면 흰 바탕 + 파란 테두리로 바뀐다.
+   새로 입력칸을 만들면 이 묶음에 이름을 추가할 것. */
+.panel-title-input,
+.desc-input,
+.tl-input,
+.tl-date-input,
+.meta-date-input {
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  outline: none;
+  transition: background 90ms, border-color 90ms, box-shadow 90ms;
+}
+
+.panel-title-input:hover,
+.desc-input:hover,
+.tl-input:hover,
+.tl-date-input:hover,
+.meta-date-input:hover {
+  border-color: var(--border-hover);
+}
+
+.panel-title-input:focus,
+.desc-input:focus,
+.tl-input:focus,
+.tl-date-input:focus,
+.meta-date-input:focus {
+  background: var(--card);
+  border-color: var(--blue-strong);
+  box-shadow: 0 0 0 3px rgb(53 104 224 / 13%);
+}
+
+/* 제목 — 상세 맨 위에서 바로 편집. 칸 안의 글씨만 제목답게 크고 굵다 */
 .panel-title-input {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 16px;
+  font-size: var(--fs-title);
   font-weight: 700;
   line-height: 1.45;
-  color: var(--text);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 3px 7px;
-  margin: -3px -7px;
+  padding: 5px 9px;
   resize: none;
   overflow: hidden;
-  outline: none;
-}
-
-.panel-title-input:hover {
-  background: #f7f8fa;
-}
-
-.panel-title-input:focus {
-  background: var(--card);
-  border-color: var(--border);
 }
 
 /* 제목이 확정되는 순간 — 칸이 파랗게 찼다 풀린다. 편집 중과 확정 후의 생김새가 똑같아서
@@ -2653,8 +2684,8 @@ main {
   }
 
   100% {
-    background: transparent;
-    border-color: transparent;
+    background: var(--field);
+    border-color: var(--border);
   }
 }
 
@@ -2712,7 +2743,7 @@ main {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 .meta-dday {
@@ -2721,7 +2752,7 @@ main {
 
 /* 반복 표시 칩 — 완료하면 다음 주기로 굴러가는 메모 (2026-07-31) */
 .meta-repeat {
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 600;
   color: var(--blue);
   background: var(--blue-bg);
@@ -2732,7 +2763,7 @@ main {
 
 .edit-form .edit-select {
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -2740,19 +2771,15 @@ main {
 }
 
 .edit-form .edit-hint {
-  font-size: 11px;
+  font-size: var(--fs-label);
   color: var(--faint);
   align-self: center;
 }
 
 .meta-date-input {
   font: inherit;
-  font-size: 13px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--card);
-  color: var(--text);
+  font-size: var(--fs-base);
+  padding: 6px 10px;
   margin-right: 4px;
 }
 
@@ -2777,7 +2804,7 @@ main {
 
 /* 인라인 상세의 접기 버튼 — 글자로 명확하게 */
 .fold-btn {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 3px 10px;
   color: var(--muted);
   white-space: nowrap;
@@ -2789,11 +2816,11 @@ main {
   gap: 8px;
   flex-wrap: wrap;
   align-items: flex-start;
-  margin: 26px 0 28px;
+  margin: 18px 0 20px;
 }
 
 .meta-date {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
 }
 
@@ -2813,7 +2840,7 @@ main {
 }
 
 .panel-actions button {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   border: none;
   background: none;
   color: var(--muted);
@@ -2933,7 +2960,7 @@ main {
   transform: translateX(-50%);
   background: var(--text);
   color: #fff;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 400;
   padding: 4px 9px;
   border-radius: 5px;
@@ -2945,7 +2972,7 @@ main {
 /* 상태 드롭다운 칩 — PC 상세 맨 위에서 클릭으로 상태 변경 (2026-07-30 시안 채택) */
 .stage-select {
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   padding: 3px 8px;
   border: 1px solid var(--border);
@@ -2997,12 +3024,12 @@ main {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
 }
 
 .edit-form input {
-  font-size: 14px;
+  font-size: var(--fs-base);
   padding: 6px 8px;
 }
 
@@ -3034,64 +3061,48 @@ main {
 }
 
 .timeline {
-  margin-top: 14px;
-}
-
-.tl-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 6px;
+  margin-top: 22px;
 }
 
 /* 작업 설명 — 진행기록 위에 놓이는 고정 칸 (노션 세부정보의 '작업 설명') */
 .panel-desc {
-  margin: 34px 0 38px;
+  margin: 22px 0 24px;
 }
 
-.panel-sec-label {
-  font-size: 12px;
-  font-weight: 600;
+/* 칸 이름표 — 작업 설명·진행 기록·파일·예정이 전부 같은 얼굴이어야 "이건 뭐고 이건 뭐다"가
+   한눈에 잡힌다 (2026-08-11). 이름표는 자기 칸에 바짝 붙인다(멀면 어디 이름인지 흐려진다) */
+.panel-sec-label,
+.tl-title {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--muted);
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .desc-input {
   display: block;
   width: 100%;
-  min-height: 46px;
+  min-height: 58px;
   resize: none;
   overflow: hidden;
   font: inherit;
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--text);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 7px 9px;
-  margin-left: -9px;
-  outline: none;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  padding: 8px 10px;
 }
 
-.desc-input:hover {
-  background: #f7f8fa;
-}
-
-.desc-input:focus {
-  background: var(--card);
-  border-color: var(--border);
-}
-
-.desc-input::placeholder {
+.desc-input::placeholder,
+.tl-input::placeholder,
+.panel-title-input::placeholder {
   color: var(--faint);
 }
 
 .tl-item {
   display: flex;
   gap: 10px;
-  padding: 8px 0;
-  font-size: 13px;
+  padding: 7px 0;
+  font-size: var(--fs-base);
   align-items: flex-start;
 }
 
@@ -3123,8 +3134,8 @@ main {
 
 .tl-date {
   color: var(--faint);
-  font-size: 13px;
-  min-width: 62px;
+  font-size: var(--fs-sm);
+  min-width: 58px;
   padding-top: 1px;
 }
 
@@ -3169,7 +3180,7 @@ main {
 }
 
 .tl-editing button {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 5px 8px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -3182,23 +3193,39 @@ main {
   align-items: flex-start; /* 여러 줄로 늘어나도 날짜·버튼은 위에 고정 */
 }
 
-.tl-add .tl-date-input,
-.tl-add > button {
+.tl-add .tl-date-input {
   margin-top: 1px;
 }
 
+/* 추가 버튼은 파랗게 — 이 줄에서 뭘 누르면 되는지가 색으로 보인다 (2026-08-11) */
+.tl-add > button {
+  margin-top: 1px;
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--fs-base);
+  padding: 7px 14px;
+  flex-shrink: 0;
+}
+
+.tl-add > button:hover {
+  background: var(--blue-strong);
+  border-color: var(--blue-strong);
+}
+
 .tl-date-input {
-  font-size: 13px;
-  padding: 6px;
-  width: 130px;
+  font-size: var(--fs-sm);
+  padding: 6px 8px;
+  width: 124px;
   flex-shrink: 0;
 }
 
 .tl-input {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
-  padding: 7px 9px;
+  font-size: var(--fs-base);
+  padding: 8px 10px;
 }
 
 /* 여러 줄 입력용 textarea — 내용만큼 늘어난다 */
@@ -3235,7 +3262,7 @@ main {
 }
 
 .work-legend {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   margin-left: auto;
 }
@@ -3251,11 +3278,11 @@ main {
   width: 100%;
   min-width: 860px;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
 }
 
 .work-table th {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--muted);
   text-align: left;
@@ -3281,7 +3308,7 @@ main {
 
 .wt-sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   white-space: nowrap;
   max-width: 170px;
   overflow: hidden;
@@ -3303,7 +3330,7 @@ main {
   height: 24px;
   padding: 0;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--faint);
   border-color: var(--border);
@@ -3336,12 +3363,12 @@ main {
 
 .wt-histcount {
   color: var(--faint);
-  font-size: 11px;
+  font-size: var(--fs-label);
   white-space: nowrap;
 }
 
 .wt-mini {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   padding: 2px 6px;
   border: none;
   background: none;
@@ -3358,7 +3385,7 @@ main {
   display: inline-block;
   background: var(--purple-bg);
   color: var(--purple);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   border-radius: 10px;
   padding: 1px 8px;
   white-space: nowrap;
@@ -3377,7 +3404,7 @@ main {
   border-radius: 8px;
   padding: 8px 12px;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .work-row .wt-edit {
@@ -3402,12 +3429,12 @@ main {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
 }
 
 .work-form-grid input {
-  font-size: 14px;
+  font-size: var(--fs-base);
   padding: 6px 8px;
 }
 
@@ -3424,7 +3451,7 @@ main {
 }
 
 .wf-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-right: 4px;
 }
@@ -3433,7 +3460,7 @@ main {
   width: 28px;
   height: 26px;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   border-radius: 6px;
 }
 
@@ -3448,7 +3475,7 @@ main {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-left: 10px;
 }
@@ -3476,7 +3503,7 @@ main {
 }
 
 .work-drophint {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   margin: -4px 0 10px 2px;
 }
@@ -3496,7 +3523,7 @@ main {
 
 .file-add {
   margin-left: 8px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   padding: 2px 8px;
   font-weight: 400;
 }
@@ -3507,7 +3534,7 @@ main {
 }
 
 .file-hint {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   padding: 8px 0;
 }
@@ -3542,7 +3569,7 @@ main {
   justify-content: center;
   height: 90px;
   color: var(--faint);
-  font-size: 11px;
+  font-size: var(--fs-label);
   cursor: pointer;
   background: #f7f8fa;
 }
@@ -3570,7 +3597,7 @@ main {
   border: none;
   background: none;
   padding: 0 3px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   line-height: 1;
   color: var(--faint);
 }
@@ -3583,7 +3610,7 @@ main {
 .file-dl {
   border: none;
   background: none;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   padding: 2px 4px;
 }
@@ -3594,7 +3621,7 @@ main {
 }
 
 .file-error {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--red);
   padding: 6px 0;
 }
@@ -3610,7 +3637,7 @@ main {
   border: none;
   background: none;
   padding: 0;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--blue);
   text-decoration: underline;
   text-align: left;
@@ -3627,7 +3654,7 @@ main {
 }
 
 .file-size {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   white-space: nowrap;
 }
@@ -3652,7 +3679,7 @@ main {
   border: none;
   background: none;
   padding: 0 2px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text);
   text-align: left;
 }
@@ -3664,11 +3691,11 @@ main {
 
 .run-note.faint {
   color: var(--faint);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 .run-note-input {
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 3px 7px;
   margin-left: 6px;
   width: 200px;
@@ -3677,7 +3704,7 @@ main {
 /* 작성·완료일 — 기한 줄 오른쪽 끝에서 한눈에 */
 .panel-created {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   white-space: nowrap;
 }
@@ -3689,7 +3716,7 @@ main {
 
   .nag-actions button {
     padding: 4px 7px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
 
   .cal-cell {
@@ -3718,7 +3745,7 @@ main {
 }
 
 .stage-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-right: 2px;
 }
@@ -3803,7 +3830,7 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   cursor: pointer;
   user-select: none;
@@ -3818,13 +3845,13 @@ main {
 }
 
 .trash-note {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-bottom: 12px;
 }
 
 .trash-meta {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--faint);
   white-space: nowrap;
 }
@@ -3836,7 +3863,7 @@ main {
   border-radius: 10px;
   padding: 1px 8px;
   margin-left: 6px;
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 600;
 }
 
@@ -3952,7 +3979,11 @@ main {
   .tl-date-input,
   .mv-head .mv-search,
   .desc-input,
-  .tl-input {
+  .tl-input,
+  .meta-date-input,
+  .cal-add input,
+  .edit-form input,
+  .work-form-grid input {
     font-size: 16px;
   }
 
@@ -3969,7 +4000,7 @@ main {
 
   .pill {
     padding: 8px 15px;
-    font-size: 13.5px;
+    font-size: var(--fs-base);
   }
 
   .stage-row {
@@ -3985,12 +4016,12 @@ main {
 
   .tlv-fold {
     padding: 11px;
-    font-size: 13px;
+    font-size: var(--fs-base);
   }
 
   .fold-btn {
     padding: 8px 12px;
-    font-size: 13px;
+    font-size: var(--fs-base);
   }
 
   .row {
@@ -4077,7 +4108,7 @@ main {
 
   /* 파일 올리기 버튼도 손가락 크기로 */
   .file-add {
-    font-size: 13px;
+    font-size: var(--fs-base);
     padding: 7px 13px;
   }
 
@@ -4103,7 +4134,7 @@ main {
   .pa-tx {
     display: inline;
     margin-left: 5px;
-    font-size: 12.5px;
+    font-size: var(--fs-sm);
   }
 
   .panel-actions {
@@ -4177,7 +4208,7 @@ main {
     width: 19px;
     height: 19px;
     line-height: 18px;
-    font-size: 11px;
+    font-size: var(--fs-label);
     margin-bottom: 1px;
   }
 
