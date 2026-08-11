@@ -14,6 +14,7 @@ import TrashView from './views/TrashView'
 import KeepView from './views/KeepView'
 import HoldView from './views/HoldView'
 import RoutineView from './views/RoutineView'
+import ErrorBoundary from './components/ErrorBoundary'
 import { ICONS } from './icons'
 
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
@@ -85,6 +86,9 @@ export default function App() {
   const narrow = useIsNarrow()
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
+  // 지금 보고 있는 화면 — 화면별 안전장치(ErrorBoundary)의 key로 쓴다.
+  // 다른 화면으로 옮기면 key가 바뀌어 오류 상태가 저절로 풀린다.
+  const screen = showTrash ? 'trash' : showRoutine ? 'routine' : showHold ? 'hold' : showKeep ? 'keep' : 'memo'
 
   // 제목·기록·설명이 모두 빈 "임시 메모"(+ 로 만들었다가 안 쓰고 닫은 것)는 완전히 지운다.
   // 톰스톤(휴지통)이 아니라 purge — 빈 초안이 휴지통에 쌓이지 않게.
@@ -350,6 +354,9 @@ export default function App() {
             </nav>
           </header>
         )}
+        {/* 화면마다 안전장치 — 한 화면이 잘못돼도 왼쪽 메뉴는 살아 있어 다른 화면으로 갈 수 있다.
+            key가 바뀌면(=다른 화면으로 옮기면) 오류 상태가 저절로 풀린다 (2026-08-11) */}
+        <ErrorBoundary key={screen}>
         {showTrash ? (
           <TrashView memos={trash} onClose={() => setShowTrash(false)} />
         ) : showRoutine ? (
@@ -399,6 +406,7 @@ export default function App() {
             )}
           </div>
         )}
+        </ErrorBoundary>
       </div>
       {/* 하단 상태줄 — 엑셀식: 건수 + 동기화 상태 (PC 전용, 2026-07-30 시안) */}
       {!narrow && (

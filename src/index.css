@@ -3306,6 +3306,53 @@ main {
   font-family: inherit;
 }
 
+/* ---------- 화면 오류 안내 (2026-08-11) ----------
+   하얀 화면 대신 "무엇이 잘못됐고 어떻게 빠져나가는지"를 보여주는 자리.
+   빨간 경고판처럼 요란하게 만들지 않는다 — 놀랄 일이 아니라 알려줄 일이다. */
+.eb {
+  max-width: 620px;
+  margin: 40px auto;
+  padding: 22px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.eb-title {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.eb-msg {
+  font-size: var(--fs-base);
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 14px;
+}
+
+.eb-err {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  max-height: 160px;
+  overflow: auto;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--fs-label);
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+
+.eb-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ---------- 루틴 — 매달·해마다 도는 일의 1년 격자 (2026-08-11) ----------
    행 = 반복 규칙(정의), 칸 = 그 달의 회차 메모. 엑셀 「월간체크리스트」의 항목×12월 표를
    그대로 옮긴 모양이라, 쓰던 사람이 처음 봐도 어디를 봐야 하는지 안다. */
