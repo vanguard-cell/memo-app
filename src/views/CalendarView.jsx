@@ -522,8 +522,13 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
           const laneEls = bandLanes(bands.top, date)
           const doneLaneEls = bandLanes(bands.done, date, doneLaneN[Math.floor(i / 7)])
           // 칸에 들어가는 칩 수 어림 — 칩은 이제 전부 그리고 넘치면 스크롤이라,
-          // 이 값은 "몇 개가 안 보이는지"(+N 표시)를 가늠하는 데만 쓴다
-          const chipLimit = Math.max(1, 4 - laneEls.length - doneLaneEls.length)
+          // 이 값은 "몇 개가 안 보이는지"(+N 표시)를 가늠하는 데만 쓴다.
+          // 띠 한 줄은 칩 한 줄과 같은 20px, 완료 띠는 8px(≈0.4줄)이라 그만큼만 뺀다.
+          // 폰은 칸이 66px 고정이라 예전대로 4줄 기준 (여기서 실제로 잘라 그린다).
+          const chipLimit = Math.max(
+            1,
+            (narrow ? 4 : 5) - laneEls.length - Math.ceil(doneLaneEls.length * 0.4)
+          )
           return (
             <div
               key={date}

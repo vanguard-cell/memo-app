@@ -1852,6 +1852,11 @@ main {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+  /* 칸 안 한 줄의 높이 (2026-08-11) — 칩: 글자 15 + 위아래 여백 2 + 줄 사이 3 = 20px,
+     기간 띠: 17 + 3 = 20px. 칸 안의 모든 줄이 이 하나로 떨어진다.
+     칩 목록(.cal-chips)이 이 값의 배수로만 열리므로 반 줄이 걸치는 일이 없다.
+     ⚠️ .cal-ev·.cal-band 높이를 고치면 이 값도 같이 고칠 것. */
+  --cal-row: 20px;
 }
 
 .cal-filter-note {
@@ -1898,7 +1903,7 @@ main {
   /* 좌우 여백은 그대로 제목이 잘리는 폭이라 최소로 (2026-08-11 8px → 5px).
      ⚠️ 기간 띠(.cal-band)가 이 여백을 음수 마진으로 물고 나가 옆 칸과 맞닿는다 —
         여기를 고치면 .cal-band의 margin도 같은 값으로 고칠 것. */
-  padding: 6px 5px;
+  padding: 4px 5px;
   font-size: var(--fs-sm);
   cursor: pointer;
   overflow: hidden;
@@ -1919,10 +1924,34 @@ main {
   min-height: 0;
 }
 
-/* 완료된 기간 띠 묶음 — 칸 맨 아래. 줄 수는 한 주 안에서 같게 그려서 띠가 이어져 보인다 */
+/* 완료된 기간 띠 묶음 — 칸 맨 아래. 줄 수는 한 주 안에서 같게 그려서 띠가 이어져 보인다.
+   ⚠️ 그래서 한 주에 완료된 기간이 하나만 있어도 그 주 일곱 칸이 모두 그만큼을 비워둔다 —
+   제 높이(20px)로 두면 그 주만 칩이 한 줄씩 줄어든다는 지적을 받아(2026-08-11),
+   완료된 띠는 이름 없이 얇은 색 막대(6px)로 눕힌다. 끝난 일은 "있었다"는 흔적이면 충분하고,
+   이름은 막대에 마우스를 올리면 뜬다. 한 줄 손해가 3분의 1로 줄었다. */
 .cal-bands-done {
   flex: none;
-  margin-top: 3px;
+  margin-top: 2px;
+}
+
+.cal-bands-done .cal-band {
+  height: 6px;
+  line-height: 0;
+  font-size: 0;
+  color: transparent;
+  padding: 0;
+  margin-bottom: 2px;
+  border-radius: 0;
+}
+
+.cal-bands-done .cal-band.b-s {
+  margin-left: 2px;
+  border-radius: 3px 0 0 3px;
+}
+
+.cal-bands-done .cal-band.b-e {
+  margin-right: 2px;
+  border-radius: 0 3px 3px 0;
 }
 
 /* 칩 목록만 스크롤. overscroll-behavior로 끝까지 굴려도 뒤 화면이 안 딸려간다 */
@@ -1933,6 +1962,18 @@ main {
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
+}
+
+/* 칩 목록은 한 줄(--cal-row)의 배수로만 열린다 — 3줄이면 딱 3줄, 반 줄이 걸치지 않게
+   (2026-08-11 사용자: "2줄 반 느낌으로 걸쳐 있다"). 남는 자투리는 그냥 비운다.
+   칸 높이는 화면 세로 ÷ 그 달의 주 수라 줄 수는 달·모니터마다 달라지지만,
+   몇 줄이 되든 항상 정수 줄로 떨어진다. 폰은 칩이 6px 색 막대라 이 규칙에서 뺀다. */
+@media (min-width: 900px) {
+  .cal-chips {
+    /* max()는 안전장치 — 띠가 많아 자리가 한 줄도 안 남는 칸에서 내림이 0이 되면
+       칩이 통째로 사라진다. 그럴 땐 한 줄만이라도 (잘려서라도) 보이게 둔다. */
+    max-height: max(var(--cal-row), round(down, 100%, var(--cal-row)));
+  }
 }
 
 /* 스크롤 막대는 칸에 마우스를 올렸을 때만 — 평소엔 격자가 지저분해지지 않게 */
@@ -2015,18 +2056,20 @@ main {
   background: var(--blue-bg);
 }
 
+/* 날짜 숫자 — 오늘은 파란 동그라미. 칸에 칩 한 줄이라도 더 들어가게 원을 줄였다
+   (2026-08-11: 22 → 19px, 아래 여백 2 → 1px) */
 .cal-day {
   display: inline-block;
-  width: 22px;
-  height: 22px;
-  line-height: 21px;
+  width: 19px;
+  height: 19px;
+  line-height: 18px;
   padding-top: 1px;
-  padding-right: 2px;
+  padding-right: 1px;
   text-align: center;
   font-size: var(--fs-sm);
   border-radius: 50%;
   color: var(--muted);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 /* 공휴일: 날짜 숫자를 빨갛게 + 옆에 이름표. 일요일 빨강·토요일 파랑은 요일 머리와 같은 규칙.
@@ -2113,8 +2156,11 @@ main {
 
 .cal-ev {
   display: block;
-  margin-top: 4px;
-  padding: 2px 4px;
+  /* 한 줄 = 15 + 2 + 3 = 20px(--cal-row). 글자 크기는 그대로 두고 줄간격·여백만 조였다
+     (2026-08-11 사용자: "칸에 줄을 최대한 늘려달라") */
+  margin-top: 3px;
+  padding: 1px 4px;
+  line-height: 15px;
   border-radius: 5px;
   font-size: var(--fs-label);
   letter-spacing: -0.01em;
