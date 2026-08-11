@@ -175,7 +175,19 @@ export default function App() {
       )
     } catch (e) {
       console.error('가져오기 실패', e)
-      window.alert('가져오지 못했습니다: ' + e.message)
+      // 브라우저의 NotReadableError — 파일을 고른 뒤 읽으려는 순간 막힌 것.
+      // 열에 아홉은 그 파일을 엑셀에서 열어둔 상태다(윈도우가 잠근다). 원문이 영어라 풀어 쓴다.
+      const locked = /NotReadableError|could not be read|permission/i.test(
+        (e && (e.name + ' ' + e.message)) || ''
+      )
+      window.alert(
+        locked
+          ? '파일을 읽지 못했습니다.\n\n' +
+              '· 그 엑셀을 지금 엑셀 프로그램에서 열어두셨다면 닫고 다시 시도해 주세요 (열려 있으면 파일이 잠깁니다)\n' +
+              '· 그래도 안 되면 파일을 바탕화면에 복사해서 그 복사본을 골라 보세요\n' +
+              '· 회사 보안 프로그램이 브라우저의 파일 읽기를 막는 경우도 있습니다'
+          : '가져오지 못했습니다: ' + e.message
+      )
     }
   }
 
