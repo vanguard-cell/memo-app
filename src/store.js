@@ -61,6 +61,13 @@ function withVisible(s) {
   return {
     ...s,
     visible: s.memos.filter((m) => !m.deleted),
+    // ⚠️ 화면이 읽는 목록은 반드시 여기서 한 번만 만들어 담아둔다.
+    // useSyncExternalStore는 "상태가 그대로면 같은 것"이 나와야 하는데, getter에서 매번
+    // filter·sort로 새 배열을 만들면 렌더할 때마다 값이 달라져 무한 렌더로 화면이 하얘진다.
+    // (2026-08-11 루틴 추가하며 실제로 그렇게 됐다)
+    routineList: (s.routines || [])
+      .filter((r) => !r.deleted)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     // 휴지통: 삭제 표식이 붙은 메모 (최근 삭제한 것부터). 30일 뒤 동기화 때 완전 삭제된다.
     // purged(완전 삭제한 빈 표식)는 내용이 이미 지워졌으므로 휴지통에도 안 보인다.
     trash: s.memos
@@ -107,8 +114,9 @@ export const getMemos = () => state.visible
 export const getTrash = () => state.trash
 export const getWorks = () => state.works
 export const getDayOrder = () => state.dayOrder
-// 루틴 정의 — 지운 것(표식)은 빼고, 화면에 놓인 순서대로
-export const getRoutines = () => state.routines.filter((r) => !r.deleted).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+// 루틴 정의 — 지운 것(표식)은 빼고, 화면에 놓인 순서대로.
+// 목록 자체는 withVisible()에서 만들어 담아둔다 (여기서 만들면 무한 렌더)
+export const getRoutines = () => state.routineList
 export const getAuth = () => authSnap
 
 // ---------- 서버 동기화 ----------
