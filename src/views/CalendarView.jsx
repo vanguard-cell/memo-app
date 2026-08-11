@@ -607,7 +607,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     openDetail(e.m.id)
                   }}
                 >
-                  {(e.type === 'start' || e.type === 'end') && <b>{typeLabel(e)} </b>}
+                  {/* "예정 ·마감 " 글머리는 2026-08-11 뺐다 — 칸에서 세 글자를 잡아먹는데
+                      종류는 이미 칩 색이 말한다(빨강=마감·파랑=예정·연보라=기간). 글자로 된
+                      종류 표시는 오른쪽 날짜 목록의 배지와 상세에 그대로 있다. 깃발(⚑)을 뺀
+                      것과 같은 정리 — 칸에는 제목이 한 글자라도 더. */}
                   {e.text}
                 </span>
                 )
