@@ -747,6 +747,72 @@ export function importData(data) {
   return { memos: newMemos.length, routines: routines.length }
 }
 
+// 엑셀에서 읽은 줄들을 루틴으로 들인다 (src/importXlsx.js가 넘겨준다, 2026-08-11).
+// · 이름이 같은 루틴이 이미 있으면 묶음·설명만 갱신한다 — 예정일·주기·중단은 손대지 않는다.
+//   (엑셀을 다시 넣어도 앱에서 손으로 정한 것들이 안 날아가게. 대신 설명은 엑셀이 원본이라 덮어쓴다)
+// · 표에서 O가 찍힌 달은 그 달 회차를 완료로 만든다. 이미 있는 회차는 건드리지 않는다.
+// 돌려주는 값: {added, updated, cycles}
+export function importRoutineRows({ rows, year }) {
+  const now = new Date().toISOString()
+  const byTitle = new Map(state.routines.filter((r) => !r.deleted).map((r) => [r.title.trim(), r]))
+  const routines = [...state.routines]
+  const madeCycles = []
+  const touched = []
+  let added = 0
+  let updated = 0
+
+  for (const row of rows) {
+    const key = row.title.trim()
+    let r = byTitle.get(key)
+    if (r) {
+      const next = { ...r, group: row.group, desc: row.desc, updatedAt: now }
+      routines[routines.indexOf(r)] = next
+      byTitle.set(key, next)
+      touched.push(next)
+      r = next
+      updated++
+    } else {
+      r = {
+        id: crypto.randomUUID(),
+        type: 'routine',
+        title: key,
+        group: row.group,
+        desc: row.desc,
+        dueDay: 5,
+        months: null,
+        startYm: `${year}-01`,
+        endYm: null,
+        endNote: '',
+        order: routines.length,
+        createdAt: now,
+        updatedAt: now,
+      }
+      routines.push(r)
+      byTitle.set(key, r)
+      touched.push(r)
+      added++
+    }
+    for (const m of row.done) {
+      const ym = `${year}-${pad2(m)}`
+      if (routineCycle(r.id, ym) || madeCycles.some((c) => c.routineId === r.id && c.ym === ym)) continue
+      // 엑셀에는 "그 달에 했다"만 있고 며칠에 했는지가 없다 — 완료일은 지어내지 않고 비워둔다
+      madeCycles.push({ ...newCycle(r, ym), status: 'done' })
+    }
+  }
+
+  commit({ ...state, routines, memos: [...madeCycles, ...state.memos] })
+  const push = [...touched, ...madeCycles]
+  if (hasSupabase && session && push.length) {
+    pushMemoRows(push)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return { added, updated, cycles: madeCycles.length }
+}
+
 // ---------- 파일 첨부 (2026-07-31 부활) ----------
 // 실물은 Storage 'files' 버킷에, 여기서는 메모에 실리는 메타데이터만 다룬다 (동기화 그대로 탐)
 

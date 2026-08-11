@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, importData,
+  getRoutines, ensureThisMonth, importData, importRoutineRows,
 } from './store'
+import { readRoutineXlsx } from './importXlsx'
 import { todayStr } from './parser'
 import { hasSupabase } from './supabase'
 import useIsNarrow from './useIsNarrow'
@@ -145,23 +146,37 @@ export default function App() {
     if (auth.ready) ensureThisMonth()
   }, [auth.ready, routines.length])
 
-  // 가져오기 — 백업 파일이나 엑셀에서 변환한 파일을 그대로 받는다
-  function importFile(file) {
+  // 가져오기 — 백업 파일(.json)과 월간체크리스트 엑셀(.xlsx) 둘 다 받는다.
+  // 엑셀은 「항목명」 열이 있는 표를 찾아 루틴으로 읽는다 (src/importXlsx.js).
+  async function importFile(file) {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const n = importData(JSON.parse(reader.result))
-        window.alert(
-          n.memos + n.routines === 0
-            ? '이미 다 들어 있는 내용입니다 (새로 추가된 것 없음)'
-            : `가져왔습니다 — 루틴 ${n.routines}건, 메모 ${n.memos}건`
+    try {
+      if (/\.xlsx?$/i.test(file.name)) {
+        const year = new Date().getFullYear()
+        const parsed = await readRoutineXlsx(file, year)
+        const ok = window.confirm(
+          `「${file.name}」의 [${parsed.sheet}] 시트에서 ${parsed.rows.length}건을 읽었습니다.\n` +
+            `${year}년 루틴으로 넣을까요?\n\n` +
+            '· 이름이 같은 루틴은 묶음·설명만 갱신됩니다 (예정일·주기·중단은 그대로)\n' +
+            '· 표에 표시된 달은 그 달 완료로 들어갑니다'
         )
-      } catch (e) {
-        window.alert('가져오지 못했습니다: ' + e.message)
+        if (!ok) return
+        const n = importRoutineRows(parsed)
+        window.alert(
+          `엑셀에서 가져왔습니다 — 새 루틴 ${n.added}건, 갱신 ${n.updated}건, 지난 완료 ${n.cycles}건`
+        )
+        return
       }
+      const n = importData(JSON.parse(await file.text()))
+      window.alert(
+        n.memos + n.routines === 0
+          ? '이미 다 들어 있는 내용입니다 (새로 추가된 것 없음)'
+          : `가져왔습니다 — 루틴 ${n.routines}건, 메모 ${n.memos}건`
+      )
+    } catch (e) {
+      console.error('가져오기 실패', e)
+      window.alert('가져오지 못했습니다: ' + e.message)
     }
-    reader.readAsText(file)
   }
 
   // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다. 빈 초안이면 지운다.
@@ -288,11 +303,11 @@ export default function App() {
           </button>
           {/* 가져오기 — 백업 파일 되돌리기 겸 엑셀에서 변환한 루틴 넣기 (2026-08-11).
               지금까지는 내보내기만 있어서 백업 파일을 만들어도 되돌릴 길이 없었다 */}
-          <label className="stab stab-file" title="백업 파일이나 변환 파일(JSON)을 읽어 없는 것만 추가합니다">
+          <label className="stab stab-file" title="백업 파일(JSON) 되돌리기 · 월간체크리스트 엑셀(XLSX)에서 루틴 읽어오기">
             <span className="stab-ic">{ICONS.restore}</span>가져오기
             <input
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,.xlsx,.xls"
               onChange={(e) => {
                 importFile(e.target.files[0])
                 e.target.value = ''
