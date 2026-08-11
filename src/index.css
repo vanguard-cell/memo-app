@@ -330,6 +330,15 @@ main {
   color: var(--faint);
 }
 
+/* 가져오기 — 파일 고르기지만 옆 메뉴들과 같은 얼굴이어야 한다 (label 안에 input 숨김) */
+.stab-file {
+  cursor: pointer;
+}
+
+.stab-file input {
+  display: none;
+}
+
 /* 새 버전 감지 배너 — 새로고침 전까지 상단 중앙에 떠 있는다 */
 .update-bar {
   position: fixed;
@@ -3295,6 +3304,344 @@ main {
   overflow: hidden;
   line-height: 1.5;
   font-family: inherit;
+}
+
+/* ---------- 루틴 — 매달·해마다 도는 일의 1년 격자 (2026-08-11) ----------
+   행 = 반복 규칙(정의), 칸 = 그 달의 회차 메모. 엑셀 「월간체크리스트」의 항목×12월 표를
+   그대로 옮긴 모양이라, 쓰던 사람이 처음 봐도 어디를 봐야 하는지 안다. */
+.rt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.rt-year {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  min-width: 72px;
+  text-align: center;
+}
+
+.rt-remain {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--amber-bg);
+  padding: 2px 9px;
+  border-radius: var(--radius, 6px);
+}
+
+.rt-hint {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--faint);
+}
+
+/* 12개월이 다 안 들어가는 폭에서는 가로로 굴린다 (폰·좁은 창) */
+.rt-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rt-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: var(--fs-base);
+}
+
+.rt-name-col {
+  width: 44%;
+  min-width: 190px;
+}
+
+.rt-menu-col {
+  width: 30px;
+}
+
+/* 월 머리 — 누르면 그 달이 "고른 달"이 된다 (이름을 누를 때 열리는 회차) */
+.rt-mh {
+  width: 34px;
+  padding: 7px 0;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--faint);
+  text-align: center;
+  background: var(--field);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.rt-mh:hover {
+  color: var(--text);
+}
+
+.rt-mh.now {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.rt-mh.on {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.rt-group td {
+  padding: 11px 10px 4px;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.rt-add {
+  margin-left: 8px;
+  border: none;
+  background: none;
+  padding: 1px 6px;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--blue);
+  opacity: 0;
+}
+
+.rt-group:hover .rt-add,
+.rt-add:focus {
+  opacity: 1;
+}
+
+.rt-add:hover {
+  background: var(--blue-bg);
+}
+
+.rt-row td {
+  border-top: 1px solid var(--border);
+  padding: 0;
+}
+
+.rt-name {
+  padding: 6px 10px !important;
+  line-height: 1.35;
+}
+
+.rt-title {
+  cursor: pointer;
+}
+
+.rt-title:hover {
+  text-decoration: underline dotted var(--faint);
+  text-underline-offset: 3px;
+}
+
+/* 매달 같은 설명 — 엑셀 비고 열이 여기 온다. 그 달만의 특이사항은 회차 상세에 쌓인다 */
+.rt-desc {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--faint);
+}
+
+.rt-stopped .rt-title {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+/* 칸 — 누르면 그 달 완료 ↔ 되돌리기 */
+.rt-cell {
+  text-align: center;
+  cursor: pointer;
+  color: var(--faint);
+  position: relative;
+  height: 30px;
+}
+
+.rt-cell:hover {
+  background: var(--fill);
+}
+
+.rt-cell.sel {
+  background: var(--blue-bg);
+}
+
+.rt-done {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.rt-future {
+  color: var(--border);
+}
+
+.rt-na {
+  color: var(--border);
+  cursor: default;
+}
+
+.rt-na:hover {
+  background: none;
+}
+
+/* 그 달에 진행기록·파일이 있다는 표시 — 칸 오른쪽 위 작은 점 */
+.rt-cell.rec::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--amber-strong);
+}
+
+.rt-menu {
+  text-align: center;
+}
+
+.rt-dots {
+  border: none;
+  background: none;
+  color: var(--faint);
+  padding: 2px 4px;
+  line-height: 1;
+  opacity: 0;
+}
+
+.rt-row:hover .rt-dots,
+.rt-dots:focus {
+  opacity: 1;
+}
+
+/* 항목 수정 — 팝업 없이 그 줄 아래에서 펼쳐진다 (앱 전체 규칙: 팝업 금지) */
+.rt-edit-row td {
+  padding: 0;
+  border-top: 1px solid var(--border);
+  background: var(--field);
+}
+
+.rt-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 12px 12px 14px;
+}
+
+.rt-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.rt-edit input,
+.rt-edit select {
+  font: inherit;
+  font-size: var(--fs-base);
+  font-weight: 400;
+  color: var(--text);
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  outline: none;
+}
+
+.rt-edit input:focus,
+.rt-edit select:focus {
+  border-color: var(--blue-strong);
+}
+
+.rt-edit .rt-wide {
+  flex: 1;
+  min-width: 240px;
+}
+
+.rt-day {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.rt-day input {
+  width: 58px;
+}
+
+.rt-edit-btns {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.rt-edit-btns button {
+  font-size: var(--fs-sm);
+}
+
+.rt-del {
+  color: var(--red);
+}
+
+.rt-del:hover {
+  background: var(--red-bg);
+  border-color: var(--red);
+}
+
+.rt-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: var(--fs-sm);
+  color: var(--faint);
+}
+
+.rt-t-done {
+  color: var(--teal);
+}
+
+.rt-t-rec {
+  color: var(--amber-strong);
+}
+
+.rt-t-na {
+  color: var(--border-hover);
+}
+
+.rt-empty-btn {
+  margin-top: 10px;
+}
+
+/* 폰: 누른 줄 아래에서 상세가 펼쳐진다 (보드·달력과 같은 규칙) */
+.rt-detail-row td {
+  padding: 0;
+  border: none;
+}
+
+@media (max-width: 899px) {
+  /* 폰은 칸이 손가락에 맞게 커야 하고, 12개월은 가로로 굴려 본다 */
+  .rt-cell {
+    height: 38px;
+    min-width: 30px;
+  }
+
+  .rt-name-col {
+    min-width: 150px;
+  }
+
+  .rt-dots,
+  .rt-add {
+    opacity: 1; /* 폰엔 hover가 없다 — 항상 보인다 */
+  }
+
+  .rt-hint {
+    display: none;
+  }
 }
 
 /* ---------- 점검 (안전관리 캘린더) ---------- */

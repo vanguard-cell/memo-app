@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
+  getRoutines, ensureThisMonth, importData,
 } from './store'
 import { todayStr } from './parser'
 import { hasSupabase } from './supabase'
@@ -12,6 +13,7 @@ import MemosView from './views/MemosView'
 import TrashView from './views/TrashView'
 import KeepView from './views/KeepView'
 import HoldView from './views/HoldView'
+import RoutineView from './views/RoutineView'
 import { ICONS } from './icons'
 
 // 화면은 하나(메모) — 오늘 탭은 2026-07-15 요약 타일로 흡수, 달력 탭은 메모탭 보기로 흡수,
@@ -62,14 +64,24 @@ export default function App() {
   const trash = useSyncExternalStore(subscribe, getTrash)
   const dayOrder = useSyncExternalStore(subscribe, getDayOrder)
   const auth = useSyncExternalStore(subscribe, getAuth)
+  const routines = useSyncExternalStore(subscribe, getRoutines)
   const [openId, setOpenId] = useState(null)
   const [showTrash, setShowTrash] = useState(false)
   const [showKeep, setShowKeep] = useState(false)
   const [showHold, setShowHold] = useState(false)
+  const [showRoutine, setShowRoutine] = useState(false)
   const [closing, setClosing] = useState(false)
   const closeTimer = useRef(null)
   const keeps = memos.filter((m) => m.keep)
   const holds = memos.filter((m) => m.hold)
+  // 사이드바 배지 — 이번 달에 아직 안 끝난 루틴 건수
+  const ym = todayStr().slice(0, 7)
+  const routineLeft = routines.filter((r) => {
+    if (!(r.title || '').trim() || (r.endYm && ym >= r.endYm) || (r.startYm && ym < r.startYm)) return false
+    if (r.months && r.months.length && !r.months.includes(Number(ym.slice(5, 7)))) return false
+    const cyc = memos.find((m) => m.routineId === r.id && m.ym === ym)
+    return !cyc || cyc.status !== 'done'
+  }).length
   const narrow = useIsNarrow()
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
@@ -111,6 +123,41 @@ export default function App() {
     setShowKeep(false)
     setShowHold(false)
     setShowTrash(false)
+    setShowRoutine(false)
+  }
+
+  // 왼쪽 메뉴는 한 번에 하나만 켜진다 — 켜져 있던 걸 끄고 그 화면으로
+  function goTo(which) {
+    setOpenId(null)
+    setShowKeep(which === 'keep' && !showKeep)
+    setShowHold(which === 'hold' && !showHold)
+    setShowTrash(which === 'trash' && !showTrash)
+    setShowRoutine(which === 'routine' && !showRoutine)
+  }
+
+  // 이번 달 회차를 채운다 — 루틴에 걸린 일이 오늘 화면·달력에 뜨려면 그 달 메모가 있어야 한다.
+  // 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다). (2026-08-11)
+  useEffect(() => {
+    if (auth.ready) ensureThisMonth()
+  }, [auth.ready, routines.length])
+
+  // 가져오기 — 백업 파일이나 엑셀에서 변환한 파일을 그대로 받는다
+  function importFile(file) {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const n = importData(JSON.parse(reader.result))
+        window.alert(
+          n.memos + n.routines === 0
+            ? '이미 다 들어 있는 내용입니다 (새로 추가된 것 없음)'
+            : `가져왔습니다 — 루틴 ${n.routines}건, 메모 ${n.memos}건`
+        )
+      } catch (e) {
+        window.alert('가져오지 못했습니다: ' + e.message)
+      }
+    }
+    reader.readAsText(file)
   }
 
   // 닫기 — PC는 오른쪽으로 미끄러져 나간 뒤 사라진다. 빈 초안이면 지운다.
@@ -194,15 +241,24 @@ export default function App() {
             </button>
           )}
           <button
-            className={'stab' + (!showKeep && !showHold && !showTrash ? ' on' : '')}
+            className={'stab' + (!showKeep && !showHold && !showTrash && !showRoutine ? ' on' : '')}
             onClick={backToMemo}
           >
             <span className="stab-ic">{ICONS.memo}</span>메모
           </button>
+          {/* 루틴 — 매달·해마다 도는 일. 메모와 나란한 항목이지 메모의 상태가 아니다 (2026-08-11) */}
+          <button
+            className={'stab' + (showRoutine ? ' on' : '')}
+            title="매달·분기·해마다 도는 일을 1년 격자로 — 칸을 누르면 그 달 완료"
+            onClick={() => goTo('routine')}
+          >
+            <span className="stab-ic">{ICONS.routine}</span>루틴
+            {routineLeft > 0 && <span className="stab-n">{routineLeft}</span>}
+          </button>
           <button
             className={'stab' + (showHold ? ' on' : '')}
             title="하다가 멈췄거나 기약이 없어진 일 — 날짜를 떼서 넣어두고 필요할 때 꺼내는 곳"
-            onClick={() => { setOpenId(null); setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }}
+            onClick={() => goTo('hold')}
           >
             <span className="stab-ic">{ICONS.hold}</span>보류함
             {holds.length > 0 && <span className="stab-n">{holds.length}</span>}
@@ -210,7 +266,7 @@ export default function App() {
           <button
             className={'stab' + (showKeep ? ' on' : '')}
             title="날짜 없이 넣어둔 메모 모음 — 필요할 때 꺼내 보는 곳"
-            onClick={() => { setOpenId(null); setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }}
+            onClick={() => goTo('keep')}
           >
             <span className="stab-ic">{ICONS.keep}</span>보관함
             {keeps.length > 0 && <span className="stab-n">{keeps.length}</span>}
@@ -218,14 +274,27 @@ export default function App() {
           <button
             className={'stab' + (showTrash ? ' on' : '')}
             title="삭제한 메모는 30일 보관 후 자동 삭제 — 그 안에 복구 가능"
-            onClick={() => { setOpenId(null); setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }}
+            onClick={() => goTo('trash')}
           >
             <span className="stab-ic">{ICONS.trash}</span>휴지통
             {trash.length > 0 && <span className="stab-n">{trash.length}</span>}
           </button>
-          <button className="stab" title="메모·점검 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
+          <button className="stab" title="메모·루틴 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
             <span className="stab-ic">{ICONS.backup}</span>백업
           </button>
+          {/* 가져오기 — 백업 파일 되돌리기 겸 엑셀에서 변환한 루틴 넣기 (2026-08-11).
+              지금까지는 내보내기만 있어서 백업 파일을 만들어도 되돌릴 길이 없었다 */}
+          <label className="stab stab-file" title="백업 파일이나 변환 파일(JSON)을 읽어 없는 것만 추가합니다">
+            <span className="stab-ic">{ICONS.restore}</span>가져오기
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => {
+                importFile(e.target.files[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
           <div className="sidenav-foot">
             {hasSupabase && auth.loggedIn && (
               <button className="stab stab-foot" title={auth.email} onClick={signOut}>
@@ -254,9 +323,10 @@ export default function App() {
             </div>
             <nav className="ptabs">
               {[
-                ['hold', ICONS.hold, '보류함', holds.length, showHold, () => { setShowTrash(false); setShowKeep(false); setShowHold((v) => !v) }],
-                ['keep', ICONS.keep, '보관함', keeps.length, showKeep, () => { setShowTrash(false); setShowHold(false); setShowKeep((v) => !v) }],
-                ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => { setShowKeep(false); setShowHold(false); setShowTrash((v) => !v) }],
+                ['routine', ICONS.routine, '루틴', routineLeft, showRoutine, () => goTo('routine')],
+                ['hold', ICONS.hold, '보류함', holds.length, showHold, () => goTo('hold')],
+                ['keep', ICONS.keep, '보관함', keeps.length, showKeep, () => goTo('keep')],
+                ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => goTo('trash')],
               ].map(([key, icon, label, n, on, go]) => (
                 <button
                   key={key}
@@ -282,6 +352,15 @@ export default function App() {
         )}
         {showTrash ? (
           <TrashView memos={trash} onClose={() => setShowTrash(false)} />
+        ) : showRoutine ? (
+          <div className="layout">
+            <main>
+              <RoutineView routines={routines} memos={memos} onOpen={openMemo} renderDetail={renderDetail} />
+            </main>
+            {sidePanel && open && (
+              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
+            )}
+          </div>
         ) : showHold ? (
           <div className="layout">
             <main>

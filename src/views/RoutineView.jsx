@@ -1,0 +1,359 @@
+import { Fragment, useMemo, useState } from 'react'
+import {
+  addRoutine,
+  updateRoutine,
+  removeRoutine,
+  stopRoutine,
+  ensureCycle,
+  toggleCycle,
+  routineHasMonth,
+  thisYm,
+} from '../store'
+import useIsNarrow from '../useIsNarrow'
+
+const pad2 = (n) => String(n).padStart(2, '0')
+const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+// 주기 = 결국 "몇 월에 해당하는가"의 목록. 분기·반기는 시작 월이 제각각이라(1·4·7·10 vs 2·5·8·11)
+// 기본값만 주고, 그 밖의 조합은 정의를 고쳐 쓰는 쪽으로 둔다.
+const CYCLES = [
+  ['매월', null],
+  ['분기', [1, 4, 7, 10]],
+  ['반기', [6, 12]],
+  ['매년', [12]],
+]
+
+// 「루틴」 — 매달·분기·해마다 도는 일을 1년 격자로 (2026-08-11).
+// 행 = 반복 규칙(정의), 칸 = 그 달의 회차 메모.
+// 칸을 누르면 완료 ↔ 되돌리기, 이름을 누르면 고른 달의 회차가 상세로 열린다
+// (그 달만의 특이사항·파일은 거기 쌓인다 — 정의에 적는 설명은 매달 같은 것만).
+export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
+  const narrow = useIsNarrow()
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  // 이름을 눌렀을 때 어느 달의 회차를 열지 — 기본은 이번 달, 월 머리를 눌러 바꾼다
+  const [selMonth, setSelMonth] = useState(now.getMonth() + 1)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState(null)
+
+  const ymOf = (m) => `${year}-${pad2(m)}`
+  const curYm = thisYm()
+
+  // 회차 찾기 — 메모 전체를 한 번만 훑어 (루틴id|연월) 색인을 만든다
+  const cycles = useMemo(() => {
+    const map = new Map()
+    for (const m of memos) if (m.routineId && m.ym) map.set(m.routineId + '|' + m.ym, m)
+    return map
+  }, [memos])
+  const cycleOf = (rid, ym) => cycles.get(rid + '|' + ym)
+
+  // 그룹 순서는 정의 순서를 따른다 (엑셀의 구분 열 순서가 그대로 들어온다)
+  const groups = []
+  for (const r of routines) {
+    const g = r.group || '기타'
+    if (!groups.includes(g)) groups.push(g)
+  }
+
+  const remain = routines.filter(
+    (r) => r.title.trim() && routineHasMonth(r, curYm) && (cycleOf(r.id, curYm) || {}).status !== 'done'
+  ).length
+
+  function startEdit(r) {
+    setEditId(r.id)
+    setForm({
+      title: r.title,
+      group: r.group || '',
+      desc: r.desc || '',
+      dueDay: r.dueDay || 5,
+      months: r.months || null,
+      endNote: r.endNote || '',
+    })
+  }
+
+  // 이름 없이 닫으면 그 줄은 없던 일로 — "+ 항목"을 눌렀다 만 빈 줄이 남지 않게
+  // (메모의 빈 초안 정리와 같은 규칙)
+  function cancelEdit() {
+    const r = routines.find((x) => x.id === editId)
+    if (r && !(r.title || '').trim()) removeRoutine(r.id)
+    setEditId(null)
+  }
+
+  function saveEdit() {
+    if (!form.title.trim()) return cancelEdit()
+    updateRoutine(editId, {
+      title: form.title.trim(),
+      group: form.group.trim() || '기타',
+      desc: form.desc.trim(),
+      dueDay: Math.min(28, Math.max(1, Number(form.dueDay) || 5)),
+      months: form.months,
+      endNote: form.endNote.trim(),
+    })
+    setEditId(null)
+  }
+
+  function addTo(group) {
+    startEdit(addRoutine({ title: '', group, dueDay: 5 }))
+  }
+
+  // 칸 하나의 상태 — 그 달 회차 메모에서 읽는다
+  function cell(r, m) {
+    const ym = ymOf(m)
+    if (!routineHasMonth(r, ym)) return { kind: 'na' }
+    const c = cycleOf(r.id, ym)
+    const future = ym > curYm
+    if (!c) return { kind: future ? 'future' : 'open' }
+    const rec = (c.history || []).length > 0 || (c.files || []).length > 0
+    return { kind: c.status === 'done' ? 'done' : future ? 'future' : 'open', rec }
+  }
+
+  function openCycle(r) {
+    const memo = ensureCycle(r.id, ymOf(selMonth))
+    if (memo) onOpen(memo.id)
+  }
+
+  return (
+    <div className="view rt-view">
+      <div className="rt-head">
+        <button onClick={() => setYear((y) => y - 1)}>‹</button>
+        <span className="rt-year">{year}년</span>
+        <button onClick={() => setYear((y) => y + 1)}>›</button>
+        {remain > 0 && (
+          <span className="rt-remain">
+            {Number(curYm.slice(5, 7))}월 {remain}건 남음
+          </span>
+        )}
+        <span className="rt-hint">칸 = 완료 · 이름 = 그 달 기록</span>
+      </div>
+
+      <div className="rt-scroll">
+        <table className="rt-table">
+          <thead>
+            <tr>
+              <th className="rt-name-col" />
+              {MONTHS.map((m) => (
+                <th
+                  key={m}
+                  className={'rt-mh' + (m === selMonth ? ' on' : '') + (ymOf(m) === curYm ? ' now' : '')}
+                  onClick={() => setSelMonth(m)}
+                  title={`${m}월 기록 보기`}
+                >
+                  {m}
+                </th>
+              ))}
+              <th className="rt-menu-col" />
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((g) => (
+              <Fragment key={g}>
+                <tr className="rt-group">
+                  <td colSpan={14}>
+                    {g}
+                    <button className="rt-add" onClick={() => addTo(g)}>
+                      + 항목
+                    </button>
+                  </td>
+                </tr>
+                {routines
+                  .filter((r) => (r.group || '기타') === g)
+                  .map((r) => {
+                    const stopped = !!r.endYm
+                    const detail = renderDetail ? renderDetail((cycleOf(r.id, ymOf(selMonth)) || {}).id) : null
+                    return (
+                      <Fragment key={r.id}>
+                        <tr className={'rt-row' + (stopped ? ' rt-stopped' : '')}>
+                          <td className="rt-name">
+                            <span className="rt-title" onClick={() => openCycle(r)}>
+                              {r.title || '(이름 없음)'}
+                            </span>
+                            {r.desc && <span className="rt-desc">{r.desc}</span>}
+                            {stopped && (
+                              <span className="rt-desc">
+                                {Number(r.endYm.slice(5, 7))}월부터 중단
+                                {r.endNote ? ' · ' + r.endNote : ''}
+                              </span>
+                            )}
+                          </td>
+                          {MONTHS.map((m) => {
+                            const c = cell(r, m)
+                            return (
+                              <td
+                                key={m}
+                                className={
+                                  'rt-cell rt-' + c.kind + (m === selMonth ? ' sel' : '') + (c.rec ? ' rec' : '')
+                                }
+                                onClick={() => c.kind !== 'na' && toggleCycle(r.id, ymOf(m))}
+                                title={
+                                  c.kind === 'na'
+                                    ? '해당 없음'
+                                    : c.kind === 'done'
+                                      ? '완료 — 누르면 되돌립니다'
+                                      : '누르면 완료'
+                                }
+                              >
+                                {c.kind === 'na' ? '–' : c.kind === 'done' ? '✓' : '·'}
+                              </td>
+                            )
+                          })}
+                          <td className="rt-menu">
+                            <button
+                              className="rt-dots"
+                              aria-label="항목 수정"
+                              onClick={() => (editId === r.id ? cancelEdit() : startEdit(r))}
+                            >
+                              ⋯
+                            </button>
+                          </td>
+                        </tr>
+                        {editId === r.id && form && (
+                          <tr className="rt-edit-row">
+                            <td colSpan={14}>
+                              <div className="rt-edit">
+                                <label>
+                                  이름
+                                  <input
+                                    value={form.title}
+                                    autoFocus
+                                    placeholder="예: 전기요금 보디가드 305호"
+                                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                    onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                                  />
+                                </label>
+                                <label>
+                                  묶음
+                                  <input
+                                    value={form.group}
+                                    placeholder="예: 공과금·구미"
+                                    onChange={(e) => setForm({ ...form, group: e.target.value })}
+                                  />
+                                </label>
+                                <label className="rt-wide">
+                                  매달 같은 설명
+                                  <input
+                                    value={form.desc}
+                                    placeholder="검침 11일~익월 10일 · 회계전표 · 한국전력공사"
+                                    onChange={(e) => setForm({ ...form, desc: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  예정일
+                                  <span className="rt-day">
+                                    매월
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="28"
+                                      value={form.dueDay}
+                                      onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
+                                    />
+                                    일
+                                  </span>
+                                </label>
+                                <label>
+                                  주기
+                                  <select
+                                    className="edit-select"
+                                    value={(form.months || []).join()}
+                                    onChange={(e) =>
+                                      setForm({
+                                        ...form,
+                                        months: e.target.value ? e.target.value.split(',').map(Number) : null,
+                                      })
+                                    }
+                                  >
+                                    {CYCLES.map(([label, months]) => (
+                                      <option key={label} value={(months || []).join()}>
+                                        {label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                {stopped && (
+                                  <label className="rt-wide">
+                                    중단 메모
+                                    <input
+                                      value={form.endNote}
+                                      placeholder="예: 박유림 인계"
+                                      onChange={(e) => setForm({ ...form, endNote: e.target.value })}
+                                    />
+                                  </label>
+                                )}
+                                <div className="rt-edit-btns">
+                                  <button className="btn-done" onClick={saveEdit}>
+                                    저장
+                                  </button>
+                                  <button onClick={cancelEdit}>취소</button>
+                                  {!stopped ? (
+                                    <button
+                                      title="이 달부터 안 함 — 지난 기록은 그대로 남습니다"
+                                      onClick={() => stopRoutine(r.id, thisYm(), form.endNote.trim())}
+                                    >
+                                      중단
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => updateRoutine(r.id, { endYm: null })}>중단 해제</button>
+                                  )}
+                                  <button
+                                    className="rt-del"
+                                    title="정의만 지웁니다 — 이미 만들어진 회차 메모는 남습니다"
+                                    onClick={() => {
+                                      if (
+                                        window.confirm(
+                                          `"${r.title}" 루틴을 목록에서 지울까요?\n지난 회차 메모는 메모로 그대로 남습니다.`
+                                        )
+                                      ) {
+                                        removeRoutine(r.id)
+                                        setEditId(null)
+                                      }
+                                    }}
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {/* 폰: 이름을 누르면 그 줄 아래에서 상세가 펼쳐진다 (보드·달력과 같은 규칙) */}
+                        {narrow && detail && (
+                          <tr className="rt-detail-row">
+                            <td colSpan={14}>{detail}</td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {routines.length === 0 && (
+        <div className="empty">
+          아직 루틴이 없습니다. 매달 도는 일을 여기에 두면 한 해가 격자로 보입니다.
+          <div className="rt-empty-btn">
+            <button className="btn-done" onClick={() => addTo('기타')}>
+              첫 항목 만들기
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="rt-legend">
+        <span>
+          <b className="rt-t-done">✓</b> 완료
+        </span>
+        <span>
+          <b>·</b> 남음
+        </span>
+        <span>
+          <b className="rt-t-rec">•</b> 그 달 기록 있음
+        </span>
+        <span>
+          <b className="rt-t-na">–</b> 해당 없음
+        </span>
+      </div>
+    </div>
+  )
+}

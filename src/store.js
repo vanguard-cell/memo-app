@@ -43,6 +43,7 @@ function load() {
         return {
           memos: migrate(data.memos),
           works: Array.isArray(data.works) ? data.works : [],
+          routines: Array.isArray(data.routines) ? data.routines : [],
           dayOrder: data.dayOrder || {},
         }
       }
@@ -50,7 +51,7 @@ function load() {
   } catch (e) {
     console.error('저장 데이터를 읽지 못했습니다', e)
   }
-  return { memos: [], works: [], dayOrder: {} }
+  return { memos: [], works: [], routines: [], dayOrder: {} }
 }
 
 // 삭제는 지우지 않고 표식(deleted:true)만 남긴다 — UI에는 안 보이고,
@@ -87,7 +88,12 @@ function commit(next) {
   state = withVisible(next)
   localStorage.setItem(
     KEY,
-    JSON.stringify({ memos: state.memos, works: state.works, dayOrder: state.dayOrder })
+    JSON.stringify({
+      memos: state.memos,
+      works: state.works,
+      routines: state.routines,
+      dayOrder: state.dayOrder,
+    })
   )
   notify()
 }
@@ -101,6 +107,8 @@ export const getMemos = () => state.visible
 export const getTrash = () => state.trash
 export const getWorks = () => state.works
 export const getDayOrder = () => state.dayOrder
+// 루틴 정의 — 지운 것(표식)은 빼고, 화면에 놓인 순서대로
+export const getRoutines = () => state.routines.filter((r) => !r.deleted).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 export const getAuth = () => authSnap
 
 // ---------- 서버 동기화 ----------
@@ -113,7 +121,10 @@ async function pushMemoRows(memos) {
 
 function remoteUpsert(id) {
   if (!hasSupabase || !session) return
-  const memo = state.memos.find((m) => m.id === id) || state.works.find((w) => w.id === id)
+  const memo =
+    state.memos.find((m) => m.id === id) ||
+    state.works.find((w) => w.id === id) ||
+    state.routines.find((r) => r.id === id)
   if (!memo) return
   pushMemoRows([memo])
     .then(() => setAuth({ syncError: false }))
@@ -162,12 +173,16 @@ async function syncFromServer() {
     }
     const memos = mergeList(state.memos, false)
     const works = mergeList(state.works, true)
+    // 루틴 정의도 같은 memos 테이블에 type:'routine' 행으로 산다 (works와 같은 방식 — 서버 스키마 그대로)
+    const routines = mergeList(state.routines, true)
     // 서버에만 있는 행
     for (const [, srv] of serverById) {
       if (srv.data && srv.data.type === 'work') works.push(srv.data)
+      else if (srv.data && srv.data.type === 'routine') routines.push(srv.data)
       else memos.push(migrate([srv.data])[0])
     }
     works.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    routines.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     const { data: st } = await supabase.from('app_state').select('day_order').maybeSingle()
     const dayOrder = { ...((st && st.day_order) || {}), ...state.dayOrder }
@@ -175,11 +190,12 @@ async function syncFromServer() {
     // 30일 지난 삭제 표식은 이번 동기화에서 실제로 지운다 (모든 기기에 전파된 뒤)
     const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
     const isOldTomb = (x) => x.deleted && (x.updatedAt || '') < cutoff
-    const tombIds = [...memos, ...works].filter(isOldTomb).map((x) => x.id)
+    const tombIds = [...memos, ...works, ...routines].filter(isOldTomb).map((x) => x.id)
 
     commit({
       memos: memos.filter((x) => !isOldTomb(x)),
       works: works.filter((x) => !isOldTomb(x)),
+      routines: routines.filter((x) => !isOldTomb(x)),
       dayOrder,
     })
     if (toPush.length) await pushMemoRows(toPush.filter((x) => !isOldTomb(x)))
@@ -538,6 +554,143 @@ export function purgeMemos(ids) {
     })
 }
 
+// ---------- 루틴 (매달·분기·해마다 도는 일) — 2026-08-11 ----------
+// 정의와 회차를 나눈다:
+//  · 정의(routines) = 반복 규칙 그 자체. 이름·묶음·매달 같은 설명(엑셀 비고 열)·예정일·해당 월.
+//  · 회차(memos) = 그 달의 실제 일. 그냥 메모라서 달력·오늘·검색·상세·파일·진행기록이 전부 그대로 붙는다.
+// 회차에 repeat를 쓰지 않는 이유: repeat은 메모 하나가 앞으로 굴러가는 방식이라
+// "몇 월에 했나"가 안 남는다. 격자로 1년을 보려면 달마다 회차가 따로 있어야 한다.
+// 회차는 미리 12개를 만들지 않는다 — 이번 달치만 자동으로, 나머지는 칸을 누를 때.
+
+const pad2 = (n) => String(n).padStart(2, '0')
+export const thisYm = () => todayStr().slice(0, 7)
+
+// 그 달의 예정일 — 말일보다 큰 날짜(31일 등)는 그 달 말일로 당긴다
+export function routineDue(ym, dueDay) {
+  const [y, m] = ym.split('-').map(Number)
+  const last = new Date(y, m, 0).getDate()
+  return `${ym}-${pad2(Math.min(Math.max(1, dueDay || 1), last))}`
+}
+
+// 그 달에 해당하는 루틴인가 — months가 비어 있으면 매월, 아니면 그 달 목록에만
+export function routineHasMonth(r, ym) {
+  const m = Number(ym.slice(5, 7))
+  if (r.startYm && ym < r.startYm) return false
+  if (r.endYm && ym >= r.endYm) return false
+  return !r.months || r.months.length === 0 || r.months.includes(m)
+}
+
+export const routineCycle = (routineId, ym) =>
+  state.visible.find((m) => m.routineId === routineId && m.ym === ym)
+
+export function addRoutine({ title, group, desc, dueDay, months, startYm }) {
+  const now = new Date().toISOString()
+  const r = {
+    id: crypto.randomUUID(),
+    type: 'routine',
+    title: title || '',
+    group: group || '기타',
+    desc: desc || '',
+    dueDay: dueDay || 5,
+    months: months || null,
+    startYm: startYm || thisYm(),
+    endYm: null,
+    endNote: '',
+    order: state.routines.length,
+    createdAt: now,
+    updatedAt: now,
+  }
+  commit({ ...state, routines: [...state.routines, r] })
+  remoteUpsert(r.id)
+  return r
+}
+
+export function updateRoutine(id, patch) {
+  const now = new Date().toISOString()
+  commit({
+    ...state,
+    routines: state.routines.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: now } : r)),
+  })
+  remoteUpsert(id)
+}
+
+// 중단 — 지우는 게 아니라 "이 달부터 안 함". 지난 회차는 이력으로 그대로 남는다
+// (엑셀에서 행을 지우면 처리 이력까지 사라지던 것과 다르다)
+export const stopRoutine = (id, endYm, endNote) =>
+  updateRoutine(id, { endYm: endYm || thisYm(), endNote: endNote || '' })
+
+// 정의만 지운다 — 이미 만들어진 회차 메모는 메모로 남는다(검색·이력 보존)
+export function removeRoutine(id) {
+  updateRoutine(id, { deleted: true })
+}
+
+// 회차 메모 한 개 만들기 (저장은 부르는 쪽에서 — 여러 개를 한 번에 담을 수 있게)
+function newCycle(r, ym) {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    title: `${r.title} — ${Number(ym.slice(5, 7))}월분`,
+    status: 'open',
+    keep: false,
+    due: routineDue(ym, r.dueDay),
+    period: null,
+    deadline: false,
+    history: [],
+    desc: r.desc || '',
+    routineId: r.id,
+    ym,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+    snoozeUntil: null,
+  }
+}
+
+// 그 달의 회차를 찾고, 없으면 만든다
+export function ensureCycle(routineId, ym) {
+  const found = routineCycle(routineId, ym)
+  if (found) return found
+  const r = state.routines.find((x) => x.id === routineId)
+  if (!r) return null
+  const memo = newCycle(r, ym)
+  commit({ ...state, memos: [memo, ...state.memos] })
+  remoteUpsert(memo.id)
+  return memo
+}
+
+// 격자 칸 클릭 — 완료 ↔ 되돌리기. 회차가 없으면 만들면서 완료 처리한다.
+// 완료 경로는 메모와 같은 것을 쓰므로 오늘 화면·달력·보드가 저절로 따라온다.
+export function toggleCycle(routineId, ym) {
+  const cyc = ensureCycle(routineId, ym)
+  if (!cyc) return
+  if (cyc.status === 'done') reopenMemo(cyc.id)
+  else completeMemo(cyc.id)
+}
+
+// 앱을 열 때 이번 달 회차를 채운다 — 그래야 오늘 화면·달력에 이번 달 할 일로 뜬다.
+// 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다).
+// 34건이 한꺼번에 생기는 첫 달을 생각해 한 번에 담고 한 번만 저장한다
+// (하나씩 만들면 저장·서버 요청이 34번 난다)
+export function ensureThisMonth() {
+  const ym = thisYm()
+  const made = []
+  for (const r of getRoutines()) {
+    if (!(r.title || '').trim()) continue
+    if (routineHasMonth(r, ym) && !routineCycle(r.id, ym)) made.push(newCycle(r, ym))
+  }
+  if (!made.length) return 0
+  commit({ ...state, memos: [...made, ...state.memos] })
+  if (hasSupabase && session) {
+    pushMemoRows(made)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return made.length
+}
+
 export function setDayOrder(date, ids) {
   commit({ ...state, dayOrder: { ...state.dayOrder, [date]: ids } })
   remotePushState()
@@ -550,6 +703,7 @@ export function downloadBackup() {
     exportedAt: new Date().toISOString(),
     memos: state.visible,
     works: state.works,
+    routines: state.routines.filter((r) => !r.deleted),
     dayOrder: state.dayOrder,
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -558,6 +712,31 @@ export function downloadBackup() {
   a.download = `내기록-백업-${todayStr()}.json`
   a.click()
   URL.revokeObjectURL(a.href)
+}
+
+// 가져오기 — 백업 파일이나 엑셀에서 변환한 파일을 그대로 받는다 (2026-08-11).
+// 지금까지는 내보내기만 있어서 백업 파일을 만들어도 되돌릴 길이 없었다.
+// 규칙: 같은 id가 이미 있으면 건드리지 않는다(덮어쓰기 없음) — 두 번 눌러도 안전하다.
+// 돌려주는 값은 {memos, routines} 실제로 추가된 건수.
+export function importData(data) {
+  if (!data || (!Array.isArray(data.memos) && !Array.isArray(data.routines))) {
+    throw new Error('내 기록 백업 파일이 아닙니다')
+  }
+  const has = (arr, id) => arr.some((x) => x.id === id)
+  const newMemos = (data.memos || []).filter((m) => m && m.id && !has(state.memos, m.id))
+  const newRoutines = (data.routines || []).filter((r) => r && r.id && !has(state.routines, r.id))
+  if (!newMemos.length && !newRoutines.length) return { memos: 0, routines: 0 }
+  const base = state.routines.length
+  const routines = newRoutines.map((r, i) => ({ ...r, type: 'routine', order: r.order ?? base + i }))
+  commit({
+    ...state,
+    memos: [...migrate(newMemos), ...state.memos],
+    routines: [...state.routines, ...routines],
+    dayOrder: { ...state.dayOrder, ...(data.dayOrder || {}) },
+  })
+  for (const x of [...newMemos, ...routines]) remoteUpsert(x.id)
+  if (data.dayOrder) remotePushState()
+  return { memos: newMemos.length, routines: routines.length }
 }
 
 // ---------- 파일 첨부 (2026-07-31 부활) ----------
