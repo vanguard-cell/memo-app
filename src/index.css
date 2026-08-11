@@ -3385,6 +3385,69 @@ main {
   color: var(--faint);
 }
 
+/* 엑셀에서 복사해 붙여넣는 자리 — 파일 업로드가 막힌 회사 PC에서의 길 (2026-08-11).
+   팝업 없이 격자 위에서 펼쳐진다 (앱 전체 규칙: 팝업 금지) */
+.rt-paste-btn {
+  font-size: var(--fs-sm);
+}
+
+.rt-paste-btn.on {
+  background: var(--blue-bg);
+  border-color: var(--blue-strong);
+  color: var(--blue);
+}
+
+.rt-paste {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.rt-paste-area {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  resize: vertical;
+  outline: none;
+}
+
+.rt-paste-area:focus {
+  border-color: var(--blue-strong);
+}
+
+.rt-paste-err {
+  margin-top: 8px;
+  font-size: var(--fs-sm);
+  color: var(--red);
+}
+
+.rt-paste-ok {
+  margin-top: 8px;
+  font-size: var(--fs-sm);
+  color: var(--teal);
+}
+
+.rt-paste-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rt-paste-btns .rt-hint {
+  margin-left: 0;
+}
+
 /* 12개월이 다 안 들어가는 폭에서는 가로로 굴린다 (폰·좁은 창) */
 .rt-scroll {
   overflow-x: auto;

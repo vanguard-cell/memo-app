@@ -7,8 +7,10 @@ import {
   ensureCycle,
   toggleCycle,
   routineHasMonth,
+  importRoutineRows,
   thisYm,
 } from '../store'
+import { readRoutinePaste } from '../importXlsx'
 import useIsNarrow from '../useIsNarrow'
 
 const pad2 = (n) => String(n).padStart(2, '0')
@@ -35,6 +37,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   const [selMonth, setSelMonth] = useState(now.getMonth() + 1)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState(null)
+  // 엑셀에서 복사해 붙여넣기 — 회사 보안 프로그램이 브라우저의 파일 읽기를 막을 때의 길.
+  // 파일을 안 거치므로 업로드 차단과 무관하다. (2026-08-11)
+  const [paste, setPaste] = useState(null) // { text, parsed, error, result }
 
   const ymOf = (m) => `${year}-${pad2(m)}`
   const curYm = thisYm()
@@ -122,8 +127,69 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
             {Number(curYm.slice(5, 7))}월 {remain}건 남음
           </span>
         )}
+        <button
+          className={'rt-paste-btn' + (paste ? ' on' : '')}
+          title="엑셀에서 표를 복사해 붙여넣으면 그대로 읽습니다 (파일 업로드가 막힌 곳에서도 됩니다)"
+          onClick={() => setPaste(paste ? null : { text: '' })}
+        >
+          엑셀에서 붙여넣기
+        </button>
         <span className="rt-hint">칸 = 완료 · 이름 = 그 달 기록</span>
       </div>
+
+      {paste && (
+        <div className="rt-paste">
+          <div className="panel-sec-label">
+            엑셀에서 머리줄(구분·항목명·담당…)까지 함께 긁어 복사한 뒤 여기에 붙여넣으세요 (Ctrl+V)
+          </div>
+          <textarea
+            className="rt-paste-area"
+            autoFocus
+            rows={5}
+            value={paste.text}
+            placeholder={'구분\t사업장\t항목명\t거래처\t…\t7월\t8월\t…\n공과금·구미\t구미\t전기요금 …'}
+            onChange={(e) => setPaste({ text: e.target.value })}
+          />
+          {paste.error && <div className="rt-paste-err">{paste.error}</div>}
+          {paste.result && <div className="rt-paste-ok">{paste.result}</div>}
+          <div className="rt-paste-btns">
+            {!paste.parsed ? (
+              <button
+                className="btn-done"
+                onClick={() => {
+                  try {
+                    const parsed = readRoutinePaste(paste.text, year)
+                    setPaste({ ...paste, parsed, error: null })
+                  } catch (e) {
+                    setPaste({ ...paste, parsed: null, error: e.message })
+                  }
+                }}
+              >
+                읽기
+              </button>
+            ) : (
+              <button
+                className="btn-done"
+                onClick={() => {
+                  const n = importRoutineRows(paste.parsed)
+                  setPaste({
+                    text: '',
+                    result: `넣었습니다 — 새 루틴 ${n.added}건, 갱신 ${n.updated}건, 지난 완료 ${n.cycles}건`,
+                  })
+                }}
+              >
+                {paste.parsed.rows.length}건 넣기
+              </button>
+            )}
+            <button onClick={() => setPaste(null)}>닫기</button>
+            {paste.parsed && (
+              <span className="rt-hint">
+                {year}년 기준 · 이름이 같은 루틴은 묶음·설명만 갱신됩니다
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="rt-scroll">
         <table className="rt-table">
