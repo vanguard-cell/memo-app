@@ -1910,8 +1910,19 @@ main {
 }
 
 /* 날짜 숫자 + 공휴일 이름 — 칩이 굴러가도 여기는 안 움직인다 */
+/* 칸 머리(날짜 숫자 줄)는 높이를 못박는다 — 여기에 뭐라도 한 줄 더 들어오거나 글자 하나가
+   더 높으면 그 칸만 아래로 밀려 옆 칸과 띠가 어긋난다. 폰에서 먼저 겪었고(2026-08-07),
+   PC도 같은 문제가 났다 — 날짜 동그라미를 19px로 줄였는데 공휴일 이름표의 줄높이가 22px로
+   남아 있어 공휴일 칸만 2px 내려앉았다 (2026-08-11). 높이는 동그라미(19) + 아래 여백(1).
+   flex라 baseline 계산이 끼어들 자리가 없다 — 뭐가 들어와도 20px. */
 .cal-cell-head {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding-right: 22px; /* 우측 상단 + 버튼 자리 — 이름표가 버튼 밑으로 들어가지 않게 */
+  overflow: hidden;
 }
 
 /* 칩 자리 — 완료된 기간 띠가 칸 맨 아래에 붙어도 "+N" 배지는 칩 영역 오른쪽 아래에 남게
@@ -2060,6 +2071,7 @@ main {
    (2026-08-11: 22 → 19px, 아래 여백 2 → 1px) */
 .cal-day {
   display: inline-block;
+  flex: none; /* 공휴일 이름이 길어도 날짜 동그라미는 안 찌그러진다 */
   width: 19px;
   height: 19px;
   line-height: 18px;
@@ -2082,12 +2094,11 @@ main {
   color: var(--blue);
 }
 
+/* 공휴일 이름표 — 칸 머리가 flex라 길면 알아서 줄어들고 …로 잘린다.
+   ⚠️ 여기에 줄높이·여백을 새로 넣지 말 것 — 머리 높이(20px)가 흔들리면 띠가 어긋난다 */
 .cal-holname {
-  display: inline-block;
-  margin-left: 3px;
-  max-width: calc(100% - 52px); /* 우측 상단 + 버튼 자리를 비워둔다 */
-  vertical-align: top;
-  line-height: 22px;
+  min-width: 0;
+  line-height: 1;
   font-size: 10px;
   font-weight: 600;
   color: var(--red);
