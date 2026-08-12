@@ -2582,8 +2582,10 @@ main {
   }
 }
 
-/* 접기 손잡이 — 분할선 위에 반쯤 걸친 세로 탭(PC 전용). 데스크톱 프로그램의 패널 손잡이처럼
-   패널 바깥에 떠 있어서, 눌러 접으면 목록으로 돌아간다는 게 그림으로 읽힌다. (2026-08-04) */
+/* 접기 버튼 — 상세 패널 좌측 상단의 » (PC 전용).
+   2026-08-04에는 분할선 한가운데 걸친 세로 손잡이였는데, 화면 중앙에 뜬금없이 떠 있는
+   것보다 패널 모서리에 붙어 있는 편이 찾기 쉽다는 지적으로 옮겼다 (2026-08-11).
+   방향은 그대로 오른쪽 — 누르면 패널이 그쪽으로 접히고 목록으로 돌아간다. */
 .panel-fold {
   display: none;
 }
@@ -2594,52 +2596,42 @@ main {
     align-items: center;
     justify-content: center;
     position: fixed;
-    left: var(--split);
-    top: 50%;
+    left: calc(var(--split) + 10px);
+    top: 10px;
     margin: 0;
     padding: 0;
-    width: 22px;
-    height: 54px;
+    width: 26px;
+    height: 26px;
     z-index: 41;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--card);
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: none;
     color: var(--faint);
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.07);
-    transform: translate(-50%, -50%);
-    animation: pf-in 240ms 60ms cubic-bezier(0.22, 0.7, 0.3, 1) both;
-    transition: height 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+    font-size: 15px;
+    line-height: 1;
+    transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
   }
 
   .panel-fold:hover {
-    height: 74px;
     color: var(--blue);
-    border-color: var(--blue);
+    border-color: var(--border);
     background: var(--card);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
   }
 
-  .panel-fold svg {
-    transition: transform 140ms ease;
-  }
-
-  /* 누를 때 화살표가 오른쪽으로 밀린다 — 패널이 그쪽으로 접힌다는 신호 */
-  .panel-fold:hover svg {
+  .panel-fold:active {
     transform: translateX(2px);
   }
 
-  .panel-fold:active svg {
-    transform: translateX(4px);
-  }
-
-  /* 말풍선은 왼쪽(목록 쪽)으로 — 패널 위를 덮지 않게 */
+  /* 말풍선은 아래쪽으로 — 패널 맨 위라 위로 띄우면 화면 밖으로 나간다 */
   .panel-fold:hover::after {
     content: attr(data-tip);
     position: absolute;
-    right: calc(100% + 9px);
+    top: calc(100% + 6px);
+    left: 0;
     background: var(--text);
     color: #fff;
     font-size: var(--fs-sm);
+    font-weight: 400;
     padding: 4px 9px;
     border-radius: 5px;
     white-space: nowrap;
@@ -2652,21 +2644,10 @@ main {
   }
 }
 
-@keyframes pf-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) translateX(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
-
 @keyframes pf-out {
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) translateX(14px);
+    transform: translateX(14px);
   }
 }
 

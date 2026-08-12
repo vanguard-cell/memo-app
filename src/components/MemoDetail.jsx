@@ -226,8 +226,9 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
 
   return (
     <>
-    {/* 분할선에 걸친 접기 손잡이 — 누르면 패널이 오른쪽으로 접히고 목록으로 돌아간다.
-        ×·빈 곳 누르기와 같은 동작이지만 "왼쪽(목록)으로 돌아간다"가 눈에 보인다 (2026-08-04) */}
+    {/* 접기 — 패널 좌측 상단의 ». 누르면 패널이 오른쪽으로 접히고 목록으로 돌아간다.
+        ×·빈 곳 누르기와 같은 동작이지만 "오른쪽으로 밀어 닫는다"가 눈에 보인다.
+        (2026-08-04 분할선 한가운데 세로 손잡이 → 2026-08-11 패널 모서리로 이동) */}
     {!inline && !narrow && (
       <button
         className={'panel-fold' + (closing ? ' pf-out' : '')}
@@ -235,7 +236,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
         aria-label="접기"
         onClick={onClose}
       >
-        {ICONS.chevronR}
+        »
       </button>
     )}
     <aside
