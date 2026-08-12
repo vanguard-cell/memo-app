@@ -2420,10 +2420,11 @@ main {
     grid-template-columns: var(--half) minmax(0, 1fr);
   }
 
-  /* 달력 보기에서만 본문을 화면 끝까지 넓혀 우측 절반을 목록·상세로 쓴다
-     (보드·표는 cal-split이 없어 기존 폭 유지). (2026-07-24) */
-  .app-mid main:has(.cal-split),
-  .app-wide main:has(.cal-split) {
+  /* 달력도 평소엔 메모·루틴과 같은 폭(본문 최대폭)에서 멈춘다 — 달력만 화면 끝까지
+     뻗어 있으면 오른쪽 끝이 혼자 어긋나 보인다 (2026-08-11 사용자 지시).
+     오른쪽에 목록·상세가 뜰 때만 화면 끝까지 넓혀 그 자리를 만든다. */
+  .app-mid main:has(.cal-split.cal-open),
+  .app-wide main:has(.cal-split.cal-open) {
     max-width: none;
   }
 
