@@ -8,6 +8,7 @@ import {
   toggleCycle,
   routineHasMonth,
   importRoutineRows,
+  setGroupDueDay,
   thisYm,
 } from '../store'
 import { readRoutinePaste } from '../importXlsx'
@@ -44,6 +45,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   const [paste, setPaste] = useState(null) // { text, parsed, error, result }
   const [undo, setUndo] = useState(null)
   const [showStopped, setShowStopped] = useState(false)
+  const [gDay, setGDay] = useState(null) // 묶음 예정일 일괄 변경 { g, day }
   const undoTimer = useRef(null)
 
   const ymOf = (m) => `${year}-${pad2(m)}`
@@ -263,6 +265,14 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                         <button className="rt-add" onClick={() => addTo(g)}>
                           +
                         </button>
+                        {/* 묶음 통째로 예정일 바꾸기 — 34건을 하나씩 고치지 않게 (2026-08-11) */}
+                        <button
+                          className="rt-add"
+                          title="이 묶음의 예정일을 한 번에 바꿉니다"
+                          onClick={() => setGDay(gDay && gDay.g === g ? null : { g, day: 5 })}
+                        >
+                          예정일
+                        </button>
                       </>
                     )}
                   </td>
@@ -271,6 +281,45 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                   ))}
                   <td className="rt-gcell" />
                 </tr>
+                {gDay && gDay.g === g && (
+                  <tr className="rt-edit-row">
+                    <td colSpan={14}>
+                      <div className="rt-edit rt-gday">
+                        <label>
+                          「{g}」 예정일
+                          <span className="rt-day">
+                            매월
+                            <input
+                              type="number"
+                              min="1"
+                              max="28"
+                              autoFocus
+                              value={gDay.day}
+                              onChange={(e) => setGDay({ ...gDay, day: e.target.value })}
+                            />
+                            일
+                          </span>
+                        </label>
+                        <div className="rt-edit-btns">
+                          <button
+                            className="btn-done"
+                            onClick={() => {
+                              const n = setGroupDueDay(g, gDay.day)
+                              setGDay(null)
+                              setUndo({ label: `「${g}」 ${n}건을 매월 ${gDay.day}일로 옮겼습니다`, fn: null })
+                              clearTimeout(undoTimer.current)
+                              undoTimer.current = setTimeout(() => setUndo(null), 5000)
+                            }}
+                          >
+                            이 묶음 전체에 적용
+                          </button>
+                          <button onClick={() => setGDay(null)}>취소</button>
+                          <span className="rt-hint">완료된 회차는 그대로 두고, 남은 회차 날짜만 같이 옮깁니다</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {(g === STOPPED
                   ? showStopped
                     ? stoppedList
@@ -465,18 +514,21 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
         </div>
       )}
 
+      {/* 되돌릴 게 없는 알림(묶음 예정일 변경 등)은 같은 자리에 글자만 띄운다 */}
       {undo && (
         <div className="undo-bar">
           <span>{undo.label}</span>
-          <button
-            onClick={() => {
-              undo.fn()
-              clearTimeout(undoTimer.current)
-              setUndo(null)
-            }}
-          >
-            되돌리기
-          </button>
+          {undo.fn && (
+            <button
+              onClick={() => {
+                undo.fn()
+                clearTimeout(undoTimer.current)
+                setUndo(null)
+              }}
+            >
+              되돌리기
+            </button>
+          )}
         </div>
       )}
 

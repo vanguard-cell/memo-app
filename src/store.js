@@ -622,6 +622,37 @@ export function updateRoutine(id, patch) {
   remoteUpsert(id)
 }
 
+// 묶음 통째로 예정일 바꾸기 — 34건을 하나씩 고치는 건 일이라 묶음 단위로 준다 (2026-08-11).
+// 이미 만들어진 회차의 날짜도 같이 옮긴다(완료된 회차는 그대로 둔다 — 지난 일은 지난 일이다).
+export function setGroupDueDay(group, day) {
+  const now = new Date().toISOString()
+  const d = Math.min(28, Math.max(1, Number(day) || 1))
+  const ids = new Set(
+    state.routines.filter((r) => !r.deleted && (r.group || '기타') === group).map((r) => r.id)
+  )
+  if (!ids.size) return 0
+  const routines = state.routines.map((r) => (ids.has(r.id) ? { ...r, dueDay: d, updatedAt: now } : r))
+  const memos = state.memos.map((m) =>
+    m.routineId && ids.has(m.routineId) && m.ym && m.status !== 'done'
+      ? { ...m, due: routineDue(m.ym, d), updatedAt: now }
+      : m
+  )
+  commit({ ...state, routines, memos })
+  const changed = [
+    ...routines.filter((r) => ids.has(r.id)),
+    ...memos.filter((m) => m.routineId && ids.has(m.routineId) && m.status !== 'done'),
+  ]
+  if (hasSupabase && session && changed.length) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return ids.size
+}
+
 // 중단 — 지우는 게 아니라 "이 달부터 안 함". 지난 회차는 이력으로 그대로 남는다
 // (엑셀에서 행을 지우면 처리 이력까지 사라지던 것과 다르다)
 export const stopRoutine = (id, endYm, endNote) =>
@@ -765,7 +796,14 @@ export function importRoutineRows({ rows, year }) {
     const key = row.title.trim()
     let r = byTitle.get(key)
     if (r) {
-      const next = { ...r, group: row.group, desc: row.desc, updatedAt: now }
+      // 예정일은 엑셀에 '예정일' 열이 있을 때만 따라간다 — 없으면 앱에서 정한 값을 지킨다
+      const next = {
+        ...r,
+        group: row.group,
+        desc: row.desc,
+        ...(row.dueDay ? { dueDay: row.dueDay } : {}),
+        updatedAt: now,
+      }
       routines[routines.indexOf(r)] = next
       byTitle.set(key, next)
       touched.push(next)
@@ -778,7 +816,7 @@ export function importRoutineRows({ rows, year }) {
         title: key,
         group: row.group,
         desc: row.desc,
-        dueDay: 5,
+        dueDay: row.dueDay || 5,
         months: null,
         startYm: `${year}-01`,
         endYm: null,

@@ -33,6 +33,8 @@ export function readRoutineGrid(grid, year) {
     form: col('기안양식'),
     who: col('담당'),
     note: col('비고'),
+    // 엑셀에 '예정일' 열(숫자)을 두면 그대로 따라간다 — 없으면 앱 기본값(매월 5일)
+    day: col('예정일'),
   }
   const monthCols = []
   for (let m = 1; m <= 12; m++) monthCols.push(col(m + '월'))
@@ -54,6 +56,7 @@ export function readRoutineGrid(grid, year) {
       form: at(row, C.form),
       who: at(row, C.who),
       note: at(row, C.note),
+      day: parseInt(at(row, C.day), 10) || null,
       done,
     })
   }
@@ -70,6 +73,7 @@ export function readRoutineGrid(grid, year) {
     rows: raw.map((x) => ({
       title: x.title,
       group: x.group,
+      dueDay: x.day,
       desc: [x.site, x.vendor, x.form, x.note, x.who && x.who !== main ? `담당 ${x.who}` : '']
         .filter((s) => s && s !== '-')
         .join(' · '),

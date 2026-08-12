@@ -270,11 +270,6 @@ export default function App() {
           }}
         >
           <div className="brand">내 기록</div>
-          {hasSupabase && auth.loggedIn && (
-            <button className="who" title="탭하면 진단 결과가 뜹니다" onClick={runDiagnostics}>
-              {auth.email}
-            </button>
-          )}
           <button
             className={'stab' + (!showKeep && !showHold && !showTrash && !showRoutine ? ' on' : '')}
             onClick={backToMemo}
@@ -290,51 +285,54 @@ export default function App() {
             <span className="stab-ic">{ICONS.routine}</span>루틴
             {routineLeft > 0 && <span className="stab-n">{routineLeft}</span>}
           </button>
-          <button
-            className={'stab' + (showHold ? ' on' : '')}
-            title="하다가 멈췄거나 기약이 없어진 일 — 날짜를 떼서 넣어두고 필요할 때 꺼내는 곳"
-            onClick={() => goTo('hold')}
-          >
-            <span className="stab-ic">{ICONS.hold}</span>보류함
-            {holds.length > 0 && <span className="stab-n">{holds.length}</span>}
-          </button>
-          <button
-            className={'stab' + (showKeep ? ' on' : '')}
-            title="날짜 없이 넣어둔 메모 모음 — 필요할 때 꺼내 보는 곳"
-            onClick={() => goTo('keep')}
-          >
-            <span className="stab-ic">{ICONS.keep}</span>보관함
-            {keeps.length > 0 && <span className="stab-n">{keeps.length}</span>}
-          </button>
-          <button
-            className={'stab' + (showTrash ? ' on' : '')}
-            title="삭제한 메모는 30일 보관 후 자동 삭제 — 그 안에 복구 가능"
-            onClick={() => goTo('trash')}
-          >
-            <span className="stab-ic">{ICONS.trash}</span>휴지통
-            {trash.length > 0 && <span className="stab-n">{trash.length}</span>}
-          </button>
-          <button className="stab" title="메모·루틴 전체를 JSON 파일로 저장 — 사고 대비 보험" onClick={downloadBackup}>
-            <span className="stab-ic">{ICONS.backup}</span>백업
-          </button>
-          {/* 가져오기 — 백업 파일 되돌리기 겸 엑셀에서 변환한 루틴 넣기 (2026-08-11).
-              지금까지는 내보내기만 있어서 백업 파일을 만들어도 되돌릴 길이 없었다 */}
-          <label className="stab stab-file" title="백업 파일(JSON) 되돌리기 · 월간체크리스트 엑셀(XLSX)에서 루틴 읽어오기">
-            <span className="stab-ic">{ICONS.restore}</span>가져오기
-            <input
-              type="file"
-              accept="application/json,.json,.xlsx,.xls"
-              onChange={(e) => {
-                importFile(e.target.files[0])
-                e.target.value = ''
-              }}
-            />
-          </label>
+          {/* 위는 "매일 쓰는 화면"(메모·루틴)만. 나머지 서랍(보류함·보관함·휴지통)과
+              도구(백업·가져오기)는 아래에 아이콘 한 줄로 내렸다 — 폰 상단 줄과 같은 문법.
+              계정도 로그아웃 옆으로 (2026-08-11 사용자 지시) */}
           <div className="sidenav-foot">
-            {hasSupabase && auth.loggedIn && (
-              <button className="stab stab-foot" title={auth.email} onClick={signOut}>
-                <span className="stab-ic">{ICONS.out}</span>로그아웃
+            <div className="sfoot-row">
+              {[
+                ['hold', ICONS.hold, '보류함', holds.length, showHold, () => goTo('hold')],
+                ['keep', ICONS.keep, '보관함', keeps.length, showKeep, () => goTo('keep')],
+                ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => goTo('trash')],
+              ].map(([key, icon, label, n, on, go]) => (
+                <button key={key} className={'sfoot-ic' + (on ? ' on' : '')} title={label} aria-label={label} onClick={go}>
+                  {icon}
+                  {n > 0 && <span className="sfoot-n">{n}</span>}
+                </button>
+              ))}
+              <button
+                className="sfoot-ic"
+                title="백업 — 메모·루틴 전체를 JSON 파일로 저장 (사고 대비 보험)"
+                aria-label="백업"
+                onClick={downloadBackup}
+              >
+                {ICONS.backup}
               </button>
+              {/* 가져오기 — 백업 되돌리기 겸 엑셀에서 루틴 읽어오기 (2026-08-11) */}
+              <label
+                className="sfoot-ic"
+                title="가져오기 — 백업 파일(JSON) 되돌리기 · 월간체크리스트 엑셀(XLSX)에서 루틴 읽어오기"
+              >
+                {ICONS.restore}
+                <input
+                  type="file"
+                  accept="application/json,.json,.xlsx,.xls"
+                  onChange={(e) => {
+                    importFile(e.target.files[0])
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </div>
+            {hasSupabase && auth.loggedIn && (
+              <>
+                <button className="who" title="누르면 진단 결과가 뜹니다" onClick={runDiagnostics}>
+                  {auth.email}
+                </button>
+                <button className="stab stab-foot" title={auth.email} onClick={signOut}>
+                  <span className="stab-ic">{ICONS.out}</span>로그아웃
+                </button>
+              </>
             )}
           </div>
         </aside>

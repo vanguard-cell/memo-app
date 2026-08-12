@@ -236,23 +236,20 @@ main {
     max-width: 1360px;
   }
 
-  /* 보드는 상세를 열든 닫든 항상 왼쪽 절반(정중앙까지)에 고정 — 달력처럼 열고 닫아도
-     칸이 안 움직인다. 오른쪽 절반은 상세 자리(닫혀 있으면 빈다). (2026-07-24) */
-  main:has(.kb-grid-wrap) {
-    max-width: var(--half);
-  }
-
-  /* 표·타임라인은 평소 넓게 쓰다가, 상세를 열면 왼쪽 절반으로 줄어 상세에 안 가려진다 */
+  /* 모든 보기가 같은 규칙 (2026-08-11 사용자 지시): 평소엔 넓게 쓰고, 상세를 열면
+     왼쪽으로 살짝 줄어 상세에 안 가려진다. 표·타임라인·루틴이 그렇게 동작했고
+     그게 더 낫다고 해서 보드·달력도 여기에 맞췄다.
+     (보드를 절반에 고정한 2026-07-24 결정은 이걸로 번복됨 — 그땐 "안 움직이는 것"이
+      나아 보였는데, 써보니 평소에 넓게 쓰는 쪽이 이득이 컸다) */
   .app.with-detail main {
     max-width: var(--half);
   }
 
-  /* 세로 분할선 — 화면이 좌우로 나뉘는 달력·보드에서는 상세를 닫아도 선이 남는다.
-     예전엔 상세 패널의 왼쪽 테두리가 유일한 선이라 패널을 닫으면 선까지 사라졌다.
-     자리는 패널 테두리와 같은 --split이라 패널이 열려도 선이 움직이지 않는다.
-     (표·타임라인은 본문이 넓게 퍼져 선을 넘으므로 제외) (2026-08-04) */
-  .workarea:has(.cal-split)::before,
-  .workarea:has(.kb-grid-wrap)::before {
+  /* 세로 분할선 — 달력에서 오른쪽에 목록이 떠 있을 때만. 상세 패널이 열리면 패널의
+     왼쪽 테두리가 그 자리에 서므로 선이 이어져 보인다.
+     (2026-08-11: 화면을 평소 넓게 쓰도록 바꾸면서, 닫혀 있을 땐 선도 없앴다 —
+      본문 한가운데를 세로선이 가로지르면 그게 더 이상하다) */
+  .workarea:has(.cal-split.cal-open)::before {
     content: '';
     position: fixed;
     left: var(--split);
@@ -372,6 +369,63 @@ main {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* 서랍·도구 줄 — 보류함·보관함·휴지통·백업·가져오기를 아이콘 한 줄로 아래에 모았다.
+   위쪽은 매일 쓰는 화면(메모·루틴)만 남긴다 (2026-08-11 사용자 지시) */
+.sfoot-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  margin-bottom: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.sfoot-ic {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sfoot-ic:hover {
+  background: var(--fill);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.sfoot-ic.on {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.sfoot-ic input {
+  display: none;
+}
+
+/* 건수 — 아이콘 오른쪽 위 작은 숫자 (폰 상단 줄과 같은 문법) */
+.sfoot-n {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
 }
 
 .stab-foot {
@@ -2352,12 +2406,18 @@ main {
    달력은 왼쪽 절반에 고정이라 목록·상세가 열려도 밀리거나 크기가 변하지 않는다.
    비율(1fr:1fr)이라 화면이 커져도 공간 배분은 그대로다. 폰은 cal-split이 안 붙어 세로로 쌓인다. (2026-07-24) */
 @media (min-width: 900px) {
+  /* 평소엔 달력이 화면을 다 쓴다 — 칸이 넓어 제목이 훨씬 덜 잘린다.
+     날짜를 눌러 오른쪽에 목록·상세가 뜰 때만(.cal-open) 왼쪽으로 줄어든다.
+     보드·표와 같은 규칙 (2026-08-11 사용자 지시로 '항상 절반 고정'에서 바꿈) */
   .cal-split {
     display: grid;
-    /* 왼쪽(달력)은 정중앙까지, 오른쪽(목록·상세)이 나머지 절반 */
-    grid-template-columns: var(--half) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 56px;
     align-items: start;
+  }
+
+  .cal-split.cal-open {
+    grid-template-columns: var(--half) minmax(0, 1fr);
   }
 
   /* 달력 보기에서만 본문을 화면 끝까지 넓혀 우측 절반을 목록·상세로 쓴다
@@ -2372,8 +2432,8 @@ main {
     padding-bottom: 0;
   }
 
-  /* 검색·보기전환 줄도 달력 왼쪽 절반(정중앙까지)에 맞춘다 */
-  main:has(.cal-split) .mv-head {
+  /* 검색·보기전환 줄도 달력과 같은 폭으로 — 달력이 줄면 같이 준다 */
+  main:has(.cal-split.cal-open) .mv-head {
     max-width: var(--half);
   }
 

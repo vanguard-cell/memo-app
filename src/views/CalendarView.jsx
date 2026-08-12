@@ -480,8 +480,10 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     setLocalOpenId(null)
   }
 
+  // cal-open = 오른쪽에 목록·상세가 떠 있는 상태. 그때만 달력이 왼쪽으로 줄어든다
+  // (평소엔 화면을 다 써서 칸 글자가 덜 잘린다 — 2026-08-11 사용자 지시)
   return (
-    <div className={'view' + (!narrow ? ' cal-split' : '')}>
+    <div className={'view' + (!narrow ? ' cal-split' : '') + (!narrow && (sel || localOpen) ? ' cal-open' : '')}>
       <div className="cal-left">
       {filtered && (
         <div className="cal-filter-note">검색·필터 적용 중 — 걸러진 메모만 달력에 보입니다</div>
