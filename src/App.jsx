@@ -212,7 +212,7 @@ export default function App() {
   useEffect(() => {
     if (narrow || !open) return
     const KEEP_OPEN =
-      '.detail, .panel-fold, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar'
+      '.detail, .panel-fold, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar, .rt-row, .rt-paste, .rt-edit-row'
     const onDown = (e) => {
       if (e.target.closest && e.target.closest(KEEP_OPEN)) return
       closePanel()
@@ -260,9 +260,13 @@ export default function App() {
         <aside
           className="sidenav"
           onClick={(e) => {
-            // 빈 곳(버튼·탭이 아닌 곳)을 누르면 메모 화면으로 돌아간다
+            // 빈 곳(버튼·탭이 아닌 곳)을 누르면 열린 상세만 닫는다.
+            // 예전엔 메모 화면으로 돌아갔는데, 루틴·보관함을 보다가 옆을 잘못 눌러
+            // 화면이 통째로 바뀌는 게 놀랍다는 지적 (2026-08-11).
+            // 화면은 왼쪽 메뉴를 눌렀을 때만 바뀐다 — 달력에서 빈 곳을 눌러도
+            // 달력이 그대로 있고 상세만 닫히는 것과 같은 규칙.
             if (e.target.closest('button, .stab')) return
-            backToMemo()
+            setOpenId(null)
           }}
         >
           <div className="brand">내 기록</div>

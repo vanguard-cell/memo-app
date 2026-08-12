@@ -3499,7 +3499,7 @@ main {
 }
 
 .rt-group td {
-  padding: 11px 10px 4px;
+  padding: 9px 10px 2px;
   font-size: var(--fs-label);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -3531,9 +3531,13 @@ main {
   padding: 0;
 }
 
+/* 한 줄에 한 항목 — 설명은 상세에 있으므로 격자는 최대한 촘촘하게 (2026-08-11) */
 .rt-name {
-  padding: 6px 10px !important;
-  line-height: 1.35;
+  padding: 3px 10px !important;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rt-title {
@@ -3545,10 +3549,13 @@ main {
   text-underline-offset: 3px;
 }
 
-/* 매달 같은 설명 — 엑셀 비고 열이 여기 온다. 그 달만의 특이사항은 회차 상세에 쌓인다 */
-.rt-desc {
-  display: block;
-  font-size: var(--fs-sm);
+/* 중단된 항목은 이름 옆에 작은 꼬리표로 — 줄을 하나 더 쓰지 않는다 */
+.rt-stop-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius, 6px);
+  background: var(--fill);
+  font-size: var(--fs-label);
   color: var(--faint);
 }
 
@@ -3563,7 +3570,7 @@ main {
   cursor: pointer;
   color: var(--faint);
   position: relative;
-  height: 30px;
+  height: 24px;
 }
 
 .rt-cell:hover {

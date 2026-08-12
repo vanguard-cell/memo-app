@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addRoutine,
   updateRoutine,
@@ -40,9 +40,13 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   // 엑셀에서 복사해 붙여넣기 — 회사 보안 프로그램이 브라우저의 파일 읽기를 막을 때의 길.
   // 파일을 안 거치므로 업로드 차단과 무관하다. (2026-08-11)
   const [paste, setPaste] = useState(null) // { text, parsed, error, result }
+  const [undo, setUndo] = useState(null)
+  const undoTimer = useRef(null)
 
   const ymOf = (m) => `${year}-${pad2(m)}`
   const curYm = thisYm()
+
+  useEffect(() => () => clearTimeout(undoTimer.current), [])
 
   // 회차 찾기 — 메모 전체를 한 번만 훑어 (루틴id|연월) 색인을 만든다
   const cycles = useMemo(() => {
@@ -114,6 +118,21 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   function openCycle(r) {
     const memo = ensureCycle(r.id, ymOf(selMonth))
     if (memo) onOpen(memo.id)
+  }
+
+  // 칸을 잘못 눌러 완료가 켜지거나 꺼지는 일이 잦다 — 누른 직후 몇 초간 되돌릴 수 있게 한다
+  // (보드의 완료 되돌리기 바와 같은 방식). 확인을 묻지 않는 이유: 매달 수십 번 누르는
+  // 자리라 물어보면 그게 더 성가시다. (2026-08-11 사용자 요청)
+  function tapCell(r, m) {
+    const ym = ymOf(m)
+    const was = (cycleOf(r.id, ym) || {}).status === 'done'
+    toggleCycle(r.id, ym)
+    clearTimeout(undoTimer.current)
+    setUndo({
+      label: `${r.title} ${m}월 — ${was ? '완료 해제' : '완료'}`,
+      fn: () => toggleCycle(r.id, ym),
+    })
+    undoTimer.current = setTimeout(() => setUndo(null), 6000)
   }
 
   return (
@@ -228,15 +247,20 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                     return (
                       <Fragment key={r.id}>
                         <tr className={'rt-row' + (stopped ? ' rt-stopped' : '')}>
+                          {/* 설명(엑셀 비고)은 격자에 안 쓴다 — 한 화면에 최대한 많이 보이는 게 먼저고,
+                              내용은 이름을 눌러 여는 상세의 '작업 설명'에 그대로 있다.
+                              마우스를 올리면 말풍선으로도 보인다 (2026-08-11 사용자 지시) */}
                           <td className="rt-name">
-                            <span className="rt-title" onClick={() => openCycle(r)}>
+                            <span
+                              className="rt-title"
+                              title={r.desc ? `${r.title}\n${r.desc}` : r.title}
+                              onClick={() => openCycle(r)}
+                            >
                               {r.title || '(이름 없음)'}
                             </span>
-                            {r.desc && <span className="rt-desc">{r.desc}</span>}
                             {stopped && (
-                              <span className="rt-desc">
-                                {Number(r.endYm.slice(5, 7))}월부터 중단
-                                {r.endNote ? ' · ' + r.endNote : ''}
+                              <span className="rt-stop-tag" title={r.endNote}>
+                                {Number(r.endYm.slice(5, 7))}월 중단
                               </span>
                             )}
                           </td>
@@ -248,7 +272,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                 className={
                                   'rt-cell rt-' + c.kind + (m === selMonth ? ' sel' : '') + (c.rec ? ' rec' : '')
                                 }
-                                onClick={() => c.kind !== 'na' && toggleCycle(r.id, ymOf(m))}
+                                onClick={() => c.kind !== 'na' && tapCell(r, m)}
                                 title={
                                   c.kind === 'na'
                                     ? '해당 없음'
@@ -403,6 +427,21 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
               첫 항목 만들기
             </button>
           </div>
+        </div>
+      )}
+
+      {undo && (
+        <div className="undo-bar">
+          <span>{undo.label}</span>
+          <button
+            onClick={() => {
+              undo.fn()
+              clearTimeout(undoTimer.current)
+              setUndo(null)
+            }}
+          >
+            되돌리기
+          </button>
         </div>
       )}
 
