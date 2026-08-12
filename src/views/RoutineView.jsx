@@ -15,6 +15,8 @@ import useIsNarrow from '../useIsNarrow'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+// 중단한 항목을 담는 가짜 묶음 이름 — 격자 맨 아래에 접힌 채로 붙는다
+const STOPPED = '__stopped__'
 
 // 주기 = 결국 "몇 월에 해당하는가"의 목록. 분기·반기는 시작 월이 제각각이라(1·4·7·10 vs 2·5·8·11)
 // 기본값만 주고, 그 밖의 조합은 정의를 고쳐 쓰는 쪽으로 둔다.
@@ -41,6 +43,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   // 파일을 안 거치므로 업로드 차단과 무관하다. (2026-08-11)
   const [paste, setPaste] = useState(null) // { text, parsed, error, result }
   const [undo, setUndo] = useState(null)
+  const [showStopped, setShowStopped] = useState(false)
   const undoTimer = useRef(null)
 
   const ymOf = (m) => `${year}-${pad2(m)}`
@@ -56,16 +59,26 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   }, [memos])
   const cycleOf = (rid, ym) => cycles.get(rid + '|' + ym)
 
+  // 중단한 항목은 목록에서 내려 접어둔다 — 지운 게 아니라 "끝난 것"이라 지난 기록은 그대로 남는다.
+  // 격자 맨 아래 "중단 N건"을 펼치면 그때까지의 체크가 다 보인다. (2026-08-11)
+  const live = routines.filter((r) => !r.endYm)
+  const stoppedList = routines.filter((r) => r.endYm)
+
   // 그룹 순서는 정의 순서를 따른다 (엑셀의 구분 열 순서가 그대로 들어온다)
   const groups = []
-  for (const r of routines) {
+  for (const r of live) {
     const g = r.group || '기타'
     if (!groups.includes(g)) groups.push(g)
   }
+  // 중단한 것들은 맨 아래 한 묶음으로 모아 접어둔다 (묶음 하나를 더 두는 것과 같은 취급)
+  if (stoppedList.length) groups.push(STOPPED)
 
+  // 왼쪽 위 배지는 "고른 달" 기준 — 월 머리를 누르면 그 달의 남은 건수로 바뀐다
+  const selYm = ymOf(selMonth)
   const remain = routines.filter(
-    (r) => r.title.trim() && routineHasMonth(r, curYm) && (cycleOf(r.id, curYm) || {}).status !== 'done'
+    (r) => r.title.trim() && routineHasMonth(r, selYm) && (cycleOf(r.id, selYm) || {}).status !== 'done'
   ).length
+  const selCount = routines.filter((r) => r.title.trim() && routineHasMonth(r, selYm)).length
 
   function startEdit(r) {
     setEditId(r.id)
@@ -141,9 +154,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
         <button onClick={() => setYear((y) => y - 1)}>‹</button>
         <span className="rt-year">{year}년</span>
         <button onClick={() => setYear((y) => y + 1)}>›</button>
-        {remain > 0 && (
-          <span className="rt-remain">
-            {Number(curYm.slice(5, 7))}월 {remain}건 남음
+        {selCount > 0 && (
+          <span className={'rt-remain' + (remain === 0 ? ' done' : '')}>
+            {selMonth}월 {remain === 0 ? '다 끝남' : `${remain}건 남음`}
           </span>
         )}
         <button
@@ -231,17 +244,39 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
           <tbody>
             {groups.map((g) => (
               <Fragment key={g}>
+                {/* 묶음 머리 — 칸 열을 colSpan으로 덮지 않는다. 덮으면 그 줄에서 열이 끊겨
+                    아래위 체크가 따로 노는 것처럼 보인다(2026-08-11 지적). 열은 그대로 두고
+                    이름 칸에만 글자를 얹어, 고른 달의 세로 띠가 위아래로 쭉 이어지게 한다. */}
                 <tr className="rt-group">
-                  <td colSpan={14}>
-                    {g}
-                    <button className="rt-add" onClick={() => addTo(g)}>
-                      + 항목
-                    </button>
+                  <td className="rt-gname">
+                    {g === STOPPED ? (
+                      <button
+                        className="rt-fold"
+                        title="끝난 루틴 — 지난 기록은 그대로 남아 있습니다"
+                        onClick={() => setShowStopped((v) => !v)}
+                      >
+                        {showStopped ? '▾' : '▸'} 중단 {stoppedList.length}건
+                      </button>
+                    ) : (
+                      <>
+                        {g}
+                        <button className="rt-add" onClick={() => addTo(g)}>
+                          +
+                        </button>
+                      </>
+                    )}
                   </td>
+                  {MONTHS.map((m) => (
+                    <td key={m} className={'rt-gcell' + (m === selMonth ? ' sel' : '')} />
+                  ))}
+                  <td className="rt-gcell" />
                 </tr>
-                {routines
-                  .filter((r) => (r.group || '기타') === g)
-                  .map((r) => {
+                {(g === STOPPED
+                  ? showStopped
+                    ? stoppedList
+                    : []
+                  : live.filter((r) => (r.group || '기타') === g)
+                ).map((r) => {
                     const stopped = !!r.endYm
                     const detail = renderDetail ? renderDetail((cycleOf(r.id, ymOf(selMonth)) || {}).id) : null
                     return (

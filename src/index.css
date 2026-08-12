@@ -3370,6 +3370,7 @@ main {
   text-align: center;
 }
 
+/* 고른 달의 남은 건수 — 월 머리를 누르면 그 달 기준으로 바뀐다 (2026-08-11) */
 .rt-remain {
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -3377,6 +3378,11 @@ main {
   background: var(--amber-bg);
   padding: 2px 9px;
   border-radius: var(--radius, 6px);
+}
+
+.rt-remain.done {
+  color: var(--teal);
+  background: var(--teal-bg);
 }
 
 .rt-hint {
@@ -3498,12 +3504,36 @@ main {
   color: var(--blue);
 }
 
-.rt-group td {
-  padding: 9px 10px 2px;
+/* 묶음 머리 — 이름 칸에만 글자를 얹고 칸 열은 그대로 흘려보낸다.
+   colSpan으로 덮으면 그 줄에서 세로 열이 끊겨 체크가 따로 노는 것처럼 보인다 (2026-08-11) */
+.rt-gname {
+  padding: 8px 10px 2px;
   font-size: var(--fs-label);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.rt-gcell {
+  padding: 0;
+}
+
+/* 중단 묶음 펼치기 — 끝난 루틴은 여기 접혀 있고, 펼치면 그때까지의 체크가 다 보인다 */
+.rt-fold {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+.rt-fold:hover {
+  background: none;
+  color: var(--text);
 }
 
 .rt-add {
