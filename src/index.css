@@ -3714,6 +3714,19 @@ main {
   border-color: var(--red-strong);
 }
 
+/* 두 번째 누름 — 이제 진짜 바뀐다는 게 보이게 */
+.rt-danger-btn.on {
+  background: var(--red-strong);
+  border-color: var(--red-strong);
+  color: #fff;
+  font-weight: 600;
+}
+
+.rt-danger-btn.on:hover {
+  background: var(--red);
+  color: #fff;
+}
+
 /* 항목 줄의 ⋯ 도 같은 이유로 늘 옅게 (2026-08-13) */
 .rt-dots {
   border: none;

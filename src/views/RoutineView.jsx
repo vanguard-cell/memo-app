@@ -363,21 +363,40 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                               일
                             </span>
                           </label>
-                          <button
-                            className="rt-danger-btn"
-                            title="이 묶음의 항목 전부가 이 날짜가 됩니다 — 항목마다 날짜가 다르면 누르지 마세요"
-                            onClick={() => {
-                              if (!window.confirm(`「${g}」 항목 전부의 예정일을 매월 ${gDay.day}일로 바꿉니다.\n항목마다 날짜가 다르면 그 날짜들이 사라집니다. 계속할까요?`)) return
-                              const n = setGroupDueDay(g, gDay.day)
-                              setGDay(null)
-                              setUndo({ label: `「${g}」 ${n}건을 매월 ${gDay.day}일로 옮겼습니다`, fn: null })
-                              clearTimeout(undoTimer.current)
-                              undoTimer.current = setTimeout(() => setUndo(null), 5000)
-                            }}
-                          >
-                            전부 이 날로
-                          </button>
-                          <span className="rt-hint">항목마다 날짜가 다르면 쓰지 마세요 (개별은 ⋯ → 수정)</span>
+                          {/* 확인은 팝업 대신 그 자리에서 두 번 누르기 —
+                              앱 원칙이 팝업 금지이고, 회사 PC에서 확인창이 막히면
+                              아무 일도 안 일어난 것처럼 보인다 (2026-08-13) */}
+                          {gDay.sure ? (
+                            <>
+                              <button
+                                className="rt-danger-btn on"
+                                onClick={() => {
+                                  const n = setGroupDueDay(g, gDay.day)
+                                  setGDay(null)
+                                  setUndo({ label: `「${g}」 ${n}건을 매월 ${gDay.day}일로 옮겼습니다`, fn: null })
+                                  clearTimeout(undoTimer.current)
+                                  undoTimer.current = setTimeout(() => setUndo(null), 5000)
+                                }}
+                              >
+                                정말 전부 바꿉니다
+                              </button>
+                              <button onClick={() => setGDay({ ...gDay, sure: false })}>취소</button>
+                              <span className="rt-hint t-red">
+                                이 묶음 항목의 예정일이 전부 {gDay.day}일이 됩니다 (지금 날짜는 사라집니다).
+                                이미 완료한 회차는 그대로 둡니다
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="rt-danger-btn"
+                                onClick={() => setGDay({ ...gDay, sure: true })}
+                              >
+                                전부 이 날로
+                              </button>
+                              <span className="rt-hint">항목마다 날짜가 다르면 쓰지 마세요 (개별은 ⋯ → 수정)</span>
+                            </>
+                          )}
                         </div>
                         <div className="rt-edit-btns">
                           <button onClick={() => setGDay(null)}>닫기</button>
