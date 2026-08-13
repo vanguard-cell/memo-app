@@ -316,56 +316,71 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                   <tr className="rt-edit-row">
                     <td colSpan={14}>
                       <div className="rt-edit rt-gday">
-                        <label>
-                          「{g}」 예정일
-                          <span className="rt-day">
-                            매월
-                            <input
-                              type="number"
-                              min="1"
-                              max="28"
-                              autoFocus
-                              value={gDay.day}
-                              onChange={(e) => setGDay({ ...gDay, day: e.target.value })}
-                            />
-                            일
-                          </span>
-                        </label>
-                        {/* 업체 방문처럼 매번 잡는 일은 자동 날짜가 약속처럼 보이면 안 된다 —
-                            묶음 단위로 한 번에 바꾼다 (2026-08-13) */}
-                        <label>
-                          날짜 방식
-                          <select
-                            className="edit-select"
-                            value={gDay.flexible ? 'flex' : 'fix'}
-                            onChange={(e) => setGDay({ ...gDay, flexible: e.target.value === 'flex' })}
-                          >
-                            <option value="fix">고정 — 매월 같은 날</option>
-                            <option value="flex">매번 잡음 — 업체와 조율</option>
-                          </select>
-                        </label>
-                        <div className="rt-edit-btns">
+                        {/* 두 가지를 각각의 버튼으로 나눠 둔다 — 예정일은 항목마다 다른데,
+                            날짜 방식만 바꾸려다 예정일까지 묶음 전체에 덮이면 안 된다.
+                            (2026-08-13 사용자: "개별로 다 다른 건인데") */}
+                        <div className="rt-grow">
+                          <label>
+                            「{g}」 날짜 방식
+                            <select
+                              className="edit-select"
+                              value={gDay.flexible ? 'flex' : 'fix'}
+                              onChange={(e) => setGDay({ ...gDay, flexible: e.target.value === 'flex' })}
+                            >
+                              <option value="fix">고정 — 매월 같은 날</option>
+                              <option value="flex">매번 잡음 — 업체와 조율</option>
+                            </select>
+                          </label>
                           <button
                             className="btn-done"
                             onClick={() => {
-                              const n = setGroupDueDay(g, gDay.day)
-                              setGroupFlexible(g, gDay.flexible)
+                              const n = setGroupFlexible(g, gDay.flexible)
                               setGDay(null)
                               setUndo({
-                                label: `「${g}」 ${n}건 — 매월 ${gDay.day}일` +
-                                  (gDay.flexible ? ' · 매번 잡는 일로 (달력에 흐리게)' : ' · 날짜 고정'),
+                                label: `「${g}」 ${n}건을 ${gDay.flexible ? '매번 잡는 일로 (달력에 흐리게)' : '날짜 고정으로'}`,
                                 fn: null,
                               })
                               clearTimeout(undoTimer.current)
                               undoTimer.current = setTimeout(() => setUndo(null), 5000)
                             }}
                           >
-                            이 묶음 전체에 적용
+                            방식만 적용
                           </button>
-                          <button onClick={() => setGDay(null)}>취소</button>
-                          <span className="rt-hint">
-                            완료된 회차는 그대로 두고, 남은 회차만 따라옵니다
-                          </span>
+                          <span className="rt-hint">예정일은 안 건드립니다</span>
+                        </div>
+                        <div className="rt-grow">
+                          <label>
+                            예정일 통일
+                            <span className="rt-day">
+                              매월
+                              <input
+                                type="number"
+                                min="1"
+                                max="28"
+                                value={gDay.day}
+                                onChange={(e) => setGDay({ ...gDay, day: e.target.value })}
+                              />
+                              일
+                            </span>
+                          </label>
+                          <button
+                            className="rt-danger-btn"
+                            title="이 묶음의 항목 전부가 이 날짜가 됩니다 — 항목마다 날짜가 다르면 누르지 마세요"
+                            onClick={() => {
+                              if (!window.confirm(`「${g}」 항목 전부의 예정일을 매월 ${gDay.day}일로 바꿉니다.\n항목마다 날짜가 다르면 그 날짜들이 사라집니다. 계속할까요?`)) return
+                              const n = setGroupDueDay(g, gDay.day)
+                              setGDay(null)
+                              setUndo({ label: `「${g}」 ${n}건을 매월 ${gDay.day}일로 옮겼습니다`, fn: null })
+                              clearTimeout(undoTimer.current)
+                              undoTimer.current = setTimeout(() => setUndo(null), 5000)
+                            }}
+                          >
+                            전부 이 날로
+                          </button>
+                          <span className="rt-hint">항목마다 날짜가 다르면 쓰지 마세요 (개별은 ⋯ → 수정)</span>
+                        </div>
+                        <div className="rt-edit-btns">
+                          <button onClick={() => setGDay(null)}>닫기</button>
                         </div>
                       </div>
                     </td>

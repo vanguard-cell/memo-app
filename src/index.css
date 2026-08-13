@@ -3578,6 +3578,8 @@ main {
   color: var(--text);
 }
 
+/* 묶음 줄의 [+]·[날짜] — 예전엔 마우스를 올려야 나타났는데, 있는 줄을 모르니 못 찾는다는
+   지적을 받아 늘 옅게 보이게 했다 (마우스를 올리면 또렷해진다). 2026-08-13 */
 .rt-add {
   margin-left: 8px;
   border: none;
@@ -3586,7 +3588,7 @@ main {
   font-size: var(--fs-sm);
   font-weight: 400;
   color: var(--blue);
-  opacity: 0;
+  opacity: 0.5;
 }
 
 .rt-group:hover .rt-add,
@@ -3687,13 +3689,39 @@ main {
   text-align: center;
 }
 
+/* 묶음 패널의 두 줄 — 날짜 방식 / 예정일 통일. 각 줄이 자기 버튼을 갖는다 (2026-08-13) */
+.rt-gday {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.rt-grow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* "전부 이 날로"는 되돌리기 어려운 쪽 — 파란 확인 버튼과 같은 얼굴을 주지 않는다 */
+.rt-danger-btn {
+  color: var(--red);
+  border-color: var(--border);
+}
+
+.rt-danger-btn:hover {
+  background: var(--red-bg);
+  border-color: var(--red-strong);
+}
+
+/* 항목 줄의 ⋯ 도 같은 이유로 늘 옅게 (2026-08-13) */
 .rt-dots {
   border: none;
   background: none;
   color: var(--faint);
   padding: 2px 4px;
   line-height: 1;
-  opacity: 0;
+  opacity: 0.45;
 }
 
 .rt-row:hover .rt-dots,
