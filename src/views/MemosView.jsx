@@ -735,7 +735,7 @@ const VIEWS = [
   ['timeline', '타임라인'],
 ]
 
-export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
+export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDetail }) {
   const [q, setQ] = useState('')
   const searchRef = useRef(null)
   // 폰은 들어올 때 항상 보드부터 — 마지막 보기 기억은 PC만 (사용자 요청 2026-07-19)
@@ -817,6 +817,7 @@ export default function MemosView({ memos, dayOrder, onOpen, onCompose, renderDe
       {view === 'calendar' && (
         <CalendarView
           memos={searchList}
+          routines={routines}
           dayOrder={dayOrder}
           onOpen={onOpen}
           renderDetail={renderDetail}

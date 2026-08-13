@@ -4516,6 +4516,22 @@ main {
   border-color: var(--border-hover);
 }
 
+/* 앞으로 올 달의 루틴 "예정 자리" — 아직 회차가 없는 것. 누르면 그 자리에서 만들어진다.
+   실제 메모와 헷갈리지 않게 살짝 옅고, 마우스를 올리면 또렷해진다 (2026-08-13) */
+.cal-ev.cal-ghost,
+.row.row-ghost {
+  opacity: 0.72;
+}
+
+.cal-ev.cal-ghost:hover,
+.row.row-ghost:hover {
+  opacity: 1;
+}
+
+.row.row-ghost .row-date {
+  color: var(--faint);
+}
+
 /* 날짜 목록 제목 옆 "오늘" 표시 */
 .ag-now {
   background: var(--blue-strong);

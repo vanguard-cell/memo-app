@@ -428,7 +428,7 @@ export default function App() {
         ) : (
           <div className="layout">
             <main>
-              <MemosView memos={memos} dayOrder={dayOrder} onOpen={openMemo} onCompose={openCompose} renderDetail={renderDetail} />
+              <MemosView memos={memos} routines={routines} dayOrder={dayOrder} onOpen={openMemo} onCompose={openCompose} renderDetail={renderDetail} />
             </main>
             {sidePanel && open && (
               <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />

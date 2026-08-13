@@ -1,7 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
-import { addMemo, updateMemo, setDayOrder, getMemos, purgeMemos } from '../store'
+import {
+  addMemo, updateMemo, setDayOrder, getMemos, purgeMemos,
+  routineDue, routineHasMonth, ensureCycle, thisYm,
+} from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
 import useIsNarrow from '../useIsNarrow'
@@ -49,7 +52,7 @@ const dayLine = (m, date) => {
 }
 
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
-export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, filtered }) {
+export default function CalendarView({ memos, routines = [], dayOrder, onOpen, renderDetail, filtered }) {
   const narrow = useIsNarrow()
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
@@ -319,6 +322,33 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
     }
     return map
   }, [memos])
+
+  // 앞으로 올 달의 루틴 — 회차 메모를 미리 만들지 않고 달력에만 "예정 자리"로 그린다.
+  // 회차를 미리 만들면 안 한 달이 오늘 화면·보드에 쌓여 화면을 덮는다(그래서 이번 달만 만든다).
+  // 그래도 "루틴은 매월 보여야 한다"는 건 맞으므로, 달력이 규칙을 읽어 자리만 보여주고
+  // 누르는 순간 진짜 회차가 생긴다. 검색 중일 땐 안 그린다 — 검색은 있는 것만 보는 자리다.
+  // (2026-08-13)
+  const ghosts = useMemo(() => {
+    const ym = `${y}-${pad(mo + 1)}`
+    if (filtered || ym <= thisYm()) return {}
+    const made = new Set(memos.filter((m) => m.routineId && m.ym === ym).map((m) => m.routineId))
+    const map = {}
+    for (const r of routines) {
+      if (!(r.title || '').trim() || made.has(r.id) || !routineHasMonth(r, ym)) continue
+      const date = routineDue(ym, r.dueDay)
+      ;(map[date] = map[date] || []).push(r)
+    }
+    return map
+  }, [routines, memos, y, mo, filtered])
+
+  // 예정 자리를 누르면 그때 회차가 만들어지고 상세가 열린다
+  function openGhost(r) {
+    const m = ensureCycle(r.id, `${y}-${pad(mo + 1)}`)
+    if (m) {
+      setSel(routineDue(`${y}-${pad(mo + 1)}`, r.dueDay))
+      openDetail(m.id)
+    }
+  }
 
   // 기간 띠 — 마감형이 아닌 기간 메모(31일 이하)는 칸마다 조각을 찍는 대신 칸 경계를
   // 넘어 쭉 이어진 밴드로 그린다 (구글 캘린더식, 2026-07-31 사용자 요청: 서류접수 기간 등).
@@ -624,6 +654,20 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 </span>
                 )
               })}
+              {/* 앞으로 올 달의 루틴 — 아직 회차가 없는 "예정 자리". 누르면 그때 만들어진다 */}
+              {(ghosts[date] || []).map((r) => (
+                <span
+                  key={'g' + r.id}
+                  className={'cal-ev ev-due cal-ghost' + (r.flexible ? ' ev-tent' : '')}
+                  title={`${r.title} — 아직 만들지 않은 ${Number(date.slice(5, 7))}월분 (누르면 만들어집니다)`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    openGhost(r)
+                  }}
+                >
+                  {r.title}
+                </span>
+              ))}
               </div>
               {/* 안 보이는 칩이 있다는 표시 — 마우스를 올리면(=굴릴 수 있으면) 비켜준다 */}
               {evs.length > chipLimit && <span className="cal-more">+{evs.length - chipLimit}</span>}
@@ -720,6 +764,18 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
             )
           })}
           {spanningRows(sel)}
+          {(ghosts[sel] || []).map((r) => (
+            <div
+              key={'g' + r.id}
+              className={'row row-ghost' + (r.flexible ? ' row-tent' : '')}
+              title="아직 만들지 않은 회차 — 누르면 만들어집니다"
+              onClick={() => openGhost(r)}
+            >
+              <span className="badge ev-due">예정</span>
+              <span className="row-title">{r.title}</span>
+              <span className="row-date">루틴</span>
+            </div>
+          ))}
         </div>
           )}
           {localOpen && (
