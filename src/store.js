@@ -627,12 +627,33 @@ export function addRoutine({ title, group, desc, dueDay, months, startYm, flexib
   return r
 }
 
+// 예정일을 바꾸면 이미 만들어진 그 루틴의 회차 날짜도 같이 옮긴다 (완료된 회차는 그대로 —
+// 지난 일은 지난 일이다). 묶음 일괄(setGroupDueDay)은 원래 그렇게 동작했는데 항목 하나를
+// 고칠 때는 정의만 바뀌어서, 예정일을 14일로 고쳐도 달력의 회차는 5일에 남아 있었다.
+// (2026-08-13 사용자: "각 항목마다 날짜 지정해뒀는데 달력에 표시가 안되는데?")
 export function updateRoutine(id, patch) {
   const now = new Date().toISOString()
-  commit({
-    ...state,
-    routines: state.routines.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: now } : r)),
-  })
+  const before = state.routines.find((r) => r.id === id)
+  const dayMoved = before && 'dueDay' in patch && Number(patch.dueDay) !== Number(before.dueDay)
+  const routines = state.routines.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: now } : r))
+  const moved = []
+  const memos = dayMoved
+    ? state.memos.map((m) => {
+        if (m.routineId !== id || !m.ym || m.status === 'done') return m
+        const next = { ...m, due: routineDue(m.ym, patch.dueDay), updatedAt: now }
+        moved.push(next)
+        return next
+      })
+    : state.memos
+  commit({ ...state, routines, memos })
+  if (moved.length && hasSupabase && session) {
+    pushMemoRows(moved)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
   remoteUpsert(id)
 }
 
