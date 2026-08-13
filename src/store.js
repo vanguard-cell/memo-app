@@ -851,6 +851,106 @@ export function importRoutineRows({ rows, year }) {
   return { added, updated, cycles: madeCycles.length }
 }
 
+// 문서 접수대장 → 그 달 회차의 기록 (2026-08-12).
+// 체크리스트 가져오기와 다른 점: 여기는 "언제 무엇을 받았다"는 지난 사실이라
+//  · 회차를 완료로 넣되 완료일을 실제 접수일로 적는다 (체크리스트는 날짜가 없어 비워둔다)
+//  · 차수마다 진행기록 한 줄로 쌓는다 (체크만으로는 1·2·3차가 안 남는다)
+//  · 이미 있는 루틴 정의는 건드리지 않는다 — 접수대장은 기록이지 규칙이 아니다
+// 같은 표를 두 번 붙여넣어도 같은 줄(날짜+글)은 다시 안 쌓인다.
+export function importRoutineCycles({ items }) {
+  const now = new Date().toISOString()
+  const byTitle = new Map(state.routines.filter((r) => !r.deleted).map((r) => [r.title.trim(), r]))
+  const routines = [...state.routines]
+  const madeRoutines = []
+  const madeCycles = []
+  const changedCycles = new Map() // id → 바뀐 회차 (한 회차에 여러 줄이 붙을 수 있다)
+  let addedRoutines = 0
+  let addedLines = 0
+
+  // 시작 달은 루틴마다 "자기 기록의 첫 달"로 잡는다 — 전체에서 가장 이른 달을 쓰면
+  // 7월부터 있는 항목이 5·6월에 안 한 것처럼 빈 칸으로 남는다 (격자는 시작 전이면 '해당 없음')
+  const earliestOf = new Map()
+  for (const it of items) {
+    const k = it.title.trim()
+    if (!earliestOf.has(k) || it.ym < earliestOf.get(k)) earliestOf.set(k, it.ym)
+  }
+
+  for (const it of items) {
+    const key = it.title.trim()
+    const earliest = earliestOf.get(key)
+    let r = byTitle.get(key)
+    if (!r) {
+      r = {
+        id: crypto.randomUUID(),
+        type: 'routine',
+        title: key,
+        group: it.group || '기타',
+        desc: it.desc || '',
+        dueDay: 5,
+        months: null,
+        startYm: earliest || thisYm(),
+        endYm: null,
+        endNote: '',
+        order: routines.length,
+        createdAt: now,
+        updatedAt: now,
+      }
+      routines.push(r)
+      madeRoutines.push(r)
+      byTitle.set(key, r)
+      addedRoutines++
+    } else if (r.startYm && earliest && earliest < r.startYm) {
+      // 지난 달 기록을 넣는데 시작이 그 뒤면 격자에 안 보인다 — 시작만 당긴다
+      const next = { ...r, startYm: earliest, updatedAt: now }
+      routines[routines.indexOf(r)] = next
+      madeRoutines.push(next)
+      byTitle.set(key, next)
+      r = next
+    }
+
+    // 읽는 쪽에서 (문서명, 연월)로 이미 묶어 오므로 한 회차는 한 번만 지나간다
+    const exist = routineCycle(r.id, it.ym)
+    if (exist) {
+      const has = new Set((exist.history || []).map((h) => `${h.date}|${h.text}`))
+      const add = it.lines.filter((l) => !has.has(`${l.date}|${l.text}`))
+      if (!add.length) continue
+      addedLines += add.length
+      const history = [...(exist.history || []), ...add.map((l) => ({ ...l, type: 'log' }))]
+        .sort((a, b) => a.date.localeCompare(b.date))
+      changedCycles.set(exist.id, { ...exist, history, updatedAt: now })
+    } else {
+      addedLines += it.lines.length
+      const last = it.lines[it.lines.length - 1].date
+      madeCycles.push({
+        ...newCycle(r, it.ym),
+        // 접수한 날이 곧 그 달 일이 이뤄진 날 — 예정일 대신 실제 날짜를 적는다
+        due: it.lines[0].date,
+        status: 'done',
+        completedAt: last + 'T00:00:00.000Z',
+        history: it.lines.map((l) => ({ ...l, type: 'log' })),
+      })
+    }
+  }
+
+  const edited = [...changedCycles.values()]
+  const editedIds = new Set(edited.map((c) => c.id))
+  commit({
+    ...state,
+    routines,
+    memos: [...madeCycles, ...state.memos.map((m) => (editedIds.has(m.id) ? changedCycles.get(m.id) : m))],
+  })
+  const push = [...madeRoutines, ...madeCycles, ...edited]
+  if (hasSupabase && session && push.length) {
+    pushMemoRows(push)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return { routines: addedRoutines, cycles: madeCycles.length, updated: edited.length, lines: addedLines }
+}
+
 // ---------- 파일 첨부 (2026-07-31 부활) ----------
 // 실물은 Storage 'files' 버킷에, 여기서는 메모에 실리는 메타데이터만 다룬다 (동기화 그대로 탐)
 

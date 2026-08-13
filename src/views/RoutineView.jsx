@@ -8,6 +8,7 @@ import {
   toggleCycle,
   routineHasMonth,
   importRoutineRows,
+  importRoutineCycles,
   setGroupDueDay,
   thisYm,
 } from '../store'
@@ -173,8 +174,10 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
 
       {paste && (
         <div className="rt-paste">
+          {/* 붙여넣은 표가 월간체크리스트인지 문서 접수대장인지는 머리줄을 보고 앱이 가른다 (2026-08-12) */}
           <div className="panel-sec-label">
-            엑셀에서 머리줄(구분·항목명·담당…)까지 함께 긁어 복사한 뒤 여기에 붙여넣으세요 (Ctrl+V)
+            엑셀에서 머리줄까지 함께 긁어 복사한 뒤 여기에 붙여넣으세요 (Ctrl+V) — 월간체크리스트(항목명…)도,
+            문서 접수대장(접수일·문서명…)도 읽습니다
           </div>
           <textarea
             className="rt-paste-area"
@@ -201,6 +204,20 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
               >
                 읽기
               </button>
+            ) : paste.parsed.kind === 'receipt' ? (
+              <button
+                className="btn-done"
+                onClick={() => {
+                  const n = importRoutineCycles(paste.parsed)
+                  setPaste({
+                    text: '',
+                    result: `넣었습니다 — 새 루틴 ${n.routines}건, 회차 ${n.cycles}건, 기록 ${n.lines}줄` +
+                      (n.updated ? ` (기존 회차 ${n.updated}건에 이어 붙임)` : ''),
+                  })
+                }}
+              >
+                회차 {paste.parsed.items.length}건 넣기
+              </button>
             ) : (
               <button
                 className="btn-done"
@@ -218,7 +235,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
             <button onClick={() => setPaste(null)}>닫기</button>
             {paste.parsed && (
               <span className="rt-hint">
-                {year}년 기준 · 이름이 같은 루틴은 묶음·설명만 갱신됩니다
+                {paste.parsed.kind === 'receipt'
+                  ? `문서 접수대장 — 기록 ${paste.parsed.lines}줄을 그 달 회차로 (완료로 표시, 차수는 회차 안에 줄로)`
+                  : `${year}년 기준 · 이름이 같은 루틴은 묶음·설명만 갱신됩니다`}
               </span>
             )}
           </div>
