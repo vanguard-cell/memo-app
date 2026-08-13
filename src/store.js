@@ -315,10 +315,18 @@ export function updateMemo(id, patch) {
   const now = new Date().toISOString()
   commit({
     ...state,
-    memos: state.memos.map((m) => (m.id === id ? { ...m, ...patch, updatedAt: now } : m)),
+    memos: state.memos.map((m) => (m.id === id ? { ...m, ...patch, ...settle(m, patch), updatedAt: now } : m)),
   })
   remoteUpsert(id)
 }
+
+// 가예정 풀기 — 루틴이 자동으로 찍어둔 날짜(tentative)는 "아직 안 잡은 자리"일 뿐이라,
+// 내가 날짜를 건드리는 순간 "내가 정한 날"이 된다 (달력에서 끌기·날짜 지정·하루 미루기·정보 수정).
+// 묶음 예정일 일괄 변경은 updateMemo를 안 거치므로 여기 안 걸린다 — 그건 내가 잡은 날이 아니니까.
+const settle = (m, patch) =>
+  m.tentative && !('tentative' in patch) && ('due' in patch || 'period' in patch)
+    ? { tentative: false }
+    : null
 
 export function addHistory(id, text, date) {
   const now = new Date().toISOString()
@@ -329,6 +337,8 @@ export function addHistory(id, text, date) {
         ? {
             ...m,
             history: [...m.history, { date: date || todayStr(), text, ts: Date.now(), done: false }],
+            // 기록을 한 줄이라도 남겼다 = 업체와 얘기가 됐다 — 가예정을 푼다 (2026-08-13)
+            tentative: false,
             updatedAt: now,
           }
         : m
@@ -418,7 +428,7 @@ export function completeMemo(id) {
       if (m.repeat && m.due) {
         return { ...m, due: nextRepeatDate(m.due, m.repeat), stage: 'todo', snoozeUntil: null, updatedAt: now }
       }
-      return { ...m, status: 'done', completedAt: now, updatedAt: now }
+      return { ...m, status: 'done', completedAt: now, tentative: false, updatedAt: now }
     }),
   })
   remoteUpsert(id)
@@ -591,7 +601,10 @@ export function routineHasMonth(r, ym) {
 export const routineCycle = (routineId, ym) =>
   state.visible.find((m) => m.routineId === routineId && m.ym === ym)
 
-export function addRoutine({ title, group, desc, dueDay, months, startYm }) {
+// 날짜가 고정인 일(공과금·월세)과 매번 잡아야 하는 일(업체 방문·정기점검)은 다르다.
+// flexible=true면 그 루틴의 회차는 "가예정"으로 태어난다 — 달력에서 흐리게 보이고,
+// 내가 날짜를 잡거나 기록을 남기면 확정된다. 없는 값(옛 루틴)은 고정으로 본다.
+export function addRoutine({ title, group, desc, dueDay, months, startYm, flexible }) {
   const now = new Date().toISOString()
   const r = {
     id: crypto.randomUUID(),
@@ -600,6 +613,7 @@ export function addRoutine({ title, group, desc, dueDay, months, startYm }) {
     group: group || '기타',
     desc: desc || '',
     dueDay: dueDay || 5,
+    flexible: !!flexible,
     months: months || null,
     startYm: startYm || thisYm(),
     endYm: null,
@@ -653,6 +667,48 @@ export function setGroupDueDay(group, day) {
   return ids.size
 }
 
+// 자동으로 찍힌 날짜가 마침 맞을 때 — 날짜를 안 옮기고 "이 날 맞다"만 표시한다
+export const confirmDate = (id) => updateMemo(id, { tentative: false })
+
+// 묶음 통째로 "날짜 고정 ↔ 매번 잡음" — 34건을 하나씩 켜는 건 일이라 묶음 단위로 준다.
+// 아직 안 끝난 회차의 표시도 같이 맞춘다(이미 내가 잡은 날·끝난 회차는 그대로 둔다).
+export function setGroupFlexible(group, flexible) {
+  const now = new Date().toISOString()
+  const ids = new Set(
+    state.routines.filter((r) => !r.deleted && (r.group || '기타') === group).map((r) => r.id)
+  )
+  if (!ids.size) return 0
+  const routines = state.routines.map((r) =>
+    ids.has(r.id) ? { ...r, flexible: !!flexible, updatedAt: now } : r
+  )
+  // 켤 때: 아직 손 안 댄 회차를 가예정으로. 끌 때: 가예정 표시만 지운다.
+  const touch = (m) =>
+    m.routineId &&
+    ids.has(m.routineId) &&
+    m.status !== 'done' &&
+    (flexible ? !m.tentative && !(m.history || []).length : m.tentative)
+  const moved = new Set()
+  const memos = state.memos.map((m) => {
+    if (!touch(m)) return m
+    moved.add(m.id)
+    return { ...m, tentative: !!flexible, updatedAt: now }
+  })
+  commit({ ...state, routines, memos })
+  const changed = [
+    ...routines.filter((r) => ids.has(r.id)),
+    ...memos.filter((m) => moved.has(m.id)),
+  ]
+  if (hasSupabase && session && changed.length) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return ids.size
+}
+
 // 중단 — 지우는 게 아니라 "이 달부터 안 함". 지난 회차는 이력으로 그대로 남는다
 // (엑셀에서 행을 지우면 처리 이력까지 사라지던 것과 다르다)
 export const stopRoutine = (id, endYm, endNote) =>
@@ -678,6 +734,8 @@ function newCycle(r, ym) {
     desc: r.desc || '',
     routineId: r.id,
     ym,
+    // 유동 루틴의 날짜는 앱이 자리만 잡아둔 것 — 확정 전까지 달력에서 흐리게 보인다
+    tentative: !!r.flexible,
     createdAt: now,
     updatedAt: now,
     completedAt: null,

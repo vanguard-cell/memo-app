@@ -4449,6 +4449,45 @@ main {
   white-space: nowrap;
 }
 
+/* ---------- 가예정 — 루틴이 자동으로 찍어둔 날 (2026-08-13) ----------
+   달력에 뜬 게 "내가 업체와 통화해서 잡은 날"인지 "루틴이 자리만 잡아둔 날"인지
+   구분이 안 된다는 문제. 새 배지·버튼을 늘리지 않고 색과 테두리로만 가른다 —
+   흐리고 점선이면 아직 안 잡은 것, 진하면 내가 정한 것.
+   날짜를 옮기거나 기록을 한 줄 쓰면 저절로 확정되어 진해진다. */
+.cal-ev.ev-tent {
+  opacity: 0.62;
+}
+
+/* PC 칩은 속을 비우고 점선으로 — "자리만 잡아둔 것"이 모양으로 보인다.
+   폰은 칩이 6px 색 막대(글자색이 투명)라 점선을 그리면 테두리까지 투명해져 칩이 사라진다.
+   그래서 폰은 흐리기로만 가른다 — 색 막대의 종류(예정·마감) 색은 그대로 살린다. */
+@media (min-width: 900px) {
+  .cal-ev.ev-tent {
+    background: transparent;
+    border: 1px dashed currentColor;
+    padding: 0 3px;
+  }
+}
+
+@media (max-width: 899px) {
+  .cal-ev.ev-tent {
+    opacity: 0.4;
+  }
+}
+
+.row.row-tent {
+  border-style: dashed;
+}
+
+.row.row-tent .row-title {
+  color: var(--muted);
+}
+
+.kb-card.kb-tent {
+  border-style: dashed;
+  border-color: var(--border-hover);
+}
+
 /* 날짜 목록 제목 옆 "오늘" 표시 */
 .ag-now {
   background: var(--blue-strong);

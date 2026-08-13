@@ -600,7 +600,9 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                     (flyingId === e.m.id ? ' ev-incoming' : '') +
                     // 진행중인 메모는 보드 진행중과 같은 초록으로 — 굴러가는 중임이 달력에서도 보인다.
                     // 단 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
-                    (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '')
+                    (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '') +
+                    // 루틴이 자동으로 찍어둔 날 — 내가 잡은 약속과 구분되게 점선·흐리게 (2026-08-13)
+                    (e.m.tentative ? ' ev-tent' : '')
                   }
                   draggable
                   onDragStart={(ev) => {
@@ -672,6 +674,7 @@ export default function CalendarView({ memos, dayOrder, onOpen, renderDetail, fi
                 (memoStatus(e.m) === 'done' ? ' done' : '') +
                 (memoStatus(e.m) === 'active' ? ' doing' : '') +
                 (localOpenId === e.m.id ? ' row-sel' : '') +
+                (e.m.tentative ? ' row-tent' : '') +
                 (rowDrop && rowDrop.id === e.m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : '')
               }
               draggable

@@ -10,6 +10,7 @@ import {
   importRoutineRows,
   importRoutineCycles,
   setGroupDueDay,
+  setGroupFlexible,
   thisYm,
 } from '../store'
 import { readRoutinePaste } from '../importXlsx'
@@ -83,6 +84,15 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   ).length
   const selCount = routines.filter((r) => r.title.trim() && routineHasMonth(r, selYm)).length
 
+  // 묶음의 지금 값 — 패널을 열 때 이 값으로 채워야 한쪽만 바꿔도 다른 쪽이 안 덮인다
+  function groupNow(g) {
+    const rs = live.filter((r) => (r.group || '기타') === g)
+    const tally = {}
+    for (const r of rs) tally[r.dueDay || 5] = (tally[r.dueDay || 5] || 0) + 1
+    const day = Number(Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0]) || 5
+    return { day, flexible: rs.length > 0 && rs.every((r) => r.flexible) }
+  }
+
   function startEdit(r) {
     setEditId(r.id)
     setForm({
@@ -90,6 +100,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       group: r.group || '',
       desc: r.desc || '',
       dueDay: r.dueDay || 5,
+      flexible: !!r.flexible,
       months: r.months || null,
       endNote: r.endNote || '',
     })
@@ -110,6 +121,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       group: form.group.trim() || '기타',
       desc: form.desc.trim(),
       dueDay: Math.min(28, Math.max(1, Number(form.dueDay) || 5)),
+      flexible: !!form.flexible,
       months: form.months,
       endNote: form.endNote.trim(),
     })
@@ -287,10 +299,10 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                         {/* 묶음 통째로 예정일 바꾸기 — 34건을 하나씩 고치지 않게 (2026-08-11) */}
                         <button
                           className="rt-add"
-                          title="이 묶음의 예정일을 한 번에 바꿉니다"
-                          onClick={() => setGDay(gDay && gDay.g === g ? null : { g, day: 5 })}
+                          title="이 묶음의 예정일·날짜 방식을 한 번에 바꿉니다"
+                          onClick={() => setGDay(gDay && gDay.g === g ? null : { g, ...groupNow(g) })}
                         >
-                          예정일
+                          날짜
                         </button>
                       </>
                     )}
@@ -319,13 +331,31 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                             일
                           </span>
                         </label>
+                        {/* 업체 방문처럼 매번 잡는 일은 자동 날짜가 약속처럼 보이면 안 된다 —
+                            묶음 단위로 한 번에 바꾼다 (2026-08-13) */}
+                        <label>
+                          날짜 방식
+                          <select
+                            className="edit-select"
+                            value={gDay.flexible ? 'flex' : 'fix'}
+                            onChange={(e) => setGDay({ ...gDay, flexible: e.target.value === 'flex' })}
+                          >
+                            <option value="fix">고정 — 매월 같은 날</option>
+                            <option value="flex">매번 잡음 — 업체와 조율</option>
+                          </select>
+                        </label>
                         <div className="rt-edit-btns">
                           <button
                             className="btn-done"
                             onClick={() => {
                               const n = setGroupDueDay(g, gDay.day)
+                              setGroupFlexible(g, gDay.flexible)
                               setGDay(null)
-                              setUndo({ label: `「${g}」 ${n}건을 매월 ${gDay.day}일로 옮겼습니다`, fn: null })
+                              setUndo({
+                                label: `「${g}」 ${n}건 — 매월 ${gDay.day}일` +
+                                  (gDay.flexible ? ' · 매번 잡는 일로 (달력에 흐리게)' : ' · 날짜 고정'),
+                                fn: null,
+                              })
                               clearTimeout(undoTimer.current)
                               undoTimer.current = setTimeout(() => setUndo(null), 5000)
                             }}
@@ -333,7 +363,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                             이 묶음 전체에 적용
                           </button>
                           <button onClick={() => setGDay(null)}>취소</button>
-                          <span className="rt-hint">완료된 회차는 그대로 두고, 남은 회차 날짜만 같이 옮깁니다</span>
+                          <span className="rt-hint">
+                            완료된 회차는 그대로 두고, 남은 회차만 따라옵니다
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -428,8 +460,21 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                     onChange={(e) => setForm({ ...form, desc: e.target.value })}
                                   />
                                 </label>
+                                {/* 날짜가 고정인 일(공과금)과 매번 잡아야 하는 일(업체 방문)을 가른다 —
+                                    매번 잡는 일의 회차는 달력에 '가예정'(점선·흐리게)으로 뜬다 (2026-08-13) */}
                                 <label>
-                                  예정일
+                                  날짜
+                                  <select
+                                    className="edit-select"
+                                    value={form.flexible ? 'flex' : 'fix'}
+                                    onChange={(e) => setForm({ ...form, flexible: e.target.value === 'flex' })}
+                                  >
+                                    <option value="fix">고정 — 매월 같은 날</option>
+                                    <option value="flex">매번 잡음 — 업체와 조율</option>
+                                  </select>
+                                </label>
+                                <label>
+                                  {form.flexible ? '자리 잡을 날' : '예정일'}
                                   <span className="rt-day">
                                     매월
                                     <input

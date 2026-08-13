@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo } from '../store'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
@@ -324,7 +324,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           )}
           {memo.due && !memo.period && (
             <div className="meta-block">
-              <div className="panel-sec-label">예정</div>
+              <div className="panel-sec-label">{memo.tentative ? '예정 (아직 안 잡음)' : '예정'}</div>
               <span className="meta-row">
                 {/* 날짜를 바로 고른다 — 새 메모는 기본이 오늘이라 안 건드리고 넘어가도 된다 */}
                 <input
@@ -337,6 +337,17 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   <b className={'meta-dday' + (dueD < 0 ? ' t-red' : '')}>
                     {dueD < 0 ? `${-dueD}일 지남` : dueD === 0 ? '오늘' : `D-${dueD}`}
                   </b>
+                )}
+                {/* 루틴이 자동으로 찍어둔 날짜 — 날짜를 옮기면 저절로 확정되지만,
+                    자동 날짜가 마침 맞을 때를 위해 "이 날 맞다"만 누르는 길을 둔다 (2026-08-13) */}
+                {memo.tentative && (
+                  <button
+                    className="linkish t-blue"
+                    title="이 날짜로 잡혔다고 표시합니다 — 달력에서 진하게 바뀝니다"
+                    onClick={() => confirmDate(memo.id)}
+                  >
+                    이 날로 확정
+                  </button>
                 )}
                 {/* 기간 설정이 정보 수정 폼 안에만 있어 못 찾는 문제 — 바로가기 (2026-07-31) */}
                 {memo.status !== 'done' && !memo.keep && !memo.hold && (

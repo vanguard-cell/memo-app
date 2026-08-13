@@ -87,7 +87,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
   // "다음 할 일" 흐린 힌트 줄은 2026-07-31 제거 — 실제로 안 읽게 되어 자리만 차지 (사용자 결정)
   return (
     <div
-      className={'kb-card' + (st === 'done' ? ' kb-done' : '') + dropCls}
+      className={'kb-card' + (st === 'done' ? ' kb-done' : '') + (m.tentative ? ' kb-tent' : '') + dropCls}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'board', id: m.id, st: col }))
