@@ -661,7 +661,8 @@ export function updateRoutine(id, patch) {
 // 이미 만들어진 회차의 날짜도 같이 옮긴다(완료된 회차는 그대로 둔다 — 지난 일은 지난 일이다).
 export function setGroupDueDay(group, day) {
   const now = new Date().toISOString()
-  const d = Math.min(28, Math.max(1, Number(day) || 1))
+  // 31일까지 — 그 날이 없는 달은 routineDue가 말일로 당긴다 (2026-08-14)
+  const d = Math.min(31, Math.max(1, Number(day) || 1))
   const ids = new Set(
     state.routines.filter((r) => !r.deleted && (r.group || '기타') === group).map((r) => r.id)
   )

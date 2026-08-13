@@ -120,7 +120,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       title: form.title.trim(),
       group: form.group.trim() || '기타',
       desc: form.desc.trim(),
-      dueDay: Math.min(28, Math.max(1, Number(form.dueDay) || 5)),
+      // 31일까지 받는다 — 그 날이 없는 달(2월 등)은 routineDue가 말일로 당긴다 (2026-08-14)
+      dueDay: Math.min(31, Math.max(1, Number(form.dueDay) || 5)),
       flexible: !!form.flexible,
       months: form.months,
       endNote: form.endNote.trim(),
@@ -356,7 +357,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                               <input
                                 type="number"
                                 min="1"
-                                max="28"
+                                max="31"
                                 value={gDay.day}
                                 onChange={(e) => setGDay({ ...gDay, day: e.target.value })}
                               />
@@ -514,12 +515,16 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                     <input
                                       type="number"
                                       min="1"
-                                      max="28"
+                                      max="31"
                                       value={form.dueDay}
                                       onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
                                     />
                                     일
                                   </span>
+                                  {/* 29~31일은 없는 달이 있다 — 그 달은 말일로 간다는 걸 미리 알려준다 */}
+                                  {Number(form.dueDay) > 28 && (
+                                    <span className="rt-hint">그 날이 없는 달은 말일로</span>
+                                  )}
                                 </label>
                                 <label>
                                   주기
