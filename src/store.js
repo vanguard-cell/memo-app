@@ -313,11 +313,32 @@ export function addMemo({ title, due, period, fromWork, keep, deadline }) {
 
 export function updateMemo(id, patch) {
   const now = new Date().toISOString()
+  const before = state.memos.find((m) => m.id === id)
   commit({
     ...state,
     memos: state.memos.map((m) => (m.id === id ? { ...m, ...patch, ...settle(m, patch), updatedAt: now } : m)),
   })
   remoteUpsert(id)
+  // 회차 제목을 고치면 루틴 이름도 따라 바뀐다 — 격자는 규칙 이름을, 상세는 회차 제목을
+  // 보여줘서 "상세에서 고쳤는데 메인이 안 바뀐다"가 됐다 (2026-08-14 사용자 지적).
+  // 아래 renamedRule이 자동 제목 모양을 지킨 경우에만 이름을 되뽑는다.
+  const rule = before && typeof patch.title === 'string' ? renamedRule(before, patch.title) : null
+  if (rule) updateRoutine(before.routineId, { title: rule })
+}
+
+// 회차 제목에서 바뀐 루틴 이름을 되뽑는다. 조건 둘 다 맞아야 한다:
+//  · 고치기 전 제목이 자동 제목 그대로였다 = 그 달만의 제목을 쓰던 회차가 아니다
+//  · 새 제목도 "○○ — 8월분" 모양이다 = 앞의 이름만 바꾼 것이다
+// "8월분 재발행"처럼 그 달 얘기를 덧붙인 제목은 그 달 것으로 두고 규칙은 안 건드린다.
+function renamedRule(m, next) {
+  if (!m.routineId || !m.ym) return null
+  const r = state.routines.find((x) => x.id === m.routineId)
+  if (!r || m.title !== cycleTitle(r.title, m.ym)) return null
+  const tail = cycleTitle('', m.ym)
+  const v = next.trim()
+  if (!v.endsWith(tail)) return null
+  const name = v.slice(0, -tail.length).trim()
+  return name && name !== r.title ? name : null
 }
 
 // 가예정 풀기 — 루틴이 자동으로 찍어둔 날짜(tentative)는 "아직 안 잡은 자리"일 뿐이라,
