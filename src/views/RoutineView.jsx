@@ -48,12 +48,14 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   const [undo, setUndo] = useState(null)
   const [showStopped, setShowStopped] = useState(false)
   const [gDay, setGDay] = useState(null) // 묶음 예정일 일괄 변경 { g, day }
+  const [arm, setArm] = useState(null) // 완료 해제를 한 번 물어둔 칸 { id, m }
   const undoTimer = useRef(null)
+  const armTimer = useRef(null)
 
   const ymOf = (m) => `${year}-${pad2(m)}`
   const curYm = thisYm()
 
-  useEffect(() => () => clearTimeout(undoTimer.current), [])
+  useEffect(() => () => { clearTimeout(undoTimer.current); clearTimeout(armTimer.current) }, [])
 
   // 회차 찾기 — 메모 전체를 한 번만 훑어 (루틴id|연월) 색인을 만든다
   const cycles = useMemo(() => {
@@ -152,9 +154,22 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   // 칸을 잘못 눌러 완료가 켜지거나 꺼지는 일이 잦다 — 누른 직후 몇 초간 되돌릴 수 있게 한다
   // (보드의 완료 되돌리기 바와 같은 방식). 확인을 묻지 않는 이유: 매달 수십 번 누르는
   // 자리라 물어보면 그게 더 성가시다. (2026-08-11 사용자 요청)
+  //
+  // 여기에 더해 **완료 해제는 같은 칸을 두 번 눌러야** 풀린다 (2026-08-14 사용자 요청).
+  // 해놓은 것이 지워지는 쪽이 더 아프고, 해제는 어쩌다 한 번이라 두 번 눌러도 안 성가시다.
+  // 완료 켜기는 그대로 한 번 — 매달 수십 번 누르는 자리다. 팝업 대신 그 칸이 물어본다
+  // ([전부 이 날로]와 같은 방식 — 이 앱은 팝업 금지).
   function tapCell(r, m) {
     const ym = ymOf(m)
     const was = (cycleOf(r.id, ym) || {}).status === 'done'
+    if (was && !(arm && arm.id === r.id && arm.m === m)) {
+      clearTimeout(armTimer.current)
+      setArm({ id: r.id, m })
+      armTimer.current = setTimeout(() => setArm(null), 4000)
+      return
+    }
+    clearTimeout(armTimer.current)
+    setArm(null)
     toggleCycle(r.id, ym)
     clearTimeout(undoTimer.current)
     setUndo({
@@ -436,22 +451,26 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                           </td>
                           {MONTHS.map((m) => {
                             const c = cell(r, m)
+                            const armed = arm && arm.id === r.id && arm.m === m
                             return (
                               <td
                                 key={m}
                                 className={
-                                  'rt-cell rt-' + c.kind + (m === selMonth ? ' sel' : '') + (c.rec ? ' rec' : '')
+                                  'rt-cell rt-' + c.kind + (m === selMonth ? ' sel' : '') +
+                                  (c.rec ? ' rec' : '') + (armed ? ' arm' : '')
                                 }
                                 onClick={() => c.kind !== 'na' && tapCell(r, m)}
                                 title={
                                   c.kind === 'na'
                                     ? '해당 없음'
-                                    : c.kind === 'done'
-                                      ? '완료 — 누르면 되돌립니다'
-                                      : '누르면 완료'
+                                    : armed
+                                      ? '한 번 더 누르면 완료가 풀립니다'
+                                      : c.kind === 'done'
+                                        ? '완료 — 풀려면 두 번 누릅니다'
+                                        : '누르면 완료'
                                 }
                               >
-                                {c.kind === 'na' ? '–' : c.kind === 'done' ? '✓' : '·'}
+                                {c.kind === 'na' ? '–' : armed ? '↺' : c.kind === 'done' ? '✓' : '·'}
                               </td>
                             )
                           })}
@@ -640,7 +659,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
           <b className="rt-t-done">✓</b> 완료
         </span>
         <span>
-          <b>·</b> 남음
+          <b className="rt-t-open">·</b> 남음 (고른 달은 색으로)
         </span>
         <span>
           <b className="rt-t-rec">•</b> 그 달 기록 있음

@@ -3664,6 +3664,24 @@ main {
   color: var(--border);
 }
 
+/* 고른 달의 안 한 칸 — 왼쪽 위 "N건 남음" 배지와 같은 색으로 물들인다.
+   그 달에 뭐가 남았는지 격자에서 바로 보이게 (2026-08-14 사용자 요청).
+   ⚠️ 지난 달의 안 한 칸까지 물들이면 격자 전체가 켜져 아무것도 안 보인다 — 고른 달만. */
+.rt-cell.sel.rt-open {
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* 완료를 풀기 전 한 번 물어보는 칸 — 한 번 더 누르면 풀린다. 팝업 대신 칸이 물어본다.
+   테두리를 안쪽 그림자로 그리는 이유: 칸 크기가 안 흔들려 표가 안 밀린다 (2026-08-14) */
+.rt-cell.arm {
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 2px var(--amber-strong);
+}
+
 .rt-na {
   color: var(--border);
   cursor: default;
@@ -3837,6 +3855,14 @@ main {
 
 .rt-t-rec {
   color: var(--amber-strong);
+}
+
+/* 안 한 칸 표시 — 고른 달에서 물드는 색과 같게 (칸 색과 범례 색이 어긋나면 안 된다) */
+.rt-t-open {
+  color: var(--amber);
+  background: var(--amber-bg);
+  padding: 0 5px;
+  border-radius: 4px;
 }
 
 .rt-t-na {
