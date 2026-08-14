@@ -590,6 +590,9 @@ export function routineDue(ym, dueDay) {
   return `${ym}-${pad2(Math.min(Math.max(1, dueDay || 1), last))}`
 }
 
+// 회차 메모의 자동 제목 — 이름을 고칠 때 "손대지 않은 회차"를 가려내는 데도 쓴다
+export const cycleTitle = (title, ym) => `${title} — ${Number(ym.slice(5, 7))}월분`
+
 // 그 달에 해당하는 루틴인가 — months가 비어 있으면 매월, 아니면 그 달 목록에만
 export function routineHasMonth(r, ym) {
   const m = Number(ym.slice(5, 7))
@@ -631,20 +634,34 @@ export function addRoutine({ title, group, desc, dueDay, months, startYm, flexib
 // 지난 일은 지난 일이다). 묶음 일괄(setGroupDueDay)은 원래 그렇게 동작했는데 항목 하나를
 // 고칠 때는 정의만 바뀌어서, 예정일을 14일로 고쳐도 달력의 회차는 5일에 남아 있었다.
 // (2026-08-13 사용자: "각 항목마다 날짜 지정해뒀는데 달력에 표시가 안되는데?")
+// 이름을 고치면 회차 제목도 따라간다 — 격자는 규칙 이름을, 달력·오늘·검색은 회차 제목을
+// 보여주므로 한쪽만 바뀌면 같은 일이 두 이름으로 남는다. 단 **자동으로 지어진 제목
+// ("○○ — 8월분") 그대로인 회차만** 바꾼다 — 그 달만 따로 적어둔 제목은 내가 쓴 글이다.
+// 날짜와 달리 지난 회차도 같이 바꾼다(이름은 딱지일 뿐, 언제 했나는 그대로다).
+// (2026-08-14 사용자: "이름을 새롬 승강기로 바꿨는데 메인에서는 안바뀌네")
 export function updateRoutine(id, patch) {
   const now = new Date().toISOString()
   const before = state.routines.find((r) => r.id === id)
   const dayMoved = before && 'dueDay' in patch && Number(patch.dueDay) !== Number(before.dueDay)
+  const newTitle = typeof patch.title === 'string' ? patch.title.trim() : ''
+  const renamed = before && newTitle && newTitle !== before.title
   const routines = state.routines.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: now } : r))
   const moved = []
-  const memos = dayMoved
-    ? state.memos.map((m) => {
-        if (m.routineId !== id || !m.ym || m.status === 'done') return m
-        const next = { ...m, due: routineDue(m.ym, patch.dueDay), updatedAt: now }
-        moved.push(next)
-        return next
-      })
-    : state.memos
+  const memos =
+    dayMoved || renamed
+      ? state.memos.map((m) => {
+          if (m.routineId !== id || !m.ym) return m
+          let next = m
+          if (dayMoved && m.status !== 'done') next = { ...next, due: routineDue(m.ym, patch.dueDay) }
+          if (renamed && m.title === cycleTitle(before.title, m.ym)) {
+            next = { ...next, title: cycleTitle(newTitle, m.ym) }
+          }
+          if (next === m) return m
+          next = { ...next, updatedAt: now }
+          moved.push(next)
+          return next
+        })
+      : state.memos
   commit({ ...state, routines, memos })
   if (moved.length && hasSupabase && session) {
     pushMemoRows(moved)
@@ -746,7 +763,7 @@ function newCycle(r, ym) {
   const now = new Date().toISOString()
   return {
     id: crypto.randomUUID(),
-    title: `${r.title} — ${Number(ym.slice(5, 7))}월분`,
+    title: cycleTitle(r.title, ym),
     status: 'open',
     keep: false,
     due: routineDue(ym, r.dueDay),
