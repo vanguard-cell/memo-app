@@ -62,6 +62,8 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     window.matchMedia('(max-width: 899px)').matches ? todayStr() : null
   )
   const [qtext, setQtext] = useState('')
+  // 년월 고르기 — 제목을 누르면 그 아래에 펼쳐진다 (몇 달·몇 년 떨어진 달로 한 번에)
+  const [pick, setPick] = useState(null) // 열려 있으면 { y } (고르는 중인 연도)
   const [dropTarget, setDropTarget] = useState(null)
   const [rowDrop, setRowDrop] = useState(null)
   // PC: 상세를 우측 목록 위에 자체 인라인으로 띄운다 (App 우측 패널 대신) —
@@ -218,7 +220,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   useEffect(() => {
     if (narrow || (!sel && !localOpenId)) return
     const KEEP =
-      '.cal-cell, .cal-ev, .cal-period-chip, .cal-right, .cal-head, .cal-periods, .cal-filter-note, .mv-top, .inputbar, .sidenav, .topbar, .update-bar, .undo-bar'
+      '.cal-cell, .cal-ev, .cal-period-chip, .cal-right, .cal-head, .cal-pick, .cal-periods, .cal-filter-note, .mv-top, .inputbar, .sidenav, .topbar, .update-bar, .undo-bar'
     const stepBack = () => {
       if (localOpenId) {
         discardIfEmptyDraft(localOpenId)
@@ -242,6 +244,22 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
       document.removeEventListener('keydown', onKey)
     }
   }, [narrow, sel, localOpenId])
+
+  // 년월 고르기는 빈 곳을 누르거나 Esc로 닫힌다 (오른쪽 패널 후퇴와 별개로 이것부터 닫는다)
+  useEffect(() => {
+    if (!pick) return
+    const onDown = (e) => {
+      if (e.target.closest && e.target.closest('.cal-pick, .cal-title')) return
+      setPick(null)
+    }
+    const onKey = (e) => e.key === 'Escape' && setPick(null)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [pick])
 
   // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
   // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
@@ -501,13 +519,19 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
       )
     })
 
-  function move(n) {
-    const nd = new Date(y, mo + n, 1)
+  // 달 이동은 전부 여기로 — 열려 있던 빈 초안·선택·고르기 창을 같이 정리한다
+  function jumpTo(ny, nmo) {
     if (localOpenId) discardIfEmptyDraft(localOpenId)
-    setY(nd.getFullYear())
-    setMo(nd.getMonth())
+    setY(ny)
+    setMo(nmo)
     setSel(null)
     setLocalOpenId(null)
+    setPick(null)
+  }
+
+  function move(n) {
+    const nd = new Date(y, mo + n, 1)
+    jumpTo(nd.getFullYear(), nd.getMonth())
   }
 
   // cal-open = 오른쪽에 목록·상세가 떠 있는 상태. 그때만 달력이 왼쪽으로 줄어든다
@@ -520,9 +544,14 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
       )}
       <div className="cal-head">
         <button onClick={() => move(-1)}>‹</button>
-        <span className="cal-title">
+        {/* 제목을 누르면 년월 고르기 — 몇 달 전·후로 한 번에 간다 (2026-08-13 사용자 요청) */}
+        <button
+          className={'cal-title' + (pick ? ' on' : '')}
+          title="누르면 년·월을 고를 수 있습니다"
+          onClick={() => setPick(pick ? null : { y })}
+        >
           {y}년 {mo + 1}월
-        </span>
+        </button>
         <button onClick={() => move(1)}>›</button>
         <button
           className="cal-today-btn"
@@ -536,6 +565,26 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
           오늘
         </button>
       </div>
+      {pick && (
+        <div className="cal-pick">
+          <div className="cal-pick-yr">
+            <button onClick={() => setPick({ y: pick.y - 1 })} aria-label="이전 해">‹</button>
+            <b>{pick.y}년</b>
+            <button onClick={() => setPick({ y: pick.y + 1 })} aria-label="다음 해">›</button>
+          </div>
+          <div className="cal-pick-mo">
+            {Array.from({ length: 12 }, (_, i) => (
+              <button
+                key={i}
+                className={pick.y === y && i === mo ? 'on' : ''}
+                onClick={() => jumpTo(pick.y, i)}
+              >
+                {i + 1}월
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="cal-grid">
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
           <div key={d} className={'cal-dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '')}>

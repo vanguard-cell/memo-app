@@ -4555,6 +4555,67 @@ main {
   border-color: var(--border-hover);
 }
 
+/* 년월 고르기 — 제목을 누르면 그 아래에 펼쳐진다. 몇 달·몇 년 떨어진 달로 한 번에 간다.
+   팝업이 아니라 자리에서 펼쳐지는 판 (앱 원칙: 팝업 금지). 2026-08-13 */
+.cal-title {
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.cal-title:hover,
+.cal-title.on {
+  background: var(--fill);
+  border-color: var(--border);
+}
+
+.cal-pick {
+  margin: 8px 0 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  max-width: 360px;
+}
+
+.cal-pick-yr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  font-size: var(--fs-title);
+}
+
+.cal-pick-yr button {
+  padding: 4px 12px;
+}
+
+.cal-pick-mo {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.cal-pick-mo button {
+  padding: 9px 0;
+  font-size: var(--fs-base);
+}
+
+.cal-pick-mo button.on {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+  font-weight: 700;
+}
+
+.cal-pick-mo button.on:hover {
+  background: var(--blue-strong);
+  color: #fff;
+}
+
 /* 앞으로 올 달의 루틴 "예정 자리" — 아직 회차가 없는 것. 누르면 그 자리에서 만들어진다.
    실제 메모와 헷갈리지 않게 살짝 옅고, 마우스를 올리면 또렷해진다 (2026-08-13) */
 .cal-ev.cal-ghost,
@@ -4789,6 +4850,21 @@ main {
   .tl-editing button {
     min-height: 40px;
     padding: 6px 13px;
+  }
+
+  /* 년월 고르기 — 폰에서 손가락에 맞게, 화면 폭을 다 쓴다 */
+  .cal-pick {
+    max-width: none;
+  }
+
+  .cal-pick-mo button {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .cal-pick-yr button {
+    min-height: 40px;
+    min-width: 52px;
   }
 
   .cal-add input {
