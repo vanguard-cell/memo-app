@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, importData, importRoutineRows,
+  getRoutines, ensureThisMonth, cleanupBlankRoutines, importData, importRoutineRows,
 } from './store'
 import { readRoutineXlsx } from './importXlsx'
 import { todayStr } from './parser'
@@ -143,7 +143,11 @@ export default function App() {
   // 이번 달 회차를 채운다 — 루틴에 걸린 일이 오늘 화면·달력에 뜨려면 그 달 메모가 있어야 한다.
   // 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다). (2026-08-11)
   useEffect(() => {
-    if (auth.ready) ensureThisMonth()
+    if (!auth.ready) return
+    // 이름 없는 빈 줄과 주인 없는 빈 회차를 먼저 치우고 채운다 — "+ 항목"을 눌렀다 이름을
+    // 안 적고 나가면 "(이름 없음)" 루틴과 "— 8월분" 회차가 남는다 (2026-08-19)
+    cleanupBlankRoutines()
+    ensureThisMonth()
   }, [auth.ready, routines.length])
 
   // 가져오기 — 백업 파일(.json)과 월간체크리스트 엑셀(.xlsx) 둘 다 받는다.

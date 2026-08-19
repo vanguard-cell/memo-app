@@ -147,6 +147,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   }
 
   function openCycle(r) {
+    // 이름부터 적어야 회차가 생긴다 — 이름 없는 줄을 누르면 열리는 대신 이름칸이 열린다
+    if (!(r.title || '').trim()) return startEdit(r)
     const memo = ensureCycle(r.id, ymOf(selMonth))
     if (memo) onOpen(memo.id)
   }

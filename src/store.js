@@ -774,9 +774,65 @@ export function setGroupFlexible(group, flexible) {
 export const stopRoutine = (id, endYm, endNote) =>
   updateRoutine(id, { endYm: endYm || thisYm(), endNote: endNote || '' })
 
-// 정의만 지운다 — 이미 만들어진 회차 메모는 메모로 남는다(검색·이력 보존)
+// 회차에 남은 게 있나 — 완료·진행기록·파일 중 하나라도 있으면 "기록"이다.
+const cycleHasRecord = (m) =>
+  m.status === 'done' || (m.history || []).length > 0 || (m.files || []).length > 0
+
+// 정의를 지운다. 기록이 남은 회차는 메모로 그대로 둔다(검색·이력 보존) — 다만 **아무것도
+// 안 한 빈 회차는 같이 치운다**. 예전엔 전부 남겨서, 루틴을 지워도 달력에 그 달 회차가
+// 계속 떠 있고 지울 곳을 찾기 어려웠다. (2026-08-19)
 export function removeRoutine(id) {
-  updateRoutine(id, { deleted: true })
+  const now = new Date().toISOString()
+  const gone = state.memos.filter((m) => m.routineId === id && !m.deleted && !cycleHasRecord(m))
+  const goneIds = new Set(gone.map((m) => m.id))
+  const routines = state.routines.map((r) => (r.id === id ? { ...r, deleted: true, updatedAt: now } : r))
+  const memos = state.memos.map((m) => (goneIds.has(m.id) ? { ...m, deleted: true, updatedAt: now } : m))
+  commit({ ...state, routines, memos })
+  const changed = [
+    ...routines.filter((r) => r.id === id),
+    ...memos.filter((m) => goneIds.has(m.id)),
+  ]
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+}
+
+// 앱을 열 때 빈 줄을 치운다 — 이름 없는 루틴과, 주인이 없어진(지워졌거나 이름 없는) 빈 회차.
+// "+ 항목"을 누르면 그 줄이 바로 만들어지므로, 이름을 안 적고 새로고침하거나 다른 화면으로
+// 넘어가면 "(이름 없음)" 줄과 "— 8월분" 회차가 남는다(취소로 닫을 때만 정리됐다).
+// 기록이 있는 회차는 손대지 않는다. (2026-08-19)
+export function cleanupBlankRoutines() {
+  const now = new Date().toISOString()
+  const blank = new Set(
+    state.routines.filter((r) => !r.deleted && !(r.title || '').trim()).map((r) => r.id)
+  )
+  const live = new Set(state.routines.filter((r) => !r.deleted && !blank.has(r.id)).map((r) => r.id))
+  const orphan = state.memos.filter(
+    (m) => m.routineId && !m.deleted && !live.has(m.routineId) && !cycleHasRecord(m)
+  )
+  const orphanIds = new Set(orphan.map((m) => m.id))
+  if (!blank.size && !orphanIds.size) return 0
+  const routines = state.routines.map((r) => (blank.has(r.id) ? { ...r, deleted: true, updatedAt: now } : r))
+  const memos = state.memos.map((m) => (orphanIds.has(m.id) ? { ...m, deleted: true, updatedAt: now } : m))
+  commit({ ...state, routines, memos })
+  const changed = [
+    ...routines.filter((r) => blank.has(r.id)),
+    ...memos.filter((m) => orphanIds.has(m.id)),
+  ]
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return changed.length
 }
 
 // 회차 메모 한 개 만들기 (저장은 부르는 쪽에서 — 여러 개를 한 번에 담을 수 있게)
@@ -808,7 +864,11 @@ export function ensureCycle(routineId, ym) {
   const found = routineCycle(routineId, ym)
   if (found) return found
   const r = state.routines.find((x) => x.id === routineId)
-  if (!r) return null
+  // 이름 없는 루틴(= "+ 항목"을 눌렀다 만 빈 줄)은 회차를 만들지 않는다. 그 줄을 눌렀다가
+  // 달력에 이름 없는 "— 8월분" 회차가 태어나고, 루틴을 지워도 그 회차는 남아 계속 뜨던 문제.
+  // (2026-08-19 사용자: "이거 지워도 계속 뜨는데 왜그러냐") 앱 시작(ensureThisMonth)과
+  // 달력 예고(ghost)는 원래 이름 없는 루틴을 건너뛴다 — 여기만 빠져 있었다.
+  if (!r || r.deleted || !(r.title || '').trim()) return null
   const memo = newCycle(r, ym)
   commit({ ...state, memos: [memo, ...state.memos] })
   remoteUpsert(memo.id)
