@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate } from '../store'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, routineDue, adoptCycleDay } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
@@ -210,6 +210,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const dday = memo.period?.end && memo.status !== 'done' ? diffDays(memo.period.end, today) : null
   const dueD = memo.due && memo.status !== 'done' ? diffDays(memo.due, today) : null
 
+  // 루틴 회차를 실제로 한 날로 옮겼을 때 — 규칙(예정일)까지 바꿀지 그 자리에서 묻는다.
+  // 휴일·출장으로 한 달만 밀린 것은 안 누르면 그만이고, 눌러야 다음 달부터 그 날로 온다.
+  // 매번 날짜를 새로 잡는 유동 루틴(가예정)은 묻지 않는다 — 원래 달마다 다른 날이다.
+  // (2026-08-20 사용자: "다음달에도 18일로 반영이 되는지?")
+  const rt = memo.routineId ? routineOf(memo.routineId) : null
+  const askDay =
+    rt && !rt.flexible && !memo.dayKept && memo.due && memo.ym && memo.due !== routineDue(memo.ym, rt.dueDay)
+      ? Number(memo.due.slice(8, 10))
+      : null
+
   // 미루기: 기한은 그 날짜로 이동, 기간(만기) 메모는 만기일 안 건드리고 그날까지 숨김.
   // 단 마감·만기가 이미 오늘이거나 지났으면 숨길 창(내일~마감)이 비어서 날짜 지정이
   // 아무 날도 못 고르는 먹통이 된다 — 이때는 끝 날짜 자체를 옮긴다 (2026-07-31 버그 수정)
@@ -365,6 +375,29 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   </span>
                 )}
               </span>
+              {/* 옮긴 날을 규칙으로 삼을지 그 자리에서 묻는다 — 누르면 다음 달부터 그 날로 온다.
+                  "이번만"을 누르면 이 회차에서는 다시 안 묻는다 (2026-08-20) */}
+              {askDay && (
+                <div className="meta-ask">
+                  <span>
+                    루틴 예정일은 {Number(rt.dueDay) || 5}일 — 앞으로도 매달 {askDay}일에 할까요?
+                  </span>
+                  <button
+                    className="linkish t-blue"
+                    title="다음 달부터 이 날로 옵니다 (아직 안 끝난 회차도 같이 옮겨집니다)"
+                    onClick={() => adoptCycleDay(memo.id)}
+                  >
+                    매달 {askDay}일로
+                  </button>
+                  <button
+                    className="linkish"
+                    title="이 달만 옮긴 것으로 두고 규칙은 그대로 둡니다"
+                    onClick={() => updateMemo(memo.id, { dayKept: true })}
+                  >
+                    이번만
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {memo.hold && (

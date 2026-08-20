@@ -622,6 +622,8 @@ export function routineHasMonth(r, ym) {
   return !r.months || r.months.length === 0 || r.months.includes(m)
 }
 
+export const routineOf = (id) => state.routines.find((r) => r.id === id && !r.deleted) || null
+
 export const routineCycle = (routineId, ym) =>
   state.visible.find((m) => m.routineId === routineId && m.ym === ym)
 
@@ -843,6 +845,66 @@ export function cleanupBlankRoutines() {
       })
   }
   return changed.length
+}
+
+// 회차를 실제로 한 날로 옮겼을 때, 그 날을 규칙의 예정일로 삼는다 — "앞으로도 매달 18일".
+// 상세 화면이 그 자리에서 물어보고(안 누르면 그 달만의 일로 남는다) 여기서 규칙을 고친다.
+// 규칙이 바뀌면 updateRoutine이 아직 안 끝난 회차의 날짜도 같이 옮긴다. (2026-08-20)
+export function adoptCycleDay(memoId) {
+  const m = state.memos.find((x) => x.id === memoId)
+  if (!m || !m.routineId || !m.due) return 0
+  const day = Number(m.due.slice(8, 10))
+  const r = routineOf(m.routineId)
+  if (!r || !day || Number(r.dueDay) === day) return 0
+  updateRoutine(m.routineId, { dueDay: day })
+  return day
+}
+
+// 지난 달들을 한 번에 맞추기 — 그 달 회차를 실제로 한 날로 옮겨 완료해 뒀다면
+// 그 날을 규칙의 예정일로 삼는다. 앞으로는 상세에서 그때그때 물어보므로(adoptCycleDay)
+// 이건 이미 쌓인 달을 따라잡기 위한 일괄 처리다. 34건을 한 번에 저장한다.
+// 매번 날짜를 새로 잡는 유동 루틴(가예정)은 건드리지 않는다 — 그 날짜는 그 달의 약속일 뿐이다.
+// (2026-08-20 사용자 요청: "8월에 완료한 것들은 이번만 루틴에서 날짜 바꿔줘")
+export function adoptDoneDays(ym) {
+  const now = new Date().toISOString()
+  const dayById = new Map()
+  const changes = []
+  for (const r of state.routines) {
+    if (r.deleted || r.flexible) continue
+    const c = state.memos.find((m) => !m.deleted && m.routineId === r.id && m.ym === ym)
+    if (!c || c.status !== 'done' || !c.due) continue
+    const day = Number(c.due.slice(8, 10))
+    // 규칙대로 찍힌 날 그대로면 옮긴 게 아니다 (말일 당김도 여기서 걸러진다)
+    if (!day || c.due === routineDue(ym, r.dueDay)) continue
+    dayById.set(r.id, day)
+    changes.push({ title: r.title, from: Number(r.dueDay) || 5, to: day })
+  }
+  if (!dayById.size) return []
+  const routines = state.routines.map((r) =>
+    dayById.has(r.id) ? { ...r, dueDay: dayById.get(r.id), updatedAt: now } : r
+  )
+  // 아직 안 끝난 회차는 새 날로 따라 옮긴다 — 완료한 회차는 한 날 그대로 둔다(지난 일은 지난 일)
+  const moved = []
+  const memos = state.memos.map((m) => {
+    if (!m.routineId || !m.ym || m.deleted || m.status === 'done') return m
+    if (!dayById.has(m.routineId)) return m
+    const due = routineDue(m.ym, dayById.get(m.routineId))
+    if (due === m.due) return m
+    const next = { ...m, due, updatedAt: now }
+    moved.push(next)
+    return next
+  })
+  commit({ ...state, routines, memos })
+  const changed = [...routines.filter((r) => dayById.has(r.id)), ...moved]
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return changes
 }
 
 // 회차 메모 한 개 만들기 (저장은 부르는 쪽에서 — 여러 개를 한 번에 담을 수 있게)

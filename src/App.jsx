@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, cleanupBlankRoutines, blankTitle, importData, importRoutineRows,
+  getRoutines, ensureThisMonth, cleanupBlankRoutines, blankTitle, adoptDoneDays, importData, importRoutineRows,
 } from './store'
 import { readRoutineXlsx } from './importXlsx'
 import { todayStr } from './parser'
@@ -22,6 +22,9 @@ import { ICONS } from './icons'
 // 점검탭은 2026-07-14 제거(데이터는 store·서버 보존, 반복 기한 변환 예정).
 
 // 사이드바·상세 공용 아이콘은 src/icons.jsx — 같은 그림 언어 (2026-07-31 모듈로 분리)
+
+// 8월치 따라잡기 — 이 기기에서 한 번만 돈다 (2026-08-20)
+const ADOPT_KEY = 'hds-adopt-done-2026-08'
 
 // 새 버전 감지 — 탭을 오래 열어두면 옛 코드가 계속 돌므로, 탭에 돌아올 때마다
 // 배포본의 스크립트 파일명이 바뀌었는지 확인해서 새로고침 배너를 띄운다
@@ -150,6 +153,23 @@ export default function App() {
     ensureThisMonth()
   }, [auth.ready, routines.length])
 
+  // 8월에 실제로 한 날로 옮겨 완료해 둔 회차 — 그 날을 루틴 예정일로 한 번에 맞춘다.
+  // 앞으로는 회차 상세가 그때그때 물어보므로(매달 N일로) 이건 이미 쌓인 8월을 따라잡는
+  // 일회성 정리다. 서버와 맞춘 뒤에 판단하도록 잠깐 기다린다 — 옛 사본으로 정하면
+  // 엉뚱한 날이 규칙이 된다. (2026-08-20 사용자 요청)
+  const [dayFix, setDayFix] = useState(null)
+  useEffect(() => {
+    if (!auth.ready || !routines.length) return
+    if (localStorage.getItem(ADOPT_KEY)) return
+    const t = setTimeout(() => {
+      if (localStorage.getItem(ADOPT_KEY)) return
+      const changed = adoptDoneDays('2026-08')
+      localStorage.setItem(ADOPT_KEY, '1')
+      if (changed.length) setDayFix(changed)
+    }, 6000)
+    return () => clearTimeout(t)
+  }, [auth.ready, routines.length])
+
   // 가져오기 — 백업 파일(.json)과 월간체크리스트 엑셀(.xlsx) 둘 다 받는다.
   // 엑셀은 「항목명」 열이 있는 표를 찾아 루틴으로 읽는다 (src/importXlsx.js).
   async function importFile(file) {
@@ -258,6 +278,12 @@ export default function App() {
         <div className="update-bar">
           새 버전이 배포됐습니다
           <button onClick={() => window.location.reload()}>새로고침</button>
+        </div>
+      )}
+      {!updateReady && dayFix && (
+        <div className="update-bar" title={dayFix.map((c) => c.title + ": " + c.from + "일 → " + c.to + "일").join(", ")}>
+          8월에 한 날에 맞춰 루틴 예정일 {dayFix.length}건을 옮겼습니다 (마우스를 올리면 목록)
+          <button onClick={() => setDayFix(null)}>확인</button>
         </div>
       )}
       {!narrow && (

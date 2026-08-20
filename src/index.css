@@ -2862,6 +2862,20 @@ main {
   font-weight: 600;
 }
 
+/* 루틴 회차를 다른 날로 옮겼을 때 그 자리에서 묻는 줄 — "앞으로도 매달 18일에 할까요?"
+   (2026-08-20) 눈에 띄되 재촉하지 않게 은은한 바탕만 준다 */
+.meta-ask {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  background: var(--blue-bg);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
 /* 반복 표시 칩 — 완료하면 다음 주기로 굴러가는 메모 (2026-07-31) */
 .meta-repeat {
   font-size: var(--fs-label);
