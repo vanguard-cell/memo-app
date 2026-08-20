@@ -940,7 +940,7 @@ export function ensureCycle(routineId, ym) {
   // 달력에 이름 없는 "— 8월분" 회차가 태어나고, 루틴을 지워도 그 회차는 남아 계속 뜨던 문제.
   // (2026-08-19 사용자: "이거 지워도 계속 뜨는데 왜그러냐") 앱 시작(ensureThisMonth)과
   // 달력 예고(ghost)는 원래 이름 없는 루틴을 건너뛴다 — 여기만 빠져 있었다.
-  if (!r || r.deleted || !(r.title || '').trim()) return null
+  if (!r || r.deleted || blankTitle(r.title)) return null
   const memo = newCycle(r, ym)
   commit({ ...state, memos: [memo, ...state.memos] })
   remoteUpsert(memo.id)
