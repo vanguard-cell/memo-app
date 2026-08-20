@@ -3,7 +3,7 @@ import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../deriv
 import { todayStr, addDays } from '../parser'
 import {
   addMemo, updateMemo, setDayOrder, getMemos, purgeMemos,
-  routineDue, routineHasMonth, ensureCycle, thisYm,
+  routineDue, routineHasMonth, ensureCycle, thisYm, blankTitle,
 } from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
@@ -352,7 +352,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     const made = new Set(memos.filter((m) => m.routineId && m.ym === ym).map((m) => m.routineId))
     const map = {}
     for (const r of routines) {
-      if (!(r.title || '').trim() || made.has(r.id) || !routineHasMonth(r, ym)) continue
+      if (blankTitle(r.title) || made.has(r.id) || !routineHasMonth(r, ym)) continue
       const date = routineDue(ym, r.dueDay)
       ;(map[date] = map[date] || []).push(r)
     }

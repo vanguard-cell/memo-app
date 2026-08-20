@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, cleanupBlankRoutines, importData, importRoutineRows,
+  getRoutines, ensureThisMonth, cleanupBlankRoutines, blankTitle, importData, importRoutineRows,
 } from './store'
 import { readRoutineXlsx } from './importXlsx'
 import { todayStr } from './parser'
@@ -79,7 +79,7 @@ export default function App() {
   // 사이드바 배지 — 이번 달에 아직 안 끝난 루틴 건수
   const ym = todayStr().slice(0, 7)
   const routineLeft = routines.filter((r) => {
-    if (!(r.title || '').trim() || (r.endYm && ym >= r.endYm) || (r.startYm && ym < r.startYm)) return false
+    if (blankTitle(r.title) || (r.endYm && ym >= r.endYm) || (r.startYm && ym < r.startYm)) return false
     if (r.months && r.months.length && !r.months.includes(Number(ym.slice(5, 7)))) return false
     const cyc = memos.find((m) => m.routineId === r.id && m.ym === ym)
     return !cyc || cyc.status !== 'done'

@@ -625,6 +625,16 @@ export function routineHasMonth(r, ym) {
 export const routineCycle = (routineId, ym) =>
   state.visible.find((m) => m.routineId === routineId && m.ym === ym)
 
+// 그 달 회차를 "만든 적이 있나" — 지운 것(휴지통 표식)까지 센다.
+// routineCycle은 보이는 것만 찾으므로 그걸로 판정하면 내가 지운 회차를 앱이 다음에 열 때
+// 다시 만들어낸다. 지운 건 지운 것으로 둔다. (2026-08-19 사용자: "지웠는데 자꾸 생성되지")
+const cycleEverMade = (routineId, ym) =>
+  state.memos.some((m) => m.routineId === routineId && m.ym === ym)
+
+// 이름이 사실상 비어 있는가 — 눈에 안 보이는 글자(제로폭 공백 등)만 남은 것도 빈 이름으로 본다.
+// 그런 게 섞이면 trim()을 통과해 "— 8월분" 같은 이름 없는 회차가 계속 만들어진다.
+export const blankTitle = (t) => !String(t || '').replace(/[\s\u200b-\u200f\u2060\ufeff]/g, '')
+
 // 날짜가 고정인 일(공과금·월세)과 매번 잡아야 하는 일(업체 방문·정기점검)은 다르다.
 // flexible=true면 그 루틴의 회차는 "가예정"으로 태어난다 — 달력에서 흐리게 보이고,
 // 내가 날짜를 잡거나 기록을 남기면 확정된다. 없는 값(옛 루틴)은 고정으로 본다.
@@ -809,7 +819,7 @@ export function removeRoutine(id) {
 export function cleanupBlankRoutines() {
   const now = new Date().toISOString()
   const blank = new Set(
-    state.routines.filter((r) => !r.deleted && !(r.title || '').trim()).map((r) => r.id)
+    state.routines.filter((r) => !r.deleted && blankTitle(r.title)).map((r) => r.id)
   )
   const live = new Set(state.routines.filter((r) => !r.deleted && !blank.has(r.id)).map((r) => r.id))
   const orphan = state.memos.filter(
@@ -892,8 +902,8 @@ export function ensureThisMonth() {
   const ym = thisYm()
   const made = []
   for (const r of getRoutines()) {
-    if (!(r.title || '').trim()) continue
-    if (routineHasMonth(r, ym) && !routineCycle(r.id, ym)) made.push(newCycle(r, ym))
+    if (blankTitle(r.title)) continue
+    if (routineHasMonth(r, ym) && !cycleEverMade(r.id, ym)) made.push(newCycle(r, ym))
   }
   if (!made.length) return 0
   commit({ ...state, memos: [...made, ...state.memos] })

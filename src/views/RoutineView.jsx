@@ -12,6 +12,7 @@ import {
   setGroupDueDay,
   setGroupFlexible,
   thisYm,
+  blankTitle,
 } from '../store'
 import { readRoutinePaste } from '../importXlsx'
 import useIsNarrow from '../useIsNarrow'
@@ -82,9 +83,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   // 왼쪽 위 배지는 "고른 달" 기준 — 월 머리를 누르면 그 달의 남은 건수로 바뀐다
   const selYm = ymOf(selMonth)
   const remain = routines.filter(
-    (r) => r.title.trim() && routineHasMonth(r, selYm) && (cycleOf(r.id, selYm) || {}).status !== 'done'
+    (r) => !blankTitle(r.title) && routineHasMonth(r, selYm) && (cycleOf(r.id, selYm) || {}).status !== 'done'
   ).length
-  const selCount = routines.filter((r) => r.title.trim() && routineHasMonth(r, selYm)).length
+  const selCount = routines.filter((r) => !blankTitle(r.title) && routineHasMonth(r, selYm)).length
 
   // 묶음의 지금 값 — 패널을 열 때 이 값으로 채워야 한쪽만 바꿔도 다른 쪽이 안 덮인다
   function groupNow(g) {
@@ -112,7 +113,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   // (메모의 빈 초안 정리와 같은 규칙)
   function cancelEdit() {
     const r = routines.find((x) => x.id === editId)
-    if (r && !(r.title || '').trim()) removeRoutine(r.id)
+    if (r && blankTitle(r.title)) removeRoutine(r.id)
     setEditId(null)
   }
 
@@ -148,7 +149,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
 
   function openCycle(r) {
     // 이름부터 적어야 회차가 생긴다 — 이름 없는 줄을 누르면 열리는 대신 이름칸이 열린다
-    if (!(r.title || '').trim()) return startEdit(r)
+    if (blankTitle(r.title)) return startEdit(r)
     const memo = ensureCycle(r.id, ymOf(selMonth))
     if (memo) onOpen(memo.id)
   }
