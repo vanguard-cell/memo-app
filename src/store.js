@@ -907,6 +907,29 @@ export function adoptDoneDays(ym) {
   return changes
 }
 
+// 매달 적어 오던 메모를 루틴으로 만든다 — 이 메모가 그 달 기록이 되고, 다음 달부터
+// 자동으로 돈다. 적어둔 진행기록·파일은 그 메모에 그대로 있으니 첫 회차의 기록이 된다.
+// 예정일은 이 메모의 날짜, 시작 달도 이 메모의 달 — 그 앞의 달들은 "해당 없음"으로 둔다
+// (안 한 것처럼 빈칸으로 남지 않게). 유동(가예정)으로 만들지 않는 이유: 날짜가 매달 조금씩
+// 달라도 다음 달 회차가 흐리게 뜨는 것보다 다른 것들과 똑같이 보이는 게 낫다는 사용자
+// 판단이다 — 그 근처에서 처리하고 실제 한 날로 옮기면 된다. (2026-08-21 사용자 요청)
+export function makeRoutineFromMemo(memoId) {
+  const m = state.memos.find((x) => x.id === memoId)
+  if (!m || m.routineId || blankTitle(m.title)) return null
+  const date = m.due || (m.period && m.period.start) || (m.completedAt || '').slice(0, 10) || todayStr()
+  const ym = date.slice(0, 7)
+  const r = addRoutine({
+    title: m.title.trim(),
+    group: '기타',
+    desc: m.desc || '',
+    dueDay: Number(date.slice(8, 10)) || 5,
+    startYm: ym,
+    flexible: false,
+  })
+  updateMemo(m.id, { routineId: r.id, ym, tentative: false })
+  return r
+}
+
 // 회차 메모 한 개 만들기 (저장은 부르는 쪽에서 — 여러 개를 한 번에 담을 수 있게)
 function newCycle(r, ym) {
   const now = new Date().toISOString()

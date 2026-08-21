@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, routineDue, adoptCycleDay } from '../store'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, routineDue, adoptCycleDay, makeRoutineFromMemo, blankTitle } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
@@ -215,6 +215,23 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   // 매번 날짜를 새로 잡는 유동 루틴(가예정)은 묻지 않는다 — 원래 달마다 다른 날이다.
   // (2026-08-20 사용자: "다음달에도 18일로 반영이 되는지?")
   const rt = memo.routineId ? routineOf(memo.routineId) : null
+
+  // "루틴으로" — 팝업 대신 그 자리에서 두 번 누르게 한다(앱의 다른 확인과 같은 방식).
+  // 매달 도는 일이 하나 생기는 일이라 실수로 한 번 눌린 것과 구분한다. (2026-08-21)
+  const [armRt, setArmRt] = useState(false)
+  const armRtTimer = useRef(null)
+  useEffect(() => () => clearTimeout(armRtTimer.current), [])
+  function toRoutine() {
+    if (!armRt) {
+      setArmRt(true)
+      clearTimeout(armRtTimer.current)
+      armRtTimer.current = setTimeout(() => setArmRt(false), 4000)
+      return
+    }
+    clearTimeout(armRtTimer.current)
+    setArmRt(false)
+    makeRoutineFromMemo(memo.id)
+  }
   const askDay =
     rt && !rt.flexible && !memo.dayKept && memo.due && memo.ym && memo.due !== routineDue(memo.ym, rt.dueDay)
       ? Number(memo.due.slice(8, 10))
@@ -358,6 +375,22 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   >
                     이 날로 확정
                   </button>
+                )}
+                {/* 매달 적어 오던 메모를 루틴으로 — 이 메모가 그 달 기록이 되고 다음 달부터 자동으로 온다.
+                    이미 루틴 회차인 메모에는 안 보인다 (2026-08-21) */}
+                {!memo.routineId && !memo.keep && !memo.hold && !blankTitle(memo.title) && (
+                  <button
+                    className={'linkish' + (armRt ? ' t-red' : '')}
+                    title="매달 도는 일로 만듭니다 — 이 메모가 이 달 기록이 되고, 다음 달부터 루틴 격자에 나옵니다"
+                    onClick={toRoutine}
+                  >
+                    {armRt ? '매달 도는 일로 만듭니다' : '루틴으로'}
+                  </button>
+                )}
+                {rt && (
+                  <span className="meta-routine" title="매달 도는 일 — 루틴 화면 격자에서 보입니다">
+                    ↻ 루틴 · 매달 {Number(rt.dueDay) || 5}일
+                  </span>
                 )}
                 {/* 기간 설정이 정보 수정 폼 안에만 있어 못 찾는 문제 — 바로가기 (2026-07-31) */}
                 {memo.status !== 'done' && !memo.keep && !memo.hold && (

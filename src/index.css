@@ -2887,6 +2887,17 @@ main {
   white-space: nowrap;
 }
 
+/* 루틴 회차임을 알리는 칩 — 상세에서 "이건 매달 도는 일"이 보이게 (2026-08-21) */
+.meta-routine {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--teal);
+  background: var(--teal-bg);
+  padding: 2px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
 .edit-form .edit-select {
   font: inherit;
   font-size: var(--fs-base);
