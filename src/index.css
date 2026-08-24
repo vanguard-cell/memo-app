@@ -3625,6 +3625,59 @@ main {
   background: var(--blue-bg);
 }
 
+/* 묶음 손잡이 — 끌면 묶음 전체가 순서를 바꾼다. 이름·버튼을 누르는 평소 동작과
+   안 겹치게 이 손잡이만 draggable로 둔다 (2026-08-21) */
+.rt-ghandle {
+  cursor: grab;
+  color: var(--faint);
+  opacity: 0.5;
+  margin-right: 2px;
+}
+
+.rt-group:hover .rt-ghandle {
+  opacity: 1;
+}
+
+/* 묶음 이름 — 눌러서 고친다 (2026-08-21) */
+.rt-gname-text {
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+}
+
+.rt-gname-text:hover {
+  color: var(--text);
+  border-bottom-color: var(--border-hover);
+}
+
+.rt-gname-input {
+  font: inherit;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--blue-strong);
+  border-radius: 5px;
+  padding: 1px 5px;
+  width: 12em;
+}
+
+/* 드래그로 순서 바꾸기 — 놓일 자리를 파란 줄로 미리 보여준다 (다른 화면의 드래그와 같은 표시) */
+.rt-row.dragging {
+  opacity: 0.4;
+}
+
+/* border-collapse 표에서는 box-shadow가 tr에 안 먹으므로 td 테두리로 대신한다 */
+.rt-row.drop-above > td,
+.rt-group.drop-above > td {
+  border-top: 2px solid var(--blue-strong);
+}
+
+.rt-row.drop-below > td,
+.rt-group.drop-below > td {
+  border-bottom: 2px solid var(--blue-strong);
+}
+
 .rt-row td {
   border-top: 1px solid var(--border);
   padding: 0;

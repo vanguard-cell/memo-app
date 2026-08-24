@@ -11,6 +11,8 @@ import {
   importRoutineCycles,
   setGroupDueDay,
   setGroupFlexible,
+  renameGroup,
+  reorderRoutines,
   thisYm,
   blankTitle,
 } from '../store'
@@ -50,6 +52,13 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   const [showStopped, setShowStopped] = useState(false)
   const [gDay, setGDay] = useState(null) // 묶음 예정일 일괄 변경 { g, day }
   const [arm, setArm] = useState(null) // 완료 해제를 한 번 물어둔 칸 { id, m }
+  // 묶음 이름 고치기 — 클릭하면 그 자리에서 입력칸으로 바뀐다 (2026-08-21)
+  const [renaming, setRenaming] = useState(null) // { g, value }
+  // 드래그로 순서 바꾸기 — 항목은 아무 데나 끌어다 놓으면 그 자리로, 묶음은 손잡이(⠿)를
+  // 끌어야 통째로 옮겨간다. 놓일 자리는 파란 줄로 미리 보여준다. (2026-08-21)
+  const [dragItem, setDragItem] = useState(null) // 끄는 중인 항목 id
+  const [overRow, setOverRow] = useState(null) // { id, after } 항목 위에 떠 있을 때
+  const [overGroup, setOverGroup] = useState(null) // { g, after } 묶음 머리 위에 떠 있을 때
   const undoTimer = useRef(null)
   const armTimer = useRef(null)
 
@@ -88,6 +97,43 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   const selCount = routines.filter((r) => !blankTitle(r.title) && routineHasMonth(r, selYm)).length
 
   // 묶음의 지금 값 — 패널을 열 때 이 값으로 채워야 한쪽만 바꿔도 다른 쪽이 안 덮인다
+  // 묶음 순서(STOPPED 제외)와, 그 순서를 그대로 편 항목 id 목록 — 드래그로 옮길 때
+  // "지금 화면에 보이는 순서"를 그대로 기준으로 삼는다.
+  const orderedGroups = groups.filter((x) => x !== STOPPED)
+  const flatLiveIds = orderedGroups.flatMap((g) => live.filter((r) => (r.group || '기타') === g).map((r) => r.id))
+
+  function parseDrag(e) {
+    try {
+      return JSON.parse(e.dataTransfer.getData('text/plain'))
+    } catch {
+      return null
+    }
+  }
+
+  // 항목 하나를 다른 자리(다른 묶음일 수도 있다)로 옮긴다. targetId가 없으면 그 묶음 맨 끝.
+  function moveItem(draggedId, targetGroup, targetId, after) {
+    const d = live.find((r) => r.id === draggedId)
+    if (!d) return
+    const flat = flatLiveIds.filter((id) => id !== draggedId)
+    let idx = targetId ? flat.indexOf(targetId) : -1
+    if (idx === -1) idx = flat.length
+    else if (after) idx += 1
+    flat.splice(idx, 0, draggedId)
+    if ((d.group || '기타') !== targetGroup) updateRoutine(draggedId, { group: targetGroup })
+    reorderRoutines(flat)
+  }
+
+  // 묶음 하나를 통째로 다른 묶음의 앞/뒤로 옮긴다 — 안에 있는 항목 순서는 그대로 딸려간다.
+  function moveGroup(draggedG, targetG, after) {
+    if (draggedG === targetG) return
+    const order = orderedGroups.filter((g) => g !== draggedG)
+    let idx = order.indexOf(targetG)
+    if (idx === -1) idx = order.length
+    else if (after) idx += 1
+    order.splice(idx, 0, draggedG)
+    reorderRoutines(order.flatMap((g) => live.filter((r) => (r.group || '기타') === g).map((r) => r.id)))
+  }
+
   function groupNow(g) {
     const rs = live.filter((r) => (r.group || '기타') === g)
     const tally = {}
@@ -184,6 +230,11 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
 
   return (
     <div className="view rt-view">
+      <datalist id="rt-group-list">
+        {orderedGroups.map((g) => (
+          <option key={g} value={g} />
+        ))}
+      </datalist>
       <div className="rt-head">
         <button onClick={() => setYear((y) => y - 1)}>‹</button>
         <span className="rt-year">{year}년</span>
@@ -299,7 +350,33 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                 {/* 묶음 머리 — 칸 열을 colSpan으로 덮지 않는다. 덮으면 그 줄에서 열이 끊겨
                     아래위 체크가 따로 노는 것처럼 보인다(2026-08-11 지적). 열은 그대로 두고
                     이름 칸에만 글자를 얹어, 고른 달의 세로 띠가 위아래로 쭉 이어지게 한다. */}
-                <tr className="rt-group">
+                <tr
+                  className={
+                    'rt-group' +
+                    (overGroup && overGroup.g === g ? (overGroup.after ? ' drop-below' : ' drop-above') : '')
+                  }
+                  onDragOver={(e) => {
+                    if (g === STOPPED) return
+                    e.preventDefault()
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setOverGroup({ g, after: e.clientY - rect.top > rect.height / 2 })
+                  }}
+                  onDrop={(e) => {
+                    if (g === STOPPED) return
+                    e.preventDefault()
+                    const cur = overGroup
+                    setOverGroup(null)
+                    setDragItem(null)
+                    const data = parseDrag(e)
+                    if (!data) return
+                    // 항목을 묶음 머리에 놓으면 그 묶음 맨 끝으로 — 처음 그 묶음에 넣는 것과 같다
+                    if (data.kind === 'routine-item') {
+                      moveItem(data.id, g, null, true)
+                    } else if (data.kind === 'routine-group' && data.g !== g) {
+                      moveGroup(data.g, g, cur && cur.g === g ? cur.after : false)
+                    }
+                  }}
+                >
                   <td className="rt-gname">
                     {g === STOPPED ? (
                       <button
@@ -311,7 +388,45 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                       </button>
                     ) : (
                       <>
-                        {g}
+                        {/* 손잡이를 끌어야 묶음 전체가 옮겨간다 — 이름·버튼을 누르는 평소 동작과
+                            안 겹치게 손잡이만 draggable로 둔다 (2026-08-21) */}
+                        <span
+                          className="rt-ghandle"
+                          draggable
+                          title="끌어서 묶음 순서를 바꿉니다"
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'routine-group', g }))
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragEnd={() => setOverGroup(null)}
+                        >
+                          ⠿
+                        </span>
+                        {renaming && renaming.g === g ? (
+                          <input
+                            className="rt-gname-input"
+                            autoFocus
+                            value={renaming.value}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => setRenaming({ g, value: e.target.value })}
+                            onBlur={() => {
+                              renameGroup(g, renaming.value)
+                              setRenaming(null)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur()
+                              if (e.key === 'Escape') setRenaming(null)
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className="rt-gname-text"
+                            title="눌러서 묶음 이름을 고칩니다"
+                            onClick={() => setRenaming({ g, value: g })}
+                          >
+                            {g}
+                          </span>
+                        )}
                         <button className="rt-add" onClick={() => addTo(g)}>
                           +
                         </button>
@@ -434,7 +549,42 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                     const detail = renderDetail ? renderDetail((cycleOf(r.id, ymOf(selMonth)) || {}).id) : null
                     return (
                       <Fragment key={r.id}>
-                        <tr className={'rt-row' + (stopped ? ' rt-stopped' : '')}>
+                        <tr
+                          className={
+                            'rt-row' +
+                            (stopped ? ' rt-stopped' : '') +
+                            (dragItem === r.id ? ' dragging' : '') +
+                            (overRow && overRow.id === r.id ? (overRow.after ? ' drop-below' : ' drop-above') : '')
+                          }
+                          // 중단한 항목은 순서를 안 바꾼다 — 접힌 목록이라 옮길 이유가 없다 (2026-08-21)
+                          draggable={!stopped}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'routine-item', id: r.id }))
+                            e.dataTransfer.effectAllowed = 'move'
+                            setDragItem(r.id)
+                          }}
+                          onDragOver={(e) => {
+                            if (stopped) return
+                            e.preventDefault()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setOverRow({ id: r.id, after: e.clientY - rect.top > rect.height / 2 })
+                          }}
+                          onDrop={(e) => {
+                            if (stopped) return
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const cur = overRow
+                            setDragItem(null)
+                            setOverRow(null)
+                            const data = parseDrag(e)
+                            if (!data || data.kind !== 'routine-item' || data.id === r.id) return
+                            moveItem(data.id, r.group || '기타', r.id, cur && cur.id === r.id ? cur.after : false)
+                          }}
+                          onDragEnd={() => {
+                            setDragItem(null)
+                            setOverRow(null)
+                          }}
+                        >
                           {/* 설명(엑셀 비고)은 격자에 안 쓴다 — 한 화면에 최대한 많이 보이는 게 먼저고,
                               내용은 이름을 눌러 여는 상세의 '작업 설명'에 그대로 있다.
                               마우스를 올리면 말풍선으로도 보인다 (2026-08-11 사용자 지시) */}
@@ -504,8 +654,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                 <label>
                                   묶음
                                   <input
+                                    list="rt-group-list"
                                     value={form.group}
-                                    placeholder="예: 공과금·구미"
+                                    placeholder="예: 공과금·구미 (다른 묶음 이름을 적으면 그쪽으로 옮겨집니다)"
                                     onChange={(e) => setForm({ ...form, group: e.target.value })}
                                   />
                                 </label>

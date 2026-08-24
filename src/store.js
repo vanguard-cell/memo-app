@@ -742,6 +742,56 @@ export function setGroupDueDay(group, day) {
 // 자동으로 찍힌 날짜가 마침 맞을 때 — 날짜를 안 옮기고 "이 날 맞다"만 표시한다
 export const confirmDate = (id) => updateMemo(id, { tentative: false })
 
+// 묶음 이름을 통째로 바꾼다 — 지금까지는 항목마다 ⋯ → 수정에서 같은 이름을 하나씩
+// 다시 타이핑해야 했다. 그 묶음의 모든 항목(중단한 것도 데이터는 같이) 이름을 한 번에 고친다.
+// (2026-08-21 사용자: "대분류 자유롭게 수정하고 싶어")
+export function renameGroup(oldName, newName) {
+  const name = newName.trim() || '기타'
+  if (name === oldName) return
+  const now = new Date().toISOString()
+  const ids = new Set(
+    state.routines.filter((r) => !r.deleted && (r.group || '기타') === oldName).map((r) => r.id)
+  )
+  if (!ids.size) return
+  const routines = state.routines.map((r) => (ids.has(r.id) ? { ...r, group: name, updatedAt: now } : r))
+  commit({ ...state, routines })
+  const changed = routines.filter((r) => ids.has(r.id))
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+}
+
+// 화면에서 드래그로 순서를 바꾸면(항목 순서 · 다른 묶음으로 옮기기 · 묶음 통째로 순서 바꾸기)
+// 이 함수가 전체 순서를 한 번에 다시 매긴다. 몇십 건 수준이라 끼워 넣기보다 매번 전부
+// 다시 번호를 매기는 쪽이 간단하고 확실하다. 중단한 항목은 화면에 안 보이므로 orderedLiveIds에
+// 없다 — 지금 순서 그대로 살아 있는 항목들 뒤에 이어 붙인다. (2026-08-21)
+export function reorderRoutines(orderedLiveIds) {
+  const now = new Date().toISOString()
+  const stoppedIds = state.routines
+    .filter((r) => !r.deleted && r.endYm)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((r) => r.id)
+  const pos = new Map([...orderedLiveIds, ...stoppedIds].map((id, i) => [id, i]))
+  const routines = state.routines.map((r) =>
+    pos.has(r.id) ? { ...r, order: pos.get(r.id), updatedAt: now } : r
+  )
+  commit({ ...state, routines })
+  const changed = routines.filter((r) => pos.has(r.id))
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+}
+
 // 묶음 통째로 "날짜 고정 ↔ 매번 잡음" — 34건을 하나씩 켜는 건 일이라 묶음 단위로 준다.
 // 아직 안 끝난 회차의 표시도 같이 맞춘다(이미 내가 잡은 날·끝난 회차는 그대로 둔다).
 export function setGroupFlexible(group, flexible) {
