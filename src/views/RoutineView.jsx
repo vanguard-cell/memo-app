@@ -12,6 +12,7 @@ import {
   setGroupDueDay,
   setGroupFlexible,
   renameGroup,
+  removeGroup,
   reorderRoutines,
   thisYm,
   blankTitle,
@@ -54,6 +55,11 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   const [arm, setArm] = useState(null) // 완료 해제를 한 번 물어둔 칸 { id, m }
   // 묶음 이름 고치기 — 클릭하면 그 자리에서 입력칸으로 바뀐다 (2026-08-21)
   const [renaming, setRenaming] = useState(null) // { g, value }
+  // Esc로 취소했는데도 입력칸이 없어지면서 blur가 걸려 그 값이 저장되는 걸 막는 플래그
+  // (React가 포커스 있는 input을 없앨 때 그 blur를 지난 렌더의 onBlur로 흘려보낸다)
+  const skipRenameSave = useRef(false)
+  // 묶음 새로 만들기 — 이름부터 정하고 나면 그 묶음의 첫 항목 만들기로 이어진다 (2026-08-22)
+  const [newGroup, setNewGroup] = useState(null) // 입력 중인 이름, null이면 닫힘
   // 드래그로 순서 바꾸기 — 항목은 아무 데나 끌어다 놓으면 그 자리로, 묶음은 손잡이(⠿)를
   // 끌어야 통째로 옮겨간다. 놓일 자리는 파란 줄로 미리 보여준다. (2026-08-21)
   const [dragItem, setDragItem] = useState(null) // 끄는 중인 항목 id
@@ -244,6 +250,44 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
             {selMonth}월 {remain === 0 ? '다 끝남' : `${remain}건 남음`}
           </span>
         )}
+        {/* 새 묶음 — 이름부터 정하고 나면 그 묶음의 첫 항목 만들기(addTo)로 이어진다.
+            여태 묶음은 항목을 만들 때 곁다리로만 생겼는데, 처음부터 이름을 정하고
+            싶을 때를 위한 길 (2026-08-22 사용자: "항목을 추가/삭제 할수 있는기능도 넣어줘") */}
+        {newGroup === null ? (
+          <button className="rt-paste-btn" onClick={() => setNewGroup('')}>
+            + 새 묶음
+          </button>
+        ) : (
+          <span className="rt-newgroup">
+            <input
+              autoFocus
+              className="rt-newgroup-input"
+              value={newGroup}
+              placeholder="새 묶음 이름"
+              onChange={(e) => setNewGroup(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const name = newGroup.trim()
+                  setNewGroup(null)
+                  if (name) addTo(name)
+                }
+                if (e.key === 'Escape') setNewGroup(null)
+              }}
+            />
+            <button
+              className="btn-done"
+              disabled={!newGroup.trim()}
+              onClick={() => {
+                const name = newGroup.trim()
+                setNewGroup(null)
+                if (name) addTo(name)
+              }}
+            >
+              만들기
+            </button>
+            <button onClick={() => setNewGroup(null)}>취소</button>
+          </span>
+        )}
         <button
           className={'rt-paste-btn' + (paste ? ' on' : '')}
           title="엑셀에서 표를 복사해 붙여넣으면 그대로 읽습니다 (파일 업로드가 막힌 곳에서도 됩니다)"
@@ -410,12 +454,19 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => setRenaming({ g, value: e.target.value })}
                             onBlur={() => {
-                              renameGroup(g, renaming.value)
+                              if (skipRenameSave.current) {
+                                skipRenameSave.current = false
+                              } else {
+                                renameGroup(g, renaming.value)
+                              }
                               setRenaming(null)
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') e.currentTarget.blur()
-                              if (e.key === 'Escape') setRenaming(null)
+                              if (e.key === 'Escape') {
+                                skipRenameSave.current = true
+                                e.currentTarget.blur()
+                              }
                             }}
                           />
                         ) : (
@@ -529,6 +580,43 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                 전부 이 날로
                               </button>
                               <span className="rt-hint">항목마다 날짜가 다르면 쓰지 마세요 (개별은 ⋯ → 수정)</span>
+                            </>
+                          )}
+                        </div>
+                        {/* 묶음 통째로 지우기 — 항목 하나씩 지우던 걸 한 번에. 지운 뒤에도
+                            기록이 남은 회차는 메모로 남는다(항목 하나 지울 때와 같은 규칙).
+                            중단한 항목은 이미 지난 일이라 손대지 않는다.
+                            (2026-08-22 사용자: "항목을 추가/삭제 할수 있는기능도 넣어줘") */}
+                        <div className="rt-grow">
+                          {gDay.delSure ? (
+                            <>
+                              <button
+                                className="rt-danger-btn on"
+                                onClick={() => {
+                                  const n = removeGroup(g)
+                                  setGDay(null)
+                                  setUndo({
+                                    label: `「${g}」 ${n}건을 지웠습니다 — 기록이 있던 회차는 메모로 남습니다`,
+                                    fn: null,
+                                  })
+                                  clearTimeout(undoTimer.current)
+                                  undoTimer.current = setTimeout(() => setUndo(null), 5000)
+                                }}
+                              >
+                                정말 이 묶음을 지웁니다
+                              </button>
+                              <button onClick={() => setGDay({ ...gDay, delSure: false })}>취소</button>
+                              <span className="rt-hint t-red">
+                                「{g}」의 항목 {live.filter((r) => (r.group || '기타') === g).length}건이 목록에서
+                                지워집니다. 완료·기록이 있던 회차는 메모로 남고, 빈 회차는 같이 지워집니다
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <button className="rt-danger-btn" onClick={() => setGDay({ ...gDay, delSure: true })}>
+                                묶음 지우기
+                              </button>
+                              <span className="rt-hint">이 묶음의 항목이 전부 목록에서 지워집니다</span>
                             </>
                           )}
                         </div>

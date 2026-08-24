@@ -3470,6 +3470,23 @@ main {
   color: var(--blue);
 }
 
+/* 새 묶음 만들기 — 이름칸 + 만들기 버튼 (2026-08-22) */
+.rt-newgroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-newgroup-input {
+  font: inherit;
+  font-size: var(--fs-sm);
+  background: var(--field);
+  border: 1px solid var(--blue-strong);
+  border-radius: 8px;
+  padding: 4px 8px;
+  width: 10em;
+}
+
 .rt-paste {
   margin-bottom: 14px;
   padding: 12px 14px;

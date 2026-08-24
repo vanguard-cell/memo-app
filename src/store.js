@@ -766,6 +766,36 @@ export function renameGroup(oldName, newName) {
   }
 }
 
+// 묶음을 통째로 지운다 — 이 묶음에 있는 살아 있는 항목을 전부 removeRoutine과 같은 규칙으로
+// 지운다(기록이 남은 회차는 메모로 남고, 빈 회차만 같이 지워진다). 중단(끝난)한 항목은
+// 이미 지난 일이라 그대로 둔다 — 묶음 삭제로 옛 이력까지 건드리지 않는다.
+// 돌려주는 값은 지운 항목 수. (2026-08-22 사용자: "항목을 추가/삭제 할수 있는기능도 넣어줘")
+export function removeGroup(groupName) {
+  const now = new Date().toISOString()
+  const ids = new Set(
+    state.routines.filter((r) => !r.deleted && !r.endYm && (r.group || '기타') === groupName).map((r) => r.id)
+  )
+  if (!ids.size) return 0
+  const gone = state.memos.filter((m) => m.routineId && ids.has(m.routineId) && !m.deleted && !cycleHasRecord(m))
+  const goneIds = new Set(gone.map((m) => m.id))
+  const routines = state.routines.map((r) => (ids.has(r.id) ? { ...r, deleted: true, updatedAt: now } : r))
+  const memos = state.memos.map((m) => (goneIds.has(m.id) ? { ...m, deleted: true, updatedAt: now } : m))
+  commit({ ...state, routines, memos })
+  const changed = [
+    ...routines.filter((r) => ids.has(r.id)),
+    ...memos.filter((m) => goneIds.has(m.id)),
+  ]
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return ids.size
+}
+
 // 화면에서 드래그로 순서를 바꾸면(항목 순서 · 다른 묶음으로 옮기기 · 묶음 통째로 순서 바꾸기)
 // 이 함수가 전체 순서를 한 번에 다시 매긴다. 몇십 건 수준이라 끼워 넣기보다 매번 전부
 // 다시 번호를 매기는 쪽이 간단하고 확실하다. 중단한 항목은 화면에 안 보이므로 orderedLiveIds에
