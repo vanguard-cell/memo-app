@@ -678,16 +678,26 @@ export function updateRoutine(id, patch) {
   const dayMoved = before && 'dueDay' in patch && Number(patch.dueDay) !== Number(before.dueDay)
   const newTitle = typeof patch.title === 'string' ? patch.title.trim() : ''
   const renamed = before && newTitle && newTitle !== before.title
+  // 날짜 방식(고정 ↔ 매번 잡음)도 이미 만들어진 회차에 따라가야 한다. 묶음 일괄
+  // (setGroupFlexible)은 원래 그렇게 동작했는데 항목 하나를 ⋯ → 수정에서 바꿀 때는
+  // 정의만 바뀌어서, "매번 잡음"으로 해뒀는데 달력의 그 달 회차는 진하게(확정) 남아
+  // 있었다. (2026-08-22 사용자: "다른것도 전부 매번잡음으로 해놨는데")
+  const flexChanged = before && 'flexible' in patch && !!patch.flexible !== !!before.flexible
   const routines = state.routines.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: now } : r))
   const moved = []
   const memos =
-    dayMoved || renamed
+    dayMoved || renamed || flexChanged
       ? state.memos.map((m) => {
           if (m.routineId !== id || !m.ym) return m
           let next = m
           if (dayMoved && m.status !== 'done') next = { ...next, due: routineDue(m.ym, patch.dueDay) }
           if (renamed && m.title === cycleTitle(before.title, m.ym)) {
             next = { ...next, title: cycleTitle(newTitle, m.ym) }
+          }
+          // 켤 때는 아직 손 안 댄 회차만 가예정으로 (내가 잡은 날·쓴 기록은 안 건드린다),
+          // 끌 때는 가예정 표시만 지운다 — setGroupFlexible과 같은 규칙
+          if (flexChanged && m.status !== 'done' && tentativeTouchable(m, !!patch.flexible)) {
+            next = { ...next, tentative: !!patch.flexible }
           }
           if (next === m) return m
           next = { ...next, updatedAt: now }
@@ -739,8 +749,18 @@ export function setGroupDueDay(group, day) {
   return ids.size
 }
 
+// 가예정 표시를 바꿔도 되는 회차인가 — 켤 때는 "아직 손 안 댄 것"만 (내가 날짜를 확정했거나
+// 기록을 쓴 회차는 이미 내가 잡은 약속이다), 끌 때는 가예정인 것만. 묶음 일괄과 개별 수정이
+// 같은 규칙을 쓰도록 한 곳에 둔다. (2026-08-22)
+const tentativeTouchable = (m, wantTentative) =>
+  wantTentative
+    ? !m.tentative && !m.dateFixed && !(m.history || []).length
+    : !!m.tentative
+
 // 자동으로 찍힌 날짜가 마침 맞을 때 — 날짜를 안 옮기고 "이 날 맞다"만 표시한다
-export const confirmDate = (id) => updateMemo(id, { tentative: false })
+// dateFixed 표식을 같이 남긴다 — 나중에 날짜 방식을 다시 켜거나 일괄 정리가 돌 때
+// "이건 내가 이 날로 확정한 것"이라 다시 흐려지지 않는다 (2026-08-22)
+export const confirmDate = (id) => updateMemo(id, { tentative: false, dateFixed: true })
 
 // 묶음 이름을 통째로 바꾼다 — 지금까지는 항목마다 ⋯ → 수정에서 같은 이름을 하나씩
 // 다시 타이핑해야 했다. 그 묶음의 모든 항목(중단한 것도 데이터는 같이) 이름을 한 번에 고친다.
@@ -834,11 +854,9 @@ export function setGroupFlexible(group, flexible) {
     ids.has(r.id) ? { ...r, flexible: !!flexible, updatedAt: now } : r
   )
   // 켤 때: 아직 손 안 댄 회차를 가예정으로. 끌 때: 가예정 표시만 지운다.
+  // 판단은 개별 수정(updateRoutine)과 같은 함수를 쓴다 — 두 길의 결과가 달라지지 않게
   const touch = (m) =>
-    m.routineId &&
-    ids.has(m.routineId) &&
-    m.status !== 'done' &&
-    (flexible ? !m.tentative && !(m.history || []).length : m.tentative)
+    m.routineId && ids.has(m.routineId) && m.status !== 'done' && tentativeTouchable(m, flexible)
   const moved = new Set()
   const memos = state.memos.map((m) => {
     if (!touch(m)) return m
@@ -1011,6 +1029,41 @@ export function makeRoutineFromMemo(memoId) {
   })
   updateMemo(m.id, { routineId: r.id, ym, tentative: false })
   return r
+}
+
+// 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — 개별 수정이 회차에 안 따라가던
+// 동안(2026-08-22 수정 전) 어긋난 것들을 따라잡기 위한 일회성 정리다.
+// 손 안 댄 회차만 건드린다: 기록을 썼거나, 내가 날짜를 확정했거나(dateFixed),
+// 자동 날짜에서 옮겨둔 회차는 이미 내가 잡은 약속이라 그대로 둔다.
+// 돌려주는 값은 바꾼 회차 수. (2026-08-22)
+export function alignTentative() {
+  const now = new Date().toISOString()
+  const byId = new Map(state.routines.filter((r) => !r.deleted).map((r) => [r.id, r]))
+  const moved = []
+  const memos = state.memos.map((m) => {
+    if (!m.routineId || !m.ym || m.deleted || m.status === 'done') return m
+    const r = byId.get(m.routineId)
+    if (!r) return m
+    const want = !!r.flexible
+    if (!!m.tentative === want) return m
+    if (!tentativeTouchable(m, want)) return m
+    // 자동으로 찍힌 날에서 옮겨둔 회차는 내가 잡은 날 — 흐리게 되돌리지 않는다
+    if (want && m.due && m.due !== routineDue(m.ym, r.dueDay)) return m
+    const next = { ...m, tentative: want, updatedAt: now }
+    moved.push(next)
+    return next
+  })
+  if (!moved.length) return 0
+  commit({ ...state, memos })
+  if (hasSupabase && session) {
+    pushMemoRows(moved)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return moved.length
 }
 
 // 회차 메모 한 개 만들기 (저장은 부르는 쪽에서 — 여러 개를 한 번에 담을 수 있게)
