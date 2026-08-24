@@ -143,14 +143,22 @@ export default function App() {
     setShowRoutine(which === 'routine' && !showRoutine)
   }
 
+  // 이름 없는 빈 줄과 주인 없는 빈 회차 치우기 — **앱을 열 때 한 번만** 돈다.
+  // 예전엔 아래 ensureThisMonth와 한 묶음이라 routines.length가 바뀔 때마다 돌았는데,
+  // "+ 항목"·"+ 새 묶음"은 빈 줄을 먼저 만들고 이름칸을 여는 방식이라 그 줄이 생기는
+  // 순간 이 정리가 다시 돌아 방금 만든 줄을 지워버렸다 — 누른 사람에게는 아무 반응이
+  // 없는 것처럼 보인다. (2026-08-22 사용자 제보)
+  const cleanedOnce = useRef(false)
+  useEffect(() => {
+    if (!auth.ready || cleanedOnce.current) return
+    cleanedOnce.current = true
+    cleanupBlankRoutines()
+  }, [auth.ready])
+
   // 이번 달 회차를 채운다 — 루틴에 걸린 일이 오늘 화면·달력에 뜨려면 그 달 메모가 있어야 한다.
   // 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다). (2026-08-11)
   useEffect(() => {
-    if (!auth.ready) return
-    // 이름 없는 빈 줄과 주인 없는 빈 회차를 먼저 치우고 채운다 — "+ 항목"을 눌렀다 이름을
-    // 안 적고 나가면 "(이름 없음)" 루틴과 "— 8월분" 회차가 남는다 (2026-08-19)
-    cleanupBlankRoutines()
-    ensureThisMonth()
+    if (auth.ready) ensureThisMonth()
   }, [auth.ready, routines.length])
 
   // 8월에 실제로 한 날로 옮겨 완료해 둔 회차 — 그 날을 루틴 예정일로 한 번에 맞춘다.

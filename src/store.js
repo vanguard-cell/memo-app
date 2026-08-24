@@ -900,9 +900,12 @@ export function removeRoutine(id) {
 // 기록이 있는 회차는 손대지 않는다. (2026-08-19)
 export function cleanupBlankRoutines() {
   const now = new Date().toISOString()
-  const blank = new Set(
-    state.routines.filter((r) => !r.deleted && blankTitle(r.title)).map((r) => r.id)
-  )
+  // ⚠️ 방금 만든 빈 줄은 건드리지 않는다. "+ 항목"·"+ 새 묶음"은 줄을 먼저 만들고 이름칸을
+  // 여는 방식이라, 갓 태어난 줄까지 쓸어버리면 누른 사람 눈에는 아무 일도 안 일어난 것처럼
+  // 보인다. (2026-08-22 사용자: "새묶음 이름에 점검주기라고 두번 만들었는데 반응이 없음")
+  const graceAgo = new Date(Date.now() - 5 * 60000).toISOString()
+  const sweepable = (r) => blankTitle(r.title) && (r.createdAt || '') < graceAgo
+  const blank = new Set(state.routines.filter((r) => !r.deleted && sweepable(r)).map((r) => r.id))
   const live = new Set(state.routines.filter((r) => !r.deleted && !blank.has(r.id)).map((r) => r.id))
   const orphan = state.memos.filter(
     (m) => m.routineId && !m.deleted && !live.has(m.routineId) && !cycleHasRecord(m)
