@@ -4727,6 +4727,33 @@ main {
   color: var(--faint);
 }
 
+/* 달력 날짜 목록의 순서 바꾸기 ▲▼ — 폰은 드래그가 안 되므로 (2026-08-26).
+   PC에는 아예 안 그려진다(드래그가 있다). 목록이 길어지지 않게 줄 안에 붙인다. */
+.row-move {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  margin-left: auto;
+}
+
+/* 세로로 쌓으면 줄이 두 배로 높아진다 — 가로로 나란히, 손가락에 맞게 36px */
+.row-move button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.row-move button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* 날짜 목록 제목 옆 "오늘" 표시 */
 .ag-now {
   background: var(--blue-strong);
@@ -4902,30 +4929,30 @@ main {
 
   /* 보관함·보류함·휴지통 줄 — 제목·날짜·버튼 둘을 한 줄에 밀어넣으면 제목이 "엘리베이…"로
      잘려 무슨 메모인지 알 수가 없다. 버튼만 아랫줄로 내린다 (달력 날짜 목록은 버튼이 없어 그대로) */
-  .row:has(button) {
+  .row:has(button):not(:has(.row-move)) {
     flex-wrap: wrap;
     row-gap: 8px;
   }
 
-  .row:has(button) > * {
+  .row:has(button):not(:has(.row-move)) > * {
     order: 1;
   }
 
-  .row:has(button)::after {
+  .row:has(button):not(:has(.row-move))::after {
     content: '';
     order: 2;
     flex-basis: 100%;
     height: 0;
   }
 
-  .row:has(button) > button,
-  .row:has(button) > .nag-datewrap {
+  .row:has(button):not(:has(.row-move)) > button,
+  .row:has(button):not(:has(.row-move)) > .nag-datewrap {
     order: 3;
     min-height: 38px;
   }
 
-  .row:has(button) > button:first-of-type,
-  .row:has(button) > .nag-datewrap:first-of-type {
+  .row:has(button):not(:has(.row-move)) > button:first-of-type,
+  .row:has(button):not(:has(.row-move)) > .nag-datewrap:first-of-type {
     margin-left: 28px; /* 체크박스 폭만큼 들여써서 제목 줄과 왼쪽을 맞춘다 */
   }
 

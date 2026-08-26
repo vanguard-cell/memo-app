@@ -288,6 +288,32 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     setDayOrder(date, ids)
   }
 
+  // 폰은 드래그가 안 되므로 줄마다 ▲▼로 한 칸씩 옮긴다 (보드의 상태 버튼과 같은 취지).
+  // 목록이 상태(진행중 → 할일 → 완료)로 먼저 갈리므로 **같은 상태의 이웃**하고만 바꾼다 —
+  // 다른 상태와 바꿔봐야 정렬이 도로 제자리로 돌려놓는다. (2026-08-26 사용자: "폰으로 순서 안 바뀐다")
+  function swapRow(date, evs, id, dir) {
+    const list = orderedEvents(date, evs)
+    const ids = [...new Set(list.map((x) => x.m.id))]
+    const stOf = (mid) => memoStatus(list.find((x) => x.m.id === mid).m)
+    const i = ids.indexOf(id)
+    const j = i + dir
+    if (i === -1 || j < 0 || j >= ids.length || stOf(ids[i]) !== stOf(ids[j])) return
+    const next = [...ids]
+    next[i] = ids[j]
+    next[j] = ids[i]
+    setDayOrder(date, next)
+  }
+
+  // 그 줄이 위·아래로 갈 수 있나 (같은 상태의 이웃이 있나)
+  function canSwap(date, evs, id, dir) {
+    const list = orderedEvents(date, evs)
+    const ids = [...new Set(list.map((x) => x.m.id))]
+    const stOf = (mid) => memoStatus(list.find((x) => x.m.id === mid).m)
+    const i = ids.indexOf(id)
+    const j = i + dir
+    return i !== -1 && j >= 0 && j < ids.length && stOf(ids[i]) === stOf(ids[j])
+  }
+
   function onDrop(targetDate, e) {
     e.preventDefault()
     setDropTarget(null)
@@ -808,6 +834,24 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                 <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
               )}
               <span className="row-title">{e.text}</span>
+              {narrow && (
+                <span className="row-move" onClick={(ev) => ev.stopPropagation()}>
+                  <button
+                    aria-label="위로"
+                    disabled={!canSwap(sel, events[sel] || [], e.m.id, -1)}
+                    onClick={() => swapRow(sel, events[sel] || [], e.m.id, -1)}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    aria-label="아래로"
+                    disabled={!canSwap(sel, events[sel] || [], e.m.id, 1)}
+                    onClick={() => swapRow(sel, events[sel] || [], e.m.id, 1)}
+                  >
+                    ▼
+                  </button>
+                </span>
+              )}
             </div>
             </Fragment>
             )
