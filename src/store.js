@@ -353,9 +353,12 @@ function renamedRule(m, next) {
 // 가예정 풀기 — 루틴이 자동으로 찍어둔 날짜(tentative)는 "아직 안 잡은 자리"일 뿐이라,
 // 내가 날짜를 건드리는 순간 "내가 정한 날"이 된다 (달력에서 끌기·날짜 지정·하루 미루기·정보 수정).
 // 묶음 예정일 일괄 변경은 updateMemo를 안 거치므로 여기 안 걸린다 — 그건 내가 잡은 날이 아니니까.
+// dateFixed를 같이 남긴다 ([이 날로 확정]과 같은 표식): 앱을 열 때마다 도는 정렬
+// (alignTentative)이 "규칙은 매번 잡음인데 이 회차는 확정이네" 하고 도로 흐리게 만들지 않게.
+// 자동 날짜와 같은 날로 손수 고쳐둔 경우가 여기 걸린다. (2026-09-07)
 const settle = (m, patch) =>
   m.tentative && !('tentative' in patch) && ('due' in patch || 'period' in patch)
-    ? { tentative: false }
+    ? { tentative: false, dateFixed: true }
     : null
 
 export function addHistory(id, text, date) {
@@ -1133,11 +1136,13 @@ export function makeRoutineFromMemo(memoId) {
   return r
 }
 
-// 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — 개별 수정이 회차에 안 따라가던
-// 동안(2026-08-22 수정 전) 어긋난 것들을 따라잡기 위한 일회성 정리다.
+// 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — **앱을 열 때마다** 돈다.
 // 손 안 댄 회차만 건드린다: 기록을 썼거나, 내가 날짜를 확정했거나(dateFixed),
-// 자동 날짜에서 옮겨둔 회차는 이미 내가 잡은 약속이라 그대로 둔다.
-// 돌려주는 값은 바꾼 회차 수. (2026-08-22)
+// 자동 날짜에서 옮겨둔 회차는 이미 내가 잡은 약속이라 그대로 둔다. 그래서 여러 번 돌아도
+// 결과가 같다(같은 것을 두 번 바꾸지 않는다).
+// 처음엔 한 기기에서 한 번만 도는 일회성 정리였는데(2026-08-22), 그 뒤에 다시 어긋나면
+// 되돌릴 길이 없었다 — 10월 예정 자리(규칙을 읽어 그리므로 점선)는 흐린데 9월 회차는
+// 진하게 남는 식으로 어긋난다. 규칙이 진실이므로 열 때마다 맞춘다. (2026-09-07)
 export function alignTentative() {
   const now = new Date().toISOString()
   const byId = new Map(state.routines.filter((r) => !r.deleted).map((r) => [r.id, r]))

@@ -26,8 +26,6 @@ import { ICONS } from './icons'
 
 // 8월치 따라잡기 — 이 기기에서 한 번만 돈다 (2026-08-20)
 const ADOPT_KEY = 'hds-adopt-done-2026-08'
-// 가예정 표시 따라잡기 — 개별 수정이 회차에 안 따라가던 동안 어긋난 것 (2026-08-22)
-const TENT_KEY = 'hds-align-tentative-1'
 
 // 새 버전 감지 — 탭을 오래 열어두면 옛 코드가 계속 돌므로, 탭에 돌아올 때마다
 // 배포본의 스크립트 파일명이 바뀌었는지 확인해서 새로고침 배너를 띄운다
@@ -159,19 +157,16 @@ export default function App() {
     cleanupBlankRoutines()
   }, [auth.ready])
 
-  // 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — "매번 잡음"으로 바꿔뒀는데
-  // 그 달 회차는 진하게 남아 있던 것을 따라잡는 일회성 정리다. 서버와 맞춘 뒤에
-  // 판단하도록 잠깐 기다린다. (2026-08-22 사용자 제보)
+  // 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — **앱을 열 때마다** (2026-09-07).
+  // 예전엔 이 기기에서 딱 한 번만 돌아서, 그 뒤에 어긋나면 되돌릴 길이 없었다
+  // (달력의 10월 예정 자리는 규칙을 읽어 그리니 흐린데, 9월 회차는 진하게 남는 식).
+  // 손 안 댄 회차만 건드리므로 여러 번 돌아도 결과가 같다 — 기록을 썼거나, 날짜를
+  // 확정했거나, 자동 날짜에서 옮겨둔 회차는 내가 잡은 약속이라 안 건드린다.
+  // 서버와 맞춘 뒤(auth.synced)에 판단한다 — 옛 사본으로 정하면 엉뚱하게 흐려진다.
   useEffect(() => {
-    if (!auth.ready || !routines.length) return
-    if (localStorage.getItem(TENT_KEY)) return
-    const t = setTimeout(() => {
-      if (localStorage.getItem(TENT_KEY)) return
-      alignTentative()
-      localStorage.setItem(TENT_KEY, '1')
-    }, 6000)
-    return () => clearTimeout(t)
-  }, [auth.ready, routines.length])
+    if (!auth.ready || !auth.synced || !routines.length) return
+    alignTentative()
+  }, [auth.ready, auth.synced, routines.length])
 
   // 이번 달 회차를 채운다 — 루틴에 걸린 일이 오늘 화면·달력에 뜨려면 그 달 메모가 있어야 한다.
   // 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다). (2026-08-11)
