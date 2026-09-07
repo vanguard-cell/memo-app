@@ -80,7 +80,9 @@ let state = withVisible(load())
 let session = null
 const listeners = new Set()
 
-let authSnap = { ready: !hasSupabase, loggedIn: false, email: null, syncError: false }
+// synced = 서버와 한 번 맞춰봤는가. 이번 달 회차 만들기(ensureThisMonth)는 이걸 기다린다 —
+// 안 기다리면 다른 기기가 만든 회차가 도착하기 전에 똑같은 걸 하나 더 만든다 (2026-09-07)
+let authSnap = { ready: !hasSupabase, loggedIn: false, email: null, syncError: false, synced: !hasSupabase }
 
 function notify() {
   listeners.forEach((fn) => fn())
@@ -209,10 +211,11 @@ async function syncFromServer() {
     if (toPush.length) await pushMemoRows(toPush.filter((x) => !isOldTomb(x)))
     if (tombIds.length) await supabase.from('memos').delete().in('id', tombIds)
     remotePushState()
-    setAuth({ syncError: false })
+    setAuth({ syncError: false, synced: true })
   } catch (e) {
     console.error('서버 동기화 실패', e)
-    setAuth({ syncError: true })
+    // 인터넷이 없어도 이번 달 회차는 만들어져야 한다 — 받아오기를 시도했다는 것까지가 synced
+    setAuth({ syncError: true, synced: true })
   }
 }
 
@@ -230,7 +233,13 @@ if (hasSupabase) {
   supabase.auth.onAuthStateChange((_event, s) => {
     const wasLoggedIn = !!session
     session = s
-    setAuth({ ready: true, loggedIn: !!s, email: s ? s.user.email : null })
+    // synced는 로그인·로그아웃이 실제로 바뀔 때만 다시 잡는다 — 토큰 자동 갱신
+    // (한 시간마다 오는 같은 사용자의 이벤트)에 false로 되돌리면, 그 뒤로는 이번 달
+    // 회차 만들기가 영영 안 돈다
+    const patch = { ready: true, loggedIn: !!s, email: s ? s.user.email : null }
+    if (!s) patch.synced = true
+    else if (!wasLoggedIn) patch.synced = false
+    setAuth(patch)
     if (s && !wasLoggedIn) {
       lastSyncAt = Date.now()
       syncFromServer()
@@ -604,12 +613,41 @@ export function purgeMemos(ids) {
 const pad2 = (n) => String(n).padStart(2, '0')
 export const thisYm = () => todayStr().slice(0, 7)
 
-// 그 달의 예정일 — 말일보다 큰 날짜(31일 등)는 그 달 말일로 당긴다
-export function routineDue(ym, dueDay) {
+// 연월 옮기기 — '2026-08'에서 +1이면 '2026-09', -1이면 '2026-07'
+export function shiftYm(ym, n) {
   const [y, m] = ym.split('-').map(Number)
-  const last = new Date(y, m, 0).getDate()
-  return `${ym}-${pad2(Math.min(Math.max(1, dueDay || 1), last))}`
+  const t = new Date(y, m - 1 + (Number(n) || 0), 1)
+  return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}`
 }
+
+// 두 연월의 차이(달 수) — '2026-08' → '2026-09'는 1
+export const ymDiff = (from, to) => {
+  const [ay, am] = from.split('-').map(Number)
+  const [by, bm] = to.split('-').map(Number)
+  return (by - ay) * 12 + (bm - am)
+}
+
+// 그 달의 예정일 — 말일보다 큰 날짜(31일 등)는 그 달 말일로 당긴다.
+// dueShift는 "일이 벌어지는 달이 그 달분이 아닐 때" 쓴다: 8월분 전기요금 고지서가
+// 익월 3일에 나오면 dueDay=3·dueShift=1 → 8월분의 날짜가 9월 3일이 된다.
+// (2026-09-07 사용자: "8월분이 익월 3일쯤에 발행되거든 — 수동으로 옮긴 8월분하고
+//  자동으로 만들어진 9월분이 같이 뜬다")
+export function routineDue(ym, dueDay, dueShift) {
+  const target = dueShift ? shiftYm(ym, dueShift) : ym
+  const [y, m] = target.split('-').map(Number)
+  const last = new Date(y, m, 0).getDate()
+  return `${target}-${pad2(Math.min(Math.max(1, dueDay || 1), last))}`
+}
+
+// 규칙이 정한 그 달 회차의 날짜 — routineDue를 부를 때 dueShift를 빠뜨리지 않도록
+// 정의를 통째로 받는 이 함수를 쓴다
+export const cycleDue = (r, ym) => routineDue(ym, r.dueDay, r.dueShift)
+
+// 그 달분을 처리하는 달 — 8월분·익월 발행이면 '2026-09'
+export const cycleYm = (r, ym) => shiftYm(ym, r.dueShift || 0)
+
+// 반대로, 이 달에 처리하는 것은 몇 월분인가 — 익월 발행이면 9월에 하는 건 8월분
+export const labelYm = (r, ym) => shiftYm(ym, -(r.dueShift || 0))
 
 // 회차 메모의 자동 제목 — 이름을 고칠 때 "손대지 않은 회차"를 가려내는 데도 쓴다
 export const cycleTitle = (title, ym) => `${title} — ${Number(ym.slice(5, 7))}월분`
@@ -640,7 +678,7 @@ export const blankTitle = (t) => !String(t || '').replace(/[\s\u200b-\u200f\u206
 // 날짜가 고정인 일(공과금·월세)과 매번 잡아야 하는 일(업체 방문·정기점검)은 다르다.
 // flexible=true면 그 루틴의 회차는 "가예정"으로 태어난다 — 달력에서 흐리게 보이고,
 // 내가 날짜를 잡거나 기록을 남기면 확정된다. 없는 값(옛 루틴)은 고정으로 본다.
-export function addRoutine({ title, group, desc, dueDay, months, startYm, flexible }) {
+export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, flexible }) {
   const now = new Date().toISOString()
   const r = {
     id: crypto.randomUUID(),
@@ -649,6 +687,8 @@ export function addRoutine({ title, group, desc, dueDay, months, startYm, flexib
     group: group || '기타',
     desc: desc || '',
     dueDay: dueDay || 5,
+    // 0이면 그 달 안, 1이면 다음 달에 처리하는 일(익월 발행 고지서 등)
+    dueShift: Number(dueShift) || 0,
     flexible: !!flexible,
     months: months || null,
     startYm: startYm || thisYm(),
@@ -675,7 +715,12 @@ export function addRoutine({ title, group, desc, dueDay, months, startYm, flexib
 export function updateRoutine(id, patch) {
   const now = new Date().toISOString()
   const before = state.routines.find((r) => r.id === id)
-  const dayMoved = before && 'dueDay' in patch && Number(patch.dueDay) !== Number(before.dueDay)
+  // 날짜 규칙 = 예정일 + 몇 달 뒤에 하는가(dueShift). 둘 중 하나만 바뀌어도 회차를 옮긴다.
+  const rule = before ? { ...before, ...patch } : null
+  const dayMoved =
+    before &&
+    (('dueDay' in patch && Number(patch.dueDay) !== Number(before.dueDay)) ||
+      ('dueShift' in patch && (Number(patch.dueShift) || 0) !== (Number(before.dueShift) || 0)))
   const newTitle = typeof patch.title === 'string' ? patch.title.trim() : ''
   const renamed = before && newTitle && newTitle !== before.title
   // 날짜 방식(고정 ↔ 매번 잡음)도 이미 만들어진 회차에 따라가야 한다. 묶음 일괄
@@ -690,7 +735,7 @@ export function updateRoutine(id, patch) {
       ? state.memos.map((m) => {
           if (m.routineId !== id || !m.ym) return m
           let next = m
-          if (dayMoved && m.status !== 'done') next = { ...next, due: routineDue(m.ym, patch.dueDay) }
+          if (dayMoved && m.status !== 'done') next = { ...next, due: cycleDue(rule, m.ym) }
           if (renamed && m.title === cycleTitle(before.title, m.ym)) {
             next = { ...next, title: cycleTitle(newTitle, m.ym) }
           }
@@ -719,18 +764,21 @@ export function updateRoutine(id, patch) {
 
 // 묶음 통째로 예정일 바꾸기 — 34건을 하나씩 고치는 건 일이라 묶음 단위로 준다 (2026-08-11).
 // 이미 만들어진 회차의 날짜도 같이 옮긴다(완료된 회차는 그대로 둔다 — 지난 일은 지난 일이다).
-export function setGroupDueDay(group, day) {
+export function setGroupDueDay(group, day, shift) {
   const now = new Date().toISOString()
   // 31일까지 — 그 날이 없는 달은 routineDue가 말일로 당긴다 (2026-08-14)
   const d = Math.min(31, Math.max(1, Number(day) || 1))
+  const sh = Number(shift) || 0
   const ids = new Set(
     state.routines.filter((r) => !r.deleted && (r.group || '기타') === group).map((r) => r.id)
   )
   if (!ids.size) return 0
-  const routines = state.routines.map((r) => (ids.has(r.id) ? { ...r, dueDay: d, updatedAt: now } : r))
+  const routines = state.routines.map((r) =>
+    ids.has(r.id) ? { ...r, dueDay: d, dueShift: sh, updatedAt: now } : r
+  )
   const memos = state.memos.map((m) =>
     m.routineId && ids.has(m.routineId) && m.ym && m.status !== 'done'
-      ? { ...m, due: routineDue(m.ym, d), updatedAt: now }
+      ? { ...m, due: routineDue(m.ym, d, sh), updatedAt: now }
       : m
   )
   commit({ ...state, routines, memos })
@@ -912,6 +960,51 @@ export function removeRoutine(id) {
   }
 }
 
+// 같은 (루틴, 연월) 회차가 둘 이상 있으면 하나로 줄인다 — 달력 한 날에 똑같은 줄이
+// 두 개 뜨던 문제. 원인은 기기 사이 시차다: 앱은 로그인 확인(auth.ready)만 되면 이번 달
+// 회차를 만드는데(ensureThisMonth), 서버에서 받아오기(syncFromServer)는 그보다 늦게 끝난다.
+// 그래서 회사 PC가 만든 9월분이 아직 안 온 상태에서 집 PC가 또 하나를 만든다.
+// (2026-09-07 사용자: "자동으로 매핑된 9월분이 같이 있는 오류")
+// 남길 것은 "손댄 쪽" — 완료했거나 기록·파일이 붙은 회차. 둘 다 손댔으면 건드리지 않는다
+// (내가 쓴 글이 사라지면 안 된다). 지운 표식은 남으므로 다음에 앱을 열어도 다시 안 생긴다.
+export function dedupeCycles() {
+  const now = new Date().toISOString()
+  const groups = new Map()
+  for (const m of state.memos) {
+    if (!m.routineId || !m.ym || m.deleted) continue
+    const k = m.routineId + '|' + m.ym
+    if (!groups.has(k)) groups.set(k, [])
+    groups.get(k).push(m)
+  }
+  const drop = new Set()
+  for (const [, list] of groups) {
+    if (list.length < 2) continue
+    const r = routineOf(list[0].routineId)
+    // 손댄 회차 = 완료·기록·파일이 있거나, 자동 제목("○○ — 9월분")에서 고쳐 쓴 것
+    const touched = (m) =>
+      cycleHasRecord(m) || (r && !blankTitle(r.title) && m.title !== cycleTitle(r.title, m.ym))
+    const kept = list.filter(touched)
+    if (kept.length > 1) continue // 둘 다 손댄 것 — 사람이 정할 일이라 그대로 둔다
+    // 손댄 쪽을 남기고, 아무것도 손대지 않았으면 먼저 만들어진 것 하나만 남긴다
+    const oldest = (a, b) => (a.createdAt || '').localeCompare(b.createdAt || '')
+    const keep = kept.length ? kept[0] : list.slice().sort(oldest)[0]
+    for (const m of list) if (m.id !== keep.id) drop.add(m.id)
+  }
+  if (!drop.size) return 0
+  const memos = state.memos.map((m) => (drop.has(m.id) ? { ...m, deleted: true, updatedAt: now } : m))
+  commit({ ...state, memos })
+  const changed = memos.filter((m) => drop.has(m.id))
+  if (hasSupabase && session) {
+    pushMemoRows(changed)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return drop.size
+}
+
 // 앱을 열 때 빈 줄을 치운다 — 이름 없는 루틴과, 주인이 없어진(지워졌거나 이름 없는) 빈 회차.
 // "+ 항목"을 누르면 그 줄이 바로 만들어지므로, 이름을 안 적고 새로고침하거나 다른 화면으로
 // 넘어가면 "(이름 없음)" 줄과 "— 8월분" 회차가 남는다(취소로 닫을 때만 정리됐다).
@@ -953,11 +1046,15 @@ export function cleanupBlankRoutines() {
 // 규칙이 바뀌면 updateRoutine이 아직 안 끝난 회차의 날짜도 같이 옮긴다. (2026-08-20)
 export function adoptCycleDay(memoId) {
   const m = state.memos.find((x) => x.id === memoId)
-  if (!m || !m.routineId || !m.due) return 0
+  if (!m || !m.routineId || !m.due || !m.ym) return 0
   const day = Number(m.due.slice(8, 10))
   const r = routineOf(m.routineId)
-  if (!r || !day || Number(r.dueDay) === day) return 0
-  updateRoutine(m.routineId, { dueDay: day })
+  if (!r || !day) return 0
+  // 옮겨둔 날이 그 달분의 달이 아니면(8월분을 9월 3일로) 그것까지 규칙으로 삼는다 —
+  // 안 그러면 다음 달분이 또 제 달에 생겨 같은 날에 두 개가 뜬다 (2026-09-07)
+  const shift = Math.max(0, Math.min(6, ymDiff(m.ym, m.due.slice(0, 7))))
+  if (Number(r.dueDay) === day && (Number(r.dueShift) || 0) === shift) return 0
+  updateRoutine(m.routineId, { dueDay: day, dueShift: shift })
   return day
 }
 
@@ -976,20 +1073,25 @@ export function adoptDoneDays(ym) {
     if (!c || c.status !== 'done' || !c.due) continue
     const day = Number(c.due.slice(8, 10))
     // 규칙대로 찍힌 날 그대로면 옮긴 게 아니다 (말일 당김도 여기서 걸러진다)
-    if (!day || c.due === routineDue(ym, r.dueDay)) continue
-    dayById.set(r.id, day)
-    changes.push({ title: r.title, from: Number(r.dueDay) || 5, to: day })
+    if (!day || c.due === cycleDue(r, ym)) continue
+    // 다른 달로 옮겨 끝냈으면 "몇 달 뒤에 하는 일"인 것까지 규칙으로 삼는다 (2026-09-07)
+    const shift = Math.max(0, Math.min(6, ymDiff(ym, c.due.slice(0, 7))))
+    dayById.set(r.id, { day, shift })
+    changes.push({ title: r.title, from: Number(r.dueDay) || 5, to: day, shift })
   }
   if (!dayById.size) return []
   const routines = state.routines.map((r) =>
-    dayById.has(r.id) ? { ...r, dueDay: dayById.get(r.id), updatedAt: now } : r
+    dayById.has(r.id)
+      ? { ...r, dueDay: dayById.get(r.id).day, dueShift: dayById.get(r.id).shift, updatedAt: now }
+      : r
   )
   // 아직 안 끝난 회차는 새 날로 따라 옮긴다 — 완료한 회차는 한 날 그대로 둔다(지난 일은 지난 일)
   const moved = []
   const memos = state.memos.map((m) => {
     if (!m.routineId || !m.ym || m.deleted || m.status === 'done') return m
     if (!dayById.has(m.routineId)) return m
-    const due = routineDue(m.ym, dayById.get(m.routineId))
+    const { day, shift } = dayById.get(m.routineId)
+    const due = routineDue(m.ym, day, shift)
     if (due === m.due) return m
     const next = { ...m, due, updatedAt: now }
     moved.push(next)
@@ -1048,7 +1150,7 @@ export function alignTentative() {
     if (!!m.tentative === want) return m
     if (!tentativeTouchable(m, want)) return m
     // 자동으로 찍힌 날에서 옮겨둔 회차는 내가 잡은 날 — 흐리게 되돌리지 않는다
-    if (want && m.due && m.due !== routineDue(m.ym, r.dueDay)) return m
+    if (want && m.due && m.due !== cycleDue(r, m.ym)) return m
     const next = { ...m, tentative: want, updatedAt: now }
     moved.push(next)
     return next
@@ -1074,7 +1176,7 @@ function newCycle(r, ym) {
     title: cycleTitle(r.title, ym),
     status: 'open',
     keep: false,
-    due: routineDue(ym, r.dueDay),
+    due: cycleDue(r, ym),
     period: null,
     deadline: false,
     history: [],
@@ -1120,10 +1222,13 @@ export function toggleCycle(routineId, ym) {
 // 34건이 한꺼번에 생기는 첫 달을 생각해 한 번에 담고 한 번만 저장한다
 // (하나씩 만들면 저장·서버 요청이 34번 난다)
 export function ensureThisMonth() {
-  const ym = thisYm()
+  const now = thisYm()
   const made = []
   for (const r of getRoutines()) {
     if (blankTitle(r.title)) continue
+    // 이번 달에 "하는" 회차를 만든다 — 익월 발행(dueShift)이면 그건 지난 달분이다.
+    // 그 달분을 그 달에 만들면 9월에 8월분과 9월분이 나란히 뜬다 (2026-09-07)
+    const ym = labelYm(r, now)
     if (routineHasMonth(r, ym) && !cycleEverMade(r.id, ym)) made.push(newCycle(r, ym))
   }
   if (!made.length) return 0

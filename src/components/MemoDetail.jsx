@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, routineDue, adoptCycleDay, makeRoutineFromMemo, blankTitle } from '../store'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, cycleDue, ymDiff, adoptCycleDay, makeRoutineFromMemo, blankTitle } from '../store'
 import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
@@ -233,9 +233,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     makeRoutineFromMemo(memo.id)
   }
   const askDay =
-    rt && !rt.flexible && !memo.dayKept && memo.due && memo.ym && memo.due !== routineDue(memo.ym, rt.dueDay)
+    rt && !rt.flexible && !memo.dayKept && memo.due && memo.ym && memo.due !== cycleDue(rt, memo.ym)
       ? Number(memo.due.slice(8, 10))
       : null
+  // 옮겨둔 날이 그 달분의 달을 넘었는가 — "8월분을 9월 3일" 같은 익월 처리 (2026-09-07)
+  const askShift = askDay ? Math.max(0, ymDiff(memo.ym, memo.due.slice(0, 7))) : 0
+  const ruleNow = rt ? `${(Number(rt.dueShift) || 0) ? '다음 달 ' : ''}${Number(rt.dueDay) || 5}일` : ''
+  const ruleNew = `${askShift === 1 ? '다음 달 ' : askShift > 1 ? `${askShift}달 뒤 ` : ''}${askDay}일`
 
   // 미루기: 기한은 그 날짜로 이동, 기간(만기) 메모는 만기일 안 건드리고 그날까지 숨김.
   // 단 마감·만기가 이미 오늘이거나 지났으면 숨길 창(내일~마감)이 비어서 날짜 지정이
@@ -389,7 +393,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 )}
                 {rt && (
                   <span className="meta-routine" title="매달 도는 일 — 루틴 화면 격자에서 보입니다">
-                    ↻ 루틴 · 매달 {Number(rt.dueDay) || 5}일
+                    ↻ 루틴 · 매달 {ruleNow}
                   </span>
                 )}
                 {/* 기간 설정이 정보 수정 폼 안에만 있어 못 찾는 문제 — 바로가기 (2026-07-31) */}
@@ -413,14 +417,18 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               {askDay && (
                 <div className="meta-ask">
                   <span>
-                    루틴 예정일은 {Number(rt.dueDay) || 5}일 — 앞으로도 매달 {askDay}일에 할까요?
+                    루틴 예정일은 {ruleNow} — 앞으로도 매달 {ruleNew}에 할까요?
                   </span>
                   <button
                     className="linkish t-blue"
-                    title="다음 달부터 이 날로 옵니다 (아직 안 끝난 회차도 같이 옮겨집니다)"
+                    title={
+                      askShift
+                        ? '그 달분을 다음 달에 처리하는 것으로 규칙이 바뀝니다 (8월분 → 9월 3일)'
+                        : '다음 달부터 이 날로 옵니다 (아직 안 끝난 회차도 같이 옮겨집니다)'
+                    }
                     onClick={() => adoptCycleDay(memo.id)}
                   >
-                    매달 {askDay}일로
+                    매달 {ruleNew}로
                   </button>
                   <button
                     className="linkish"

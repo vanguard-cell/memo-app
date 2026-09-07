@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, cleanupBlankRoutines, blankTitle, adoptDoneDays, alignTentative, importData, importRoutineRows,
+  getRoutines, ensureThisMonth, dedupeCycles, cleanupBlankRoutines, blankTitle, adoptDoneDays, alignTentative, importData, importRoutineRows,
+  routineHasMonth, labelYm,
 } from './store'
 import { readRoutineXlsx } from './importXlsx'
 import { todayStr } from './parser'
@@ -82,10 +83,11 @@ export default function App() {
   const keeps = memos.filter((m) => m.keep)
   const holds = memos.filter((m) => m.hold)
   // 사이드바 배지 — 이번 달에 아직 안 끝난 루틴 건수
-  const ym = todayStr().slice(0, 7)
+  const nowYm = todayStr().slice(0, 7)
   const routineLeft = routines.filter((r) => {
-    if (blankTitle(r.title) || (r.endYm && ym >= r.endYm) || (r.startYm && ym < r.startYm)) return false
-    if (r.months && r.months.length && !r.months.includes(Number(ym.slice(5, 7)))) return false
+    // 이번 달에 "하는" 회차 — 익월 발행(dueShift)이면 그건 지난 달분이다 (2026-09-07)
+    const ym = labelYm(r, nowYm)
+    if (blankTitle(r.title) || !routineHasMonth(r, ym)) return false
     const cyc = memos.find((m) => m.routineId === r.id && m.ym === ym)
     return !cyc || cyc.status !== 'done'
   }).length
@@ -173,9 +175,14 @@ export default function App() {
 
   // 이번 달 회차를 채운다 — 루틴에 걸린 일이 오늘 화면·달력에 뜨려면 그 달 메모가 있어야 한다.
   // 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다). (2026-08-11)
+  // ⚠️ **서버와 맞춘 뒤(auth.synced)** 만든다 — 로그인 확인만 되면 바로 만들던 때는 다른
+  // 기기가 이미 만든 회차가 도착하기 전에 똑같은 것을 하나 더 만들어, 달력 한 날에 같은
+  // 줄이 두 개 뜨는 일이 있었다. 만들기 전에 그렇게 겹친 회차를 먼저 치운다. (2026-09-07)
   useEffect(() => {
-    if (auth.ready) ensureThisMonth()
-  }, [auth.ready, routines.length])
+    if (!auth.ready || !auth.synced) return
+    dedupeCycles()
+    ensureThisMonth()
+  }, [auth.ready, auth.synced, routines.length])
 
   // 8월에 실제로 한 날로 옮겨 완료해 둔 회차 — 그 날을 루틴 예정일로 한 번에 맞춘다.
   // 앞으로는 회차 상세가 그때그때 물어보므로(매달 N일로) 이건 이미 쌓인 8월을 따라잡는

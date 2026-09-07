@@ -16,6 +16,7 @@ import {
   reorderRoutines,
   thisYm,
   blankTitle,
+  cycleYm,
 } from '../store'
 import { readRoutinePaste } from '../importXlsx'
 import useIsNarrow from '../useIsNarrow'
@@ -145,7 +146,11 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
     const tally = {}
     for (const r of rs) tally[r.dueDay || 5] = (tally[r.dueDay || 5] || 0) + 1
     const day = Number(Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0]) || 5
-    return { day, flexible: rs.length > 0 && rs.every((r) => r.flexible) }
+    return {
+      day,
+      shift: rs.length > 0 && rs.every((r) => Number(r.dueShift) === 1) ? 1 : 0,
+      flexible: rs.length > 0 && rs.every((r) => r.flexible),
+    }
   }
 
   function startEdit(r) {
@@ -155,6 +160,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       group: r.group || '',
       desc: r.desc || '',
       dueDay: r.dueDay || 5,
+      dueShift: Number(r.dueShift) || 0,
       flexible: !!r.flexible,
       months: r.months || null,
       endNote: r.endNote || '',
@@ -177,6 +183,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       desc: form.desc.trim(),
       // 31일까지 받는다 — 그 날이 없는 달(2월 등)은 routineDue가 말일로 당긴다 (2026-08-14)
       dueDay: Math.min(31, Math.max(1, Number(form.dueDay) || 5)),
+      dueShift: Number(form.dueShift) || 0,
       flexible: !!form.flexible,
       months: form.months,
       endNote: form.endNote.trim(),
@@ -193,7 +200,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
     const ym = ymOf(m)
     if (!routineHasMonth(r, ym)) return { kind: 'na' }
     const c = cycleOf(r.id, ym)
-    const future = ym > curYm
+    // 앞으로 올 달인가는 "그 달분을 하는 달" 기준 — 익월 발행이면 8월분은 9월에 한다
+    const future = cycleYm(r, ym) > curYm
     if (!c) return { kind: future ? 'future' : 'open' }
     const rec = (c.history || []).length > 0 || (c.files || []).length > 0
     return { kind: c.status === 'done' ? 'done' : future ? 'future' : 'open', rec }
@@ -537,7 +545,14 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                           <label>
                             예정일 통일
                             <span className="rt-day">
-                              매월
+                              <select
+                                className="edit-select rt-shift"
+                                value={Number(gDay.shift) || 0}
+                                onChange={(e) => setGDay({ ...gDay, shift: Number(e.target.value) })}
+                              >
+                                <option value={0}>매월 그 달</option>
+                                <option value={1}>매월 다음 달</option>
+                              </select>
                               <input
                                 type="number"
                                 min="1"
@@ -556,9 +571,12 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                               <button
                                 className="rt-danger-btn on"
                                 onClick={() => {
-                                  const n = setGroupDueDay(g, gDay.day)
+                                  const n = setGroupDueDay(g, gDay.day, gDay.shift)
                                   setGDay(null)
-                                  setUndo({ label: `「${g}」 ${n}건을 매월 ${gDay.day}일로 옮겼습니다`, fn: null })
+                                  setUndo({
+                                    label: `「${g}」 ${n}건을 매월 ${gDay.shift ? '다음 달 ' : ''}${gDay.day}일로 옮겼습니다`,
+                                    fn: null,
+                                  })
                                   clearTimeout(undoTimer.current)
                                   undoTimer.current = setTimeout(() => setUndo(null), 5000)
                                 }}
@@ -567,7 +585,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                               </button>
                               <button onClick={() => setGDay({ ...gDay, sure: false })}>취소</button>
                               <span className="rt-hint t-red">
-                                이 묶음 항목의 예정일이 전부 {gDay.day}일이 됩니다 (지금 날짜는 사라집니다).
+                                이 묶음 항목의 예정일이 전부 {gDay.shift ? '다음 달 ' : ''}
+                                {gDay.day}일이 됩니다 (지금 날짜는 사라집니다).
                                 이미 완료한 회차는 그대로 둡니다
                               </span>
                             </>
@@ -684,6 +703,16 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                             >
                               {r.title || '(이름 없음)'}
                             </span>
+                            {/* 익월 처리(8월분을 9월에)는 격자만 봐서는 알 수 없다 —
+                                이름 옆 작은 꼬리표로 (2026-09-07) */}
+                            {Number(r.dueShift) === 1 && (
+                              <span
+                                className="rt-stop-tag"
+                                title={`그 달분을 다음 달 ${Number(r.dueDay) || 5}일에 처리합니다`}
+                              >
+                                익월 {Number(r.dueDay) || 5}일
+                              </span>
+                            )}
                             {stopped && (
                               <span className="rt-stop-tag" title={r.endNote}>
                                 {Number(r.endYm.slice(5, 7))}월 중단
@@ -772,7 +801,18 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                 <label>
                                   {form.flexible ? '자리 잡을 날' : '예정일'}
                                   <span className="rt-day">
-                                    매월
+                                    {/* 그 달분을 언제 하는가 — 전기요금처럼 8월분 고지서가 익월
+                                        3일에 나오는 것들. 이걸 안 두면 8월분을 손으로 9월로
+                                        옮긴 뒤 9월분이 또 만들어져 같은 날에 둘이 뜬다.
+                                        (2026-09-07 사용자: "내가 임의로 옮기면 또 꼬임") */}
+                                    <select
+                                      className="edit-select rt-shift"
+                                      value={Number(form.dueShift) || 0}
+                                      onChange={(e) => setForm({ ...form, dueShift: Number(e.target.value) })}
+                                    >
+                                      <option value={0}>매월 그 달</option>
+                                      <option value={1}>매월 다음 달</option>
+                                    </select>
                                     <input
                                       type="number"
                                       min="1"
@@ -785,6 +825,12 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                   {/* 29~31일은 없는 달이 있다 — 그 달은 말일로 간다는 걸 미리 알려준다 */}
                                   {Number(form.dueDay) > 28 && (
                                     <span className="rt-hint">그 날이 없는 달은 말일로</span>
+                                  )}
+                                  {Number(form.dueShift) === 1 && (
+                                    <span className="rt-hint">
+                                      8월분을 9월 {Math.min(31, Math.max(1, Number(form.dueDay) || 5))}일에 —
+                                      익월 발행 고지서처럼
+                                    </span>
                                   )}
                                 </label>
                                 <label>

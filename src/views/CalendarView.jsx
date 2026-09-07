@@ -3,7 +3,7 @@ import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../deriv
 import { todayStr, addDays } from '../parser'
 import {
   addMemo, updateMemo, setDayOrder, getMemos, purgeMemos,
-  routineDue, routineHasMonth, ensureCycle, thisYm, blankTitle,
+  routineHasMonth, ensureCycle, thisYm, blankTitle, labelYm, cycleDue,
 } from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
@@ -372,14 +372,18 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   // 그래도 "루틴은 매월 보여야 한다"는 건 맞으므로, 달력이 규칙을 읽어 자리만 보여주고
   // 누르는 순간 진짜 회차가 생긴다. 검색 중일 땐 안 그린다 — 검색은 있는 것만 보는 자리다.
   // (2026-08-13)
+  // 익월 발행(dueShift)이면 이 달에 그려야 할 것은 지난 달분이다 — 보고 있는 달에
+  // "하는" 회차를 그린다 (2026-09-07)
+  const ghostYm = (r) => labelYm(r, `${y}-${pad(mo + 1)}`)
   const ghosts = useMemo(() => {
-    const ym = `${y}-${pad(mo + 1)}`
-    if (filtered || ym <= thisYm()) return {}
-    const made = new Set(memos.filter((m) => m.routineId && m.ym === ym).map((m) => m.routineId))
+    const vm = `${y}-${pad(mo + 1)}`
+    if (filtered || vm <= thisYm()) return {}
+    const made = new Set(memos.filter((m) => m.routineId && m.ym).map((m) => m.routineId + '|' + m.ym))
     const map = {}
     for (const r of routines) {
-      if (blankTitle(r.title) || made.has(r.id) || !routineHasMonth(r, ym)) continue
-      const date = routineDue(ym, r.dueDay)
+      const ym = labelYm(r, vm)
+      if (blankTitle(r.title) || made.has(r.id + '|' + ym) || !routineHasMonth(r, ym)) continue
+      const date = cycleDue(r, ym)
       ;(map[date] = map[date] || []).push(r)
     }
     return map
@@ -387,9 +391,10 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
 
   // 예정 자리를 누르면 그때 회차가 만들어지고 상세가 열린다
   function openGhost(r) {
-    const m = ensureCycle(r.id, `${y}-${pad(mo + 1)}`)
+    const ym = ghostYm(r)
+    const m = ensureCycle(r.id, ym)
     if (m) {
-      setSel(routineDue(`${y}-${pad(mo + 1)}`, r.dueDay))
+      setSel(cycleDue(r, ym))
       openDetail(m.id)
     }
   }
@@ -734,7 +739,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                 <span
                   key={'g' + r.id}
                   className={'cal-ev ev-due cal-ghost' + (r.flexible ? ' ev-tent' : '')}
-                  title={`${r.title} — 아직 만들지 않은 ${Number(date.slice(5, 7))}월분 (누르면 만들어집니다)`}
+                  title={`${r.title} — 아직 만들지 않은 ${Number(ghostYm(r).slice(5, 7))}월분 (누르면 만들어집니다)`}
                   onClick={(ev) => {
                     ev.stopPropagation()
                     openGhost(r)

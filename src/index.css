@@ -3915,6 +3915,12 @@ main {
   width: 58px;
 }
 
+/* 예정일 앞의 "매월 그 달 / 매월 다음 달" — 익월 발행 고지서(8월분을 9월 3일에)를 위한 것.
+   날짜 입력과 한 줄에 서므로 폭은 내용만큼만 쓴다 (2026-09-07) */
+.rt-day .rt-shift {
+  padding: 5px 7px;
+}
+
 .rt-edit-btns {
   display: flex;
   align-items: flex-end;
