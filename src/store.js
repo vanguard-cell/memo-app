@@ -1,5 +1,6 @@
 import { todayStr, parse, addDays } from './parser'
 import { supabase, hasSupabase } from './supabase'
+import { alarmStart, alarmDays, alarmSpanMonths } from './schedule'
 
 const KEY = 'hds-memo-data-v1'
 
@@ -12,10 +13,22 @@ function migrate(memos) {
       ),
     }
     delete m.category
+    // 마감 기능은 2026-09-15 없앴다 — 마감 메모는 마감일 하루짜리 일정으로 바꾼다.
+    // ("던진 날 ~ 마감"으로 저장돼 있어 기간으로 두면 몇 달짜리 띠가 생긴다)
+    if (m.deadline && m.period && m.period.end) {
+      m.due = m.period.end
+      m.period = null
+    }
+    delete m.deadline
     const p = parse(m.title)
     if (!m.period && p.period) {
-      m.period = p.period
-      if (m.due === p.period.start) m.due = null
+      if (p.deadline) {
+        // 제목에 "9/30까지"가 남아 있던 것 — 위와 같은 규칙으로 그날 하루짜리로
+        m.due = p.period.end
+      } else {
+        m.period = p.period
+        if (m.due === p.period.start) m.due = null
+      }
     }
     if ((m.due || m.period) && p.cleaned && p.cleaned !== m.title) {
       m.title = p.cleaned
@@ -298,7 +311,7 @@ export async function runDiagnostics() {
 
 // ---------- 메모 조작 ----------
 
-export function addMemo({ title, due, period, fromWork, keep, deadline }) {
+export function addMemo({ title, due, period, fromWork, keep }) {
   const now = new Date().toISOString()
   const memo = {
     id: crypto.randomUUID(),
@@ -307,7 +320,6 @@ export function addMemo({ title, due, period, fromWork, keep, deadline }) {
     keep: !!keep,
     due: keep ? null : due || null,
     period: keep ? null : period || null,
-    deadline: !keep && !!deadline && !!period,
     history: [],
     fromWork: fromWork || null,
     createdAt: now,
@@ -401,16 +413,95 @@ export function removeHistory(id, index) {
   const now = new Date().toISOString()
   commit({
     ...state,
-    memos: state.memos.map((m) =>
-      m.id === id
-        ? { ...m, history: m.history.filter((_, i) => i !== index), updatedAt: now }
-        : m
+    memos: state.memos.map((m) => {
+      if (m.id !== id) return m
+      const history = m.history.filter((_, i) => i !== index)
+      // 미리 알림 체크 줄을 지우면 체크도 풀린다 — 칩과 기록이 따로 놀지 않게
+      const unchecked = m.history[index] && m.history[index].alarm && !history.some((h) => h.alarm)
+      return { ...m, history, ...(unchecked ? { alarmCheckedAt: null } : {}), updatedAt: now }
+    }),
+  })
+  remoteUpsert(id)
+}
+
+// ---------- 미리 알림 체크 (2026-09-15) ----------
+// 체크 = 그 메모 진행 기록에 "체크한 날 · 알림 내용 ✓" 한 줄. 기록에 체크가 생기므로
+// 보드에서는 진행중으로 넘어간다(사용자 확정). 루틴 회차의 알림 내용은 루틴 정의에 있다.
+const alarmOfMemo = (m) => {
+  if (m.routineId) {
+    const r = state.routines.find((x) => x.id === m.routineId && !x.deleted)
+    return r ? r.alarm || null : null
+  }
+  return m.alarm || null
+}
+
+export function checkAlarm(id) {
+  const m = state.memos.find((x) => x.id === id)
+  const alarm = m && alarmOfMemo(m)
+  if (!m || !alarm || m.alarmCheckedAt) return
+  const now = new Date().toISOString()
+  const today = todayStr()
+  commit({
+    ...state,
+    memos: state.memos.map((x) =>
+      x.id === id
+        ? {
+            ...x,
+            alarmCheckedAt: today,
+            history: [...x.history, { date: today, text: alarm.text, ts: Date.now(), done: true, alarm: true }],
+            stage: x.stage === 'todo' ? null : x.stage ?? null,
+            tentative: false,
+            updatedAt: now,
+          }
+        : x
     ),
   })
   remoteUpsert(id)
 }
 
+// 체크 풀기 — 체크할 때 남긴 줄(마지막 알림 줄)도 같이 지운다
+export function uncheckAlarm(id) {
+  const m = state.memos.find((x) => x.id === id)
+  if (!m || !m.alarmCheckedAt) return
+  const now = new Date().toISOString()
+  let last = -1
+  m.history.forEach((h, i) => {
+    if (h.alarm) last = i
+  })
+  commit({
+    ...state,
+    memos: state.memos.map((x) =>
+      x.id === id
+        ? { ...x, alarmCheckedAt: null, history: x.history.filter((_, i) => i !== last), updatedAt: now }
+        : x
+    ),
+  })
+  remoteUpsert(id)
+}
+
+// 아직 안 만든 달의 루틴 알림을 체크하면 그 달 회차를 그때 만들고 체크한다
+export function checkRoutineAlarm(routineId, ym) {
+  const c = ensureCycle(routineId, ym)
+  if (c) checkAlarm(c.id)
+}
+
 export function toggleHistory(id, index) {
+  const target = state.memos.find((m) => m.id === id)
+  // 알림 체크 줄의 체크를 끄는 것 = 알림 체크 해제 (줄도 같이 사라진다)
+  if (target && target.history[index] && target.history[index].alarm && target.history[index].done) {
+    const now = new Date().toISOString()
+    const history = target.history.filter((_, i) => i !== index)
+    commit({
+      ...state,
+      memos: state.memos.map((m) =>
+        m.id === id
+          ? { ...m, history, ...(history.some((h) => h.alarm) ? {} : { alarmCheckedAt: null }), updatedAt: now }
+          : m
+      ),
+    })
+    remoteUpsert(id)
+    return
+  }
   const now = new Date().toISOString()
   commit({
     ...state,
@@ -457,9 +548,13 @@ export function completeMemo(id) {
     ...state,
     memos: state.memos.map((m) => {
       if (m.id !== id) return m
-      // 반복 메모(공과금 등): 완료 대신 다음 주기로 굴러간다 — 할일로 복귀, 기록은 계속 쌓임 (2026-07-31)
+      // 반복 메모(매주): 완료 대신 다음 주기로 굴러간다 — 할일로 복귀, 기록은 계속 쌓임 (2026-07-31).
+      // 반복 종료일(repeatUntil)을 넘어가면 그때는 진짜로 끝낸다. 미리 알림 체크는 다음 주기용으로 비운다.
       if (m.repeat && m.due) {
-        return { ...m, due: nextRepeatDate(m.due, m.repeat), stage: 'todo', snoozeUntil: null, updatedAt: now }
+        const next = nextRepeatDate(m.due, m.repeat)
+        if (!m.repeatUntil || next <= m.repeatUntil) {
+          return { ...m, due: next, stage: 'todo', snoozeUntil: null, alarmCheckedAt: null, updatedAt: now }
+        }
       }
       return { ...m, status: 'done', completedAt: now, tentative: false, updatedAt: now }
     }),
@@ -541,7 +636,7 @@ export function holdMemos(ids) {
     ...state,
     memos: state.memos.map((m) =>
       ids.includes(m.id)
-        ? { ...m, hold: true, holdAt: todayStr(), due: null, period: null, deadline: false, snoozeUntil: null, updatedAt: now }
+        ? { ...m, hold: true, holdAt: todayStr(), due: null, period: null, snoozeUntil: null, updatedAt: now }
         : m
     ),
   })
@@ -665,6 +760,10 @@ export function routineHasMonth(r, ym) {
 
 export const routineOf = (id) => state.routines.find((r) => r.id === id && !r.deleted) || null
 
+// 이미 끝난 루틴인가 — endYm이 이번 달 이후면 "그 달까지 하고 끝남"(반복 종료 날짜)이라 아직 살아 있다.
+// 격자의 "중단" 묶음과 순서 매기기가 같은 판정을 쓴다. (2026-09-15 반복 종료 추가)
+export const routineStopped = (r) => !!r.endYm && r.endYm <= thisYm()
+
 export const routineCycle = (routineId, ym) =>
   state.visible.find((m) => m.routineId === routineId && m.ym === ym)
 
@@ -678,10 +777,11 @@ const cycleEverMade = (routineId, ym) =>
 // 그런 게 섞이면 trim()을 통과해 "— 8월분" 같은 이름 없는 회차가 계속 만들어진다.
 export const blankTitle = (t) => !String(t || '').replace(/[\s\u200b-\u200f\u2060\ufeff]/g, '')
 
-// 날짜가 고정인 일(공과금·월세)과 매번 잡아야 하는 일(업체 방문·정기점검)은 다르다.
-// flexible=true면 그 루틴의 회차는 "가예정"으로 태어난다 — 달력에서 흐리게 보이고,
-// 내가 날짜를 잡거나 기록을 남기면 확정된다. 없는 값(옛 루틴)은 고정으로 본다.
-export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, flexible }) {
+// 루틴이 자동으로 만든 회차의 날짜는 전부 "앱이 잡은 날"이라 흐리게 태어난다 —
+// 내가 날짜를 옮기거나 기록·완료하거나 [이 날로 확정]을 누르면 진해진다.
+// (2026-09-15 "고정 / 매번 잡음" 선택을 없애고 이 규칙 하나로 합쳤다. flexible 필드는 더 안 쓴다)
+// alarm = 미리 알림 규칙 { n, unit, daily, text } — 회차마다 규칙에서 계산해 칩을 띄운다.
+export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, alarm }) {
   const now = new Date().toISOString()
   const r = {
     id: crypto.randomUUID(),
@@ -692,8 +792,8 @@ export function addRoutine({ title, group, desc, dueDay, dueShift, months, start
     dueDay: dueDay || 5,
     // 0이면 그 달 안, 1이면 다음 달에 처리하는 일(익월 발행 고지서 등)
     dueShift: Number(dueShift) || 0,
-    flexible: !!flexible,
     months: months || null,
+    alarm: alarm || null,
     startYm: startYm || thisYm(),
     endYm: null,
     endNote: '',
@@ -726,26 +826,16 @@ export function updateRoutine(id, patch) {
       ('dueShift' in patch && (Number(patch.dueShift) || 0) !== (Number(before.dueShift) || 0)))
   const newTitle = typeof patch.title === 'string' ? patch.title.trim() : ''
   const renamed = before && newTitle && newTitle !== before.title
-  // 날짜 방식(고정 ↔ 매번 잡음)도 이미 만들어진 회차에 따라가야 한다. 묶음 일괄
-  // (setGroupFlexible)은 원래 그렇게 동작했는데 항목 하나를 ⋯ → 수정에서 바꿀 때는
-  // 정의만 바뀌어서, "매번 잡음"으로 해뒀는데 달력의 그 달 회차는 진하게(확정) 남아
-  // 있었다. (2026-08-22 사용자: "다른것도 전부 매번잡음으로 해놨는데")
-  const flexChanged = before && 'flexible' in patch && !!patch.flexible !== !!before.flexible
   const routines = state.routines.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: now } : r))
   const moved = []
   const memos =
-    dayMoved || renamed || flexChanged
+    dayMoved || renamed
       ? state.memos.map((m) => {
           if (m.routineId !== id || !m.ym) return m
           let next = m
           if (dayMoved && m.status !== 'done') next = { ...next, due: cycleDue(rule, m.ym) }
           if (renamed && m.title === cycleTitle(before.title, m.ym)) {
             next = { ...next, title: cycleTitle(newTitle, m.ym) }
-          }
-          // 켤 때는 아직 손 안 댄 회차만 가예정으로 (내가 잡은 날·쓴 기록은 안 건드린다),
-          // 끌 때는 가예정 표시만 지운다 — setGroupFlexible과 같은 규칙
-          if (flexChanged && m.status !== 'done' && tentativeTouchable(m, !!patch.flexible)) {
-            next = { ...next, tentative: !!patch.flexible }
           }
           if (next === m) return m
           next = { ...next, updatedAt: now }
@@ -801,8 +891,7 @@ export function setGroupDueDay(group, day, shift) {
 }
 
 // 가예정 표시를 바꿔도 되는 회차인가 — 켤 때는 "아직 손 안 댄 것"만 (내가 날짜를 확정했거나
-// 기록을 쓴 회차는 이미 내가 잡은 약속이다), 끌 때는 가예정인 것만. 묶음 일괄과 개별 수정이
-// 같은 규칙을 쓰도록 한 곳에 둔다. (2026-08-22)
+// 기록을 쓴 회차는 이미 내가 잡은 약속이다), 끌 때는 가예정인 것만. (2026-08-22)
 const tentativeTouchable = (m, wantTentative) =>
   wantTentative
     ? !m.tentative && !m.dateFixed && !(m.history || []).length
@@ -844,7 +933,7 @@ export function renameGroup(oldName, newName) {
 export function removeGroup(groupName) {
   const now = new Date().toISOString()
   const ids = new Set(
-    state.routines.filter((r) => !r.deleted && !r.endYm && (r.group || '기타') === groupName).map((r) => r.id)
+    state.routines.filter((r) => !r.deleted && !routineStopped(r) && (r.group || '기타') === groupName).map((r) => r.id)
   )
   if (!ids.size) return 0
   const gone = state.memos.filter((m) => m.routineId && ids.has(m.routineId) && !m.deleted && !cycleHasRecord(m))
@@ -874,7 +963,7 @@ export function removeGroup(groupName) {
 export function reorderRoutines(orderedLiveIds) {
   const now = new Date().toISOString()
   const stoppedIds = state.routines
-    .filter((r) => !r.deleted && r.endYm)
+    .filter((r) => !r.deleted && routineStopped(r))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((r) => r.id)
   const pos = new Map([...orderedLiveIds, ...stoppedIds].map((id, i) => [id, i]))
@@ -891,43 +980,6 @@ export function reorderRoutines(orderedLiveIds) {
         setAuth({ syncError: true })
       })
   }
-}
-
-// 묶음 통째로 "날짜 고정 ↔ 매번 잡음" — 34건을 하나씩 켜는 건 일이라 묶음 단위로 준다.
-// 아직 안 끝난 회차의 표시도 같이 맞춘다(이미 내가 잡은 날·끝난 회차는 그대로 둔다).
-export function setGroupFlexible(group, flexible) {
-  const now = new Date().toISOString()
-  const ids = new Set(
-    state.routines.filter((r) => !r.deleted && (r.group || '기타') === group).map((r) => r.id)
-  )
-  if (!ids.size) return 0
-  const routines = state.routines.map((r) =>
-    ids.has(r.id) ? { ...r, flexible: !!flexible, updatedAt: now } : r
-  )
-  // 켤 때: 아직 손 안 댄 회차를 가예정으로. 끌 때: 가예정 표시만 지운다.
-  // 판단은 개별 수정(updateRoutine)과 같은 함수를 쓴다 — 두 길의 결과가 달라지지 않게
-  const touch = (m) =>
-    m.routineId && ids.has(m.routineId) && m.status !== 'done' && tentativeTouchable(m, flexible)
-  const moved = new Set()
-  const memos = state.memos.map((m) => {
-    if (!touch(m)) return m
-    moved.add(m.id)
-    return { ...m, tentative: !!flexible, updatedAt: now }
-  })
-  commit({ ...state, routines, memos })
-  const changed = [
-    ...routines.filter((r) => ids.has(r.id)),
-    ...memos.filter((m) => moved.has(m.id)),
-  ]
-  if (hasSupabase && session && changed.length) {
-    pushMemoRows(changed)
-      .then(() => setAuth({ syncError: false }))
-      .catch((e) => {
-        console.error('동기화 실패', e)
-        setAuth({ syncError: true })
-      })
-  }
-  return ids.size
 }
 
 // 중단 — 지우는 게 아니라 "이 달부터 안 함". 지난 회차는 이력으로 그대로 남는다
@@ -1119,7 +1171,10 @@ export function adoptDoneDays(ym) {
 // (안 한 것처럼 빈칸으로 남지 않게). 유동(가예정)으로 만들지 않는 이유: 날짜가 매달 조금씩
 // 달라도 다음 달 회차가 흐리게 뜨는 것보다 다른 것들과 똑같이 보이는 게 낫다는 사용자
 // 판단이다 — 그 근처에서 처리하고 실제 한 날로 옮기면 된다. (2026-08-21 사용자 요청)
-export function makeRoutineFromMemo(memoId) {
+// 2026-09-15부터는 상세의 [반복]에서 매월·분기·반기·매년을 고르면 여기로 온다(months).
+// 메모에 걸려 있던 미리 알림은 루틴 정의로 옮긴다 — 다음 달 회차에도 따라오게.
+// 루틴 회차는 하루짜리라 기간이었으면 시작일 하루로 줄인다.
+export function makeRoutineFromMemo(memoId, { months = null } = {}) {
   const m = state.memos.find((x) => x.id === memoId)
   if (!m || m.routineId || blankTitle(m.title)) return null
   const date = m.due || (m.period && m.period.start) || (m.completedAt || '').slice(0, 10) || todayStr()
@@ -1129,11 +1184,38 @@ export function makeRoutineFromMemo(memoId) {
     group: '기타',
     desc: m.desc || '',
     dueDay: Number(date.slice(8, 10)) || 5,
+    months,
     startYm: ym,
-    flexible: false,
+    alarm: m.alarm || null,
   })
-  updateMemo(m.id, { routineId: r.id, ym, tentative: false })
+  // dateFixed — 원래 메모의 날짜는 내가 정한 날이다. 표식이 없으면 앱을 열 때 도는
+  // 흐림 맞추기(alignTentative)가 "손 안 댄 자동 날짜"로 보고 흐리게 만든다.
+  updateMemo(m.id, {
+    routineId: r.id,
+    ym,
+    tentative: false,
+    dateFixed: true,
+    due: date,
+    period: null,
+    repeat: null,
+    repeatUntil: null,
+    alarm: null,
+  })
   return r
+}
+
+// 예전 "반복 메모"(매달·매년)를 루틴으로 옮긴다 — 앱을 열 때 서버와 맞춘 뒤 한 번 돈다.
+// 매주는 메모 하나가 굴러가는 방식 그대로 둔다. (2026-09-15 사용자 확정)
+export function convertRepeatMemos() {
+  const list = state.memos.filter(
+    (m) =>
+      !m.deleted && !m.routineId && m.status !== 'done' && m.due && !blankTitle(m.title) &&
+      (m.repeat === 'monthly' || m.repeat === 'yearly')
+  )
+  for (const m of list) {
+    makeRoutineFromMemo(m.id, { months: m.repeat === 'yearly' ? [Number(m.due.slice(5, 7))] : null })
+  }
+  return list.length
 }
 
 // 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — **앱을 열 때마다** 돈다.
@@ -1151,7 +1233,8 @@ export function alignTentative() {
     if (!m.routineId || !m.ym || m.deleted || m.status === 'done') return m
     const r = byId.get(m.routineId)
     if (!r) return m
-    const want = !!r.flexible
+    // 2026-09-15부터 모든 루틴이 같은 규칙 — 손 안 댄 자동 날짜는 흐리게
+    const want = true
     if (!!m.tentative === want) return m
     if (!tentativeTouchable(m, want)) return m
     // 자동으로 찍힌 날에서 옮겨둔 회차는 내가 잡은 날 — 흐리게 되돌리지 않는다
@@ -1183,13 +1266,12 @@ function newCycle(r, ym) {
     keep: false,
     due: cycleDue(r, ym),
     period: null,
-    deadline: false,
     history: [],
     desc: r.desc || '',
     routineId: r.id,
     ym,
-    // 유동 루틴의 날짜는 앱이 자리만 잡아둔 것 — 확정 전까지 달력에서 흐리게 보인다
-    tentative: !!r.flexible,
+    // 루틴이 찍은 날짜는 앱이 자리만 잡아둔 것 — 확정 전까지 달력에서 흐리게 보인다
+    tentative: true,
     createdAt: now,
     updatedAt: now,
     completedAt: null,
@@ -1247,6 +1329,84 @@ export function ensureThisMonth() {
       })
   }
   return made.length
+}
+
+// 미리 알림 날이 온 루틴의 회차를 미리 만든다 — 10월 3일 일정의 1주 전 알림(9월 26일)은
+// 9월에 떠야 하는데 회차는 원래 그 달이 돼야 생긴다. 알림이 걸린 루틴만, 알림 날이 이미
+// 온 달만 만든다(그래야 보드에서도 체크할 수 있다). 앞으로 올 알림 칩은 회차 없이
+// 규칙에서 계산해 달력에 그린다(alarmItems). (2026-09-15)
+export function ensureAlarmCycles() {
+  const today = todayStr()
+  const now = thisYm()
+  const made = []
+  for (const r of getRoutines()) {
+    if (!r.alarm || !r.alarm.text || blankTitle(r.title)) continue
+    const span = alarmSpanMonths(r.alarm) + 1
+    for (let k = 0; k <= span; k++) {
+      const ym = shiftYm(labelYm(r, now), k)
+      if (!routineHasMonth(r, ym) || cycleEverMade(r.id, ym)) continue
+      if (made.some((c) => c.routineId === r.id && c.ym === ym)) continue
+      const due = cycleDue(r, ym)
+      if (due >= today && alarmStart(due, r.alarm) <= today) made.push(newCycle(r, ym))
+    }
+  }
+  if (!made.length) return 0
+  commit({ ...state, memos: [...made, ...state.memos] })
+  if (hasSupabase && session) {
+    pushMemoRows(made)
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return made.length
+}
+
+// 기간(from~to, 'YYYY-MM-DD') 안에 뜨는 미리 알림 칩 목록.
+// 메모(루틴 회차 포함)에 걸린 알림 + 아직 회차가 없는 달의 루틴 알림(규칙에서 계산).
+// 화면이 useMemo 안에서 부른다 — useSyncExternalStore getter로 쓰면 안 된다(새 배열).
+// rules=false면 규칙 계산은 빼고 있는 메모만 본다(검색 중인 달력).
+// 돌려주는 항목: { key, date, done, text, base, memo | (routine, ym) }
+export function alarmItems(memos, routines, from, to, { rules = true } = {}) {
+  const today = todayStr()
+  const byId = new Map(routines.filter((r) => !r.deleted).map((r) => [r.id, r]))
+  const out = []
+  const add = (days, rest) => {
+    for (const d of days) if (d.date >= from && d.date <= to) out.push({ ...rest, ...d })
+  }
+  for (const m of memos) {
+    if (m.deleted || m.status === 'done' || m.keep || m.hold) continue
+    const alarm = m.routineId ? (byId.get(m.routineId) || {}).alarm : m.alarm
+    const base = m.due || (m.period && m.period.start)
+    if (!alarm || !alarm.text || !base) continue
+    add(alarmDays({ base, alarm, checkedAt: m.alarmCheckedAt, today }), {
+      key: m.id,
+      memo: m,
+      text: alarm.text,
+      base,
+    })
+  }
+  if (!rules) return out
+  for (const r of byId.values()) {
+    if (!r.alarm || !r.alarm.text || blankTitle(r.title)) continue
+    const span = alarmSpanMonths(r.alarm) + 1
+    const firstYm = labelYm(r, from.slice(0, 7))
+    for (let k = -1; k <= span + 1; k++) {
+      const ym = shiftYm(firstYm, k)
+      if (!routineHasMonth(r, ym) || cycleEverMade(r.id, ym)) continue
+      const base = cycleDue(r, ym)
+      if (base < today) continue // 지난 달분은 회차가 없으면 알릴 것도 없다
+      add(alarmDays({ base, alarm: r.alarm, checkedAt: null, today }), {
+        key: r.id + '|' + ym,
+        routine: r,
+        ym,
+        text: r.alarm.text,
+        base,
+      })
+    }
+  }
+  return out
 }
 
 export function setDayOrder(date, ids) {

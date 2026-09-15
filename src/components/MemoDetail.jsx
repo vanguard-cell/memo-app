@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, cycleDue, ymDiff, adoptCycleDay, makeRoutineFromMemo, blankTitle } from '../store'
-import { memoStatus, STATUS_LABEL, fmtDate, fmtPeriod, diffDays } from '../derive'
+import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, cycleDue, ymDiff, adoptCycleDay } from '../store'
+import { memoStatus, STATUS_LABEL, fmtDate } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
+import { ScheduleBlock } from './ScheduleFields'
 import SendToDateBtn from './SendToDateBtn'
 import FileSection from './FileSection'
 import { attachFile, detachFile } from '../store'
@@ -10,19 +11,22 @@ import { ICONS } from '../icons'
 import useIsNarrow from '../useIsNarrow'
 
 // 액션 아이콘 기본 순서 — 세로 구분선(div)도 한 자리를 차지해 같이 끌 수 있다
-const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'flag', 'hold', 'keep', 'edit', 'del']
+// (마감·정보 수정 아이콘은 2026-09-15 없앴다 — 날짜·반복은 위의 일정 칸에서 바로 고친다)
+const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'hold', 'keep', 'del']
 
 const REPEAT_LABEL = { weekly: '매주', monthly: '매달', yearly: '매년' }
 
 export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, closing }) {
   const linkedWork = memo.fromWork ? works.find((w) => w.id === memo.fromWork) : null
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState(null)
   // 액션 아이콘 순서 — 드래그로 바꿀 수 있고 이 기기(localStorage)에 저장된다 (2026-07-31 사용자 요청)
   const [paOrder, setPaOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('pa-order'))
-      if (Array.isArray(saved)) return [...saved, ...PA_DEFAULT.filter((k) => !saved.includes(k))]
+      // 기기에 저장된 순서에 없어진 아이콘(마감·수정)이 남아 있으면 걸러낸다
+      if (Array.isArray(saved)) {
+        const known = saved.filter((k) => PA_DEFAULT.includes(k))
+        return [...known, ...PA_DEFAULT.filter((k) => !known.includes(k))]
+      }
     } catch (e) {
       console.error('아이콘 순서 읽기 실패', e)
     }
@@ -177,63 +181,13 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   // (여기서 등록이 일어나면 패널은 사라지지만 달력 번쩍임은 그대로 뜬다 — 그게 맞다)
   useEffect(() => () => { saveTitle(); saveDesc(); alive.current = false; clearTimeout(flashTimer.current) }, [])
 
-  function startEdit() {
-    setForm({
-      title: memo.title,
-      due: memo.due || '',
-      start: memo.period?.start || '',
-      end: memo.period?.end || '',
-      repeat: memo.repeat || '',
-    })
-    setEditing(true)
-  }
-
-  function saveEdit() {
-    // 폼에서 예정일과 기간이 상호 배타라 여기선 검증만 — 한쪽만 채운 기간은 저장 막기
-    if ((form.start && !form.end) || (!form.start && form.end)) {
-      window.alert('기간은 시작과 끝을 모두 선택해 주세요.')
-      return
-    }
-    const period = form.start && form.end ? { start: form.start, end: form.end } : null
-    updateMemo(memo.id, {
-      title: form.title.trim() || memo.title,
-      due: period ? null : form.due || null,
-      period,
-      deadline: period ? memo.deadline || false : false,
-      repeat: period ? null : form.repeat || null, // 반복은 예정일 메모 전용
-      // 보류 메모에 날짜를 달면 보류가 풀린다 — 날짜가 생겼는데 화면에 안 보이면 이상하니까
-      ...(memo.hold && (period || form.due) ? { hold: false } : {}),
-    })
-    setEditing(false)
-  }
-
-  const dday = memo.period?.end && memo.status !== 'done' ? diffDays(memo.period.end, today) : null
-  const dueD = memo.due && memo.status !== 'done' ? diffDays(memo.due, today) : null
-
   // 루틴 회차를 실제로 한 날로 옮겼을 때 — 규칙(예정일)까지 바꿀지 그 자리에서 묻는다.
   // 휴일·출장으로 한 달만 밀린 것은 안 누르면 그만이고, 눌러야 다음 달부터 그 날로 온다.
-  // 매번 날짜를 새로 잡는 유동 루틴(가예정)은 묻지 않는다 — 원래 달마다 다른 날이다.
   // (2026-08-20 사용자: "다음달에도 18일로 반영이 되는지?")
+  // "루틴으로" 버튼은 2026-09-15 없앴다 — 일정 칸의 [반복]에서 매월·분기·반기·매년을 고른다.
   const rt = memo.routineId ? routineOf(memo.routineId) : null
-
-  // "루틴으로" — 팝업 대신 그 자리에서 두 번 누르게 한다(앱의 다른 확인과 같은 방식).
-  // 매달 도는 일이 하나 생기는 일이라 실수로 한 번 눌린 것과 구분한다. (2026-08-21)
-  const [armRt, setArmRt] = useState(false)
-  const armRtTimer = useRef(null)
-  useEffect(() => () => clearTimeout(armRtTimer.current), [])
-  function toRoutine() {
-    if (!armRt) {
-      setArmRt(true)
-      clearTimeout(armRtTimer.current)
-      armRtTimer.current = setTimeout(() => setArmRt(false), 4000)
-      return
-    }
-    clearTimeout(armRtTimer.current)
-    setArmRt(false)
-    makeRoutineFromMemo(memo.id)
-  }
   const askDay =
-    rt && !rt.flexible && !memo.dayKept && memo.due && memo.ym && memo.due !== cycleDue(rt, memo.ym)
+    rt && !memo.dayKept && memo.due && memo.ym && memo.due !== cycleDue(rt, memo.ym)
       ? Number(memo.due.slice(8, 10))
       : null
   // 옮겨둔 날이 그 달분의 달을 넘었는가 — "8월분을 9월 3일" 같은 익월 처리 (2026-09-07)
@@ -342,36 +296,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
         </div>
         {/* 등록되는 순간 예정·D-day 줄이 살짝 떠오르며 자리를 잡는다 — "이 일이 8/12에 걸렸다" */}
         <div className={'panel-meta' + (flash === 'reg' ? ' meta-settle' : '')}>
-          {memo.period && (
-            <span className="meta-date">
-              {memo.deadline ? `마감 ${fmtDate(memo.period.end)}` : `기간 ${fmtPeriod(memo.period)}`}
-              {dday !== null && (
-                <b className={dday < 0 ? 't-red' : 't-blue'}>
-                  {' · '}
-                  {dday < 0 ? `마감 ${-dday}일 지남` : `마감 D-${dday}`}
-                </b>
-              )}
-            </span>
-          )}
-          {memo.due && !memo.period && (
-            <div className="meta-block">
-              <div className="panel-sec-label">{memo.tentative ? '예정 (아직 안 잡음)' : '예정'}</div>
-              <span className="meta-row">
-                {/* 날짜를 바로 고른다 — 새 메모는 기본이 오늘이라 안 건드리고 넘어가도 된다 */}
-                <input
-                  type="date"
-                  className="meta-date-input"
-                  value={memo.due}
-                  onChange={(e) => e.target.value && updateMemo(memo.id, { due: e.target.value })}
-                />
-                {dueD !== null && (
-                  <b className={'meta-dday' + (dueD < 0 ? ' t-red' : '')}>
-                    {dueD < 0 ? `${-dueD}일 지남` : dueD === 0 ? '오늘' : `D-${dueD}`}
-                  </b>
-                )}
-                {/* 루틴이 자동으로 찍어둔 날짜 — 날짜를 옮기면 저절로 확정되지만,
-                    자동 날짜가 마침 맞을 때를 위해 "이 날 맞다"만 누르는 길을 둔다 (2026-08-13) */}
-                {memo.tentative && (
+          {/* 일정 칸 — 하루 종일 / 시작 / 종료 / 반복 / 미리 알림 (2026-09-15 아이폰 달력식 개편).
+              예전의 예정일 한 칸 + "기간으로"·"루틴으로" 링크 + 정보 수정 폼을 대신한다 */}
+          {(memo.due || memo.period) && (
+            <div className="meta-block sched-wrap">
+              <div className="panel-sec-label">일정</div>
+              {/* 루틴이 자동으로 찍어둔 날짜 — 날짜를 옮기면 저절로 확정되지만,
+                  자동 날짜가 마침 맞을 때를 위해 "이 날 맞다"만 누르는 길을 둔다 (2026-08-13) */}
+              {memo.tentative && (
+                <div className="sched-tent">
+                  <span className="sched-tent-tag">자동으로 잡힌 날</span>
                   <button
                     className="linkish t-blue"
                     title="이 날짜로 잡혔다고 표시합니다 — 달력에서 진하게 바뀝니다"
@@ -379,39 +313,9 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                   >
                     이 날로 확정
                   </button>
-                )}
-                {/* 매달 적어 오던 메모를 루틴으로 — 이 메모가 그 달 기록이 되고 다음 달부터 자동으로 온다.
-                    이미 루틴 회차인 메모에는 안 보인다 (2026-08-21) */}
-                {!memo.routineId && !memo.keep && !memo.hold && !blankTitle(memo.title) && (
-                  <button
-                    className={'linkish' + (armRt ? ' t-red' : '')}
-                    title="매달 도는 일로 만듭니다 — 이 메모가 이 달 기록이 되고, 다음 달부터 루틴 격자에 나옵니다"
-                    onClick={toRoutine}
-                  >
-                    {armRt ? '매달 도는 일로 만듭니다' : '루틴으로'}
-                  </button>
-                )}
-                {rt && (
-                  <span className="meta-routine" title="매달 도는 일 — 루틴 화면 격자에서 보입니다">
-                    ↻ 루틴 · 매달 {ruleNow}
-                  </span>
-                )}
-                {/* 기간 설정이 정보 수정 폼 안에만 있어 못 찾는 문제 — 바로가기 (2026-07-31) */}
-                {memo.status !== 'done' && !memo.keep && !memo.hold && (
-                  <button
-                    className="linkish"
-                    title="시작~끝이 있는 기간 일정으로 바꿉니다 — 달력에 이어진 띠로 표시"
-                    onClick={startEdit}
-                  >
-                    기간으로
-                  </button>
-                )}
-                {memo.repeat && (
-                  <span className="meta-repeat" title="완료하면 예정일이 다음 주기로 굴러갑니다">
-                    ↻ {REPEAT_LABEL[memo.repeat] || memo.repeat}
-                  </span>
-                )}
-              </span>
+                </div>
+              )}
+              <ScheduleBlock memo={memo} />
               {/* 옮긴 날을 규칙으로 삼을지 그 자리에서 묻는다 — 누르면 다음 달부터 그 날로 온다.
                   "이번만"을 누르면 이 회차에서는 다시 안 묻는다 (2026-08-20) */}
               {askDay && (
@@ -569,41 +473,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             }
             if (k === 'div') return <span key={k} className={paCls(k, 'pa-div')} {...paDrag(k)} />
             const openPlain = memo.status !== 'done' && !memo.keep && !memo.hold
-            if (k === 'flag') {
-              if (openPlain && memo.due && !memo.period)
-                return (
-                  <button
-                    key={k}
-                    className={paCls(k, 'pa-ic')}
-                    data-tip="마감으로 지정 — 그날까지 끝낼 일로"
-                    {...paDrag(k)}
-                    onClick={() =>
-                      updateMemo(memo.id, {
-                        due: null,
-                        period: { start: today < memo.due ? today : memo.due, end: memo.due },
-                        deadline: true,
-                      })
-                    }
-                  >
-                    {ICONS.flag}
-                    <span className="pa-tx">마감</span>
-                  </button>
-                )
-              if (openPlain && memo.deadline && memo.period)
-                return (
-                  <button
-                    key={k}
-                    className={paCls(k, 'pa-ic')}
-                    data-tip="마감 해제 — 날짜만 잡힌 예정으로"
-                    {...paDrag(k)}
-                    onClick={() => updateMemo(memo.id, { due: memo.period.end, period: null, deadline: false })}
-                  >
-                    {ICONS.flagOff}
-                    <span className="pa-tx">마감 해제</span>
-                  </button>
-                )
-              return null
-            }
             if (k === 'hold') {
               if (!openPlain || !(memo.due || memo.period)) return null
               return (
@@ -618,7 +487,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                       holdAt: today,
                       due: null,
                       period: null,
-                      deadline: false,
                       snoozeUntil: null,
                     })
                   }
@@ -641,27 +509,12 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                       keep: true,
                       due: null,
                       period: null,
-                      deadline: false,
                       snoozeUntil: null,
                     })
                   }
                 >
                   {ICONS.keep}
                   <span className="pa-tx">보관</span>
-                </button>
-              )
-            }
-            if (k === 'edit') {
-              return (
-                <button
-                  key={k}
-                  className={paCls(k, 'pa-ic' + (editing ? ' on' : ''))}
-                  data-tip={editing ? '수정 취소' : '정보 수정 — 제목·예정일·기간'}
-                  {...paDrag(k)}
-                  onClick={editing ? () => setEditing(false) : startEdit}
-                >
-                  {ICONS.memo}
-                  <span className="pa-tx">{editing ? '취소' : '수정'}</span>
                 </button>
               )
             }
@@ -687,58 +540,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             return null
           })}
         </div>
-        {editing && form && (
-          <div className="edit-form">
-            <label>
-              제목
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            </label>
-            <div className="edit-grid">
-              {/* 예정일과 기간은 상호 배타 — 한쪽을 입력하면 다른 쪽이 비워진다 (기한이 조용히 무시되던 버그 방지) */}
-              <label>
-                예정일
-                <input
-                  type="date"
-                  value={form.due}
-                  onChange={(e) => setForm({ ...form, due: e.target.value, start: '', end: '' })}
-                />
-              </label>
-              <label>
-                기간
-                <span className="eg-range">
-                  <input
-                    type="date"
-                    value={form.start}
-                    onChange={(e) => setForm({ ...form, start: e.target.value, due: '' })}
-                  />
-                  <span className="eg-tilde">~</span>
-                  <input
-                    type="date"
-                    value={form.end}
-                    onChange={(e) => setForm({ ...form, end: e.target.value, due: '' })}
-                  />
-                </span>
-              </label>
-            </div>
-            <label>
-              반복
-              <span className="eg-range">
-                <select
-                  className="edit-select"
-                  value={form.repeat || ''}
-                  onChange={(e) => setForm({ ...form, repeat: e.target.value })}
-                >
-                  <option value="">없음</option>
-                  <option value="weekly">매주</option>
-                  <option value="monthly">매달</option>
-                  <option value="yearly">매년</option>
-                </select>
-                <span className="edit-hint">완료하면 예정일이 다음 주기로 굴러갑니다 (공과금·정기점검용)</span>
-              </span>
-            </label>
-            <button className="btn-done" onClick={saveEdit}>저장</button>
-          </div>
-        )}
         <div className="panel-desc">
           <div className="panel-sec-label">작업 설명</div>
           <textarea

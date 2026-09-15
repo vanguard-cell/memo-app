@@ -2383,6 +2383,56 @@ main {
   text-decoration: line-through;
 }
 
+/* 시간 정한 일정 — 칩 앞에 시각 (2026-09-15) */
+.ev-time {
+  font-weight: 700;
+  margin-right: 3px;
+}
+
+/* 미리 알림 칩 — 파랑. 칩 안 체크박스를 누르면 체크, 글자를 누르면 그 일정 상세 (2026-09-15) */
+.ev-alarm {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.cal-ev.ev-alarm {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.cal-ev.ev-alarm input {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.cal-ev.ev-alarm span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-ev.ev-alarm.ev-done,
+.row.row-alarm.done .row-title {
+  background: #f0f2f4;
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.row.row-alarm .tl-check {
+  margin: 0;
+}
+
+/* 보드 카드 — 오늘 떠 있는 미리 알림 한 줄 */
+.kb-alarm {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--blue);
+}
+
 /* "+3" — 칸에 안 들어간 칩이 있다는 표시. 칩 줄을 하나 잡아먹지 않게 우측 아래 모서리에 얹고,
    마우스를 올리면(=휠로 굴릴 수 있으면) 사라져 가려진 칩을 드러낸다 */
 .cal-more {
@@ -2741,7 +2791,9 @@ main {
 .desc-input,
 .tl-input,
 .tl-date-input,
-.meta-date-input {
+.meta-date-input,
+.sched-input,
+.sched-select {
   background: var(--field);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -2754,7 +2806,9 @@ main {
 .desc-input:hover,
 .tl-input:hover,
 .tl-date-input:hover,
-.meta-date-input:hover {
+.meta-date-input:hover,
+.sched-input:hover,
+.sched-select:hover {
   border-color: var(--border-hover);
 }
 
@@ -2762,7 +2816,9 @@ main {
 .desc-input:focus,
 .tl-input:focus,
 .tl-date-input:focus,
-.meta-date-input:focus {
+.meta-date-input:focus,
+.sched-input:focus,
+.sched-select:focus {
   background: var(--card);
   border-color: var(--blue-strong);
   box-shadow: 0 0 0 3px rgb(53 104 224 / 13%);
@@ -2896,6 +2952,180 @@ main {
   padding: 2px 8px;
   border-radius: 5px;
   white-space: nowrap;
+}
+
+/* ---------- 일정 칸 (2026-09-15) — 아이폰 달력식 하루 종일 / 시작 / 종료 / 반복 / 미리 알림 ----------
+   예전의 예정일 한 칸 + "기간으로"·"루틴으로" 링크 + 정보 수정 폼을 이 묶음 하나로 합쳤다.
+   반복·미리 알림은 기본 선택 칸(select) — 폰에서는 휴대폰이 제 메뉴를 띄워준다(팝업 아님). */
+.meta-block.sched-wrap {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.sched {
+  display: flex;
+  flex-direction: column;
+  max-width: 560px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.sched-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-height: 40px;
+  padding: 5px 10px;
+}
+
+.sched-row + .sched-row {
+  border-top: 1px solid var(--border);
+}
+
+.sched-k {
+  flex: none;
+  width: 62px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.sched-input,
+.sched-select {
+  font: inherit;
+  font-size: var(--fs-base);
+  padding: 5px 8px;
+}
+
+.sched-input:disabled {
+  opacity: 0.55;
+}
+
+.sched-time {
+  width: 112px;
+}
+
+.sched-num {
+  width: 64px;
+}
+
+/* 선택 뒤에 펼쳐지는 칸 — 이름표 폭만큼 들여서 값 칸과 줄을 맞춘다 */
+.sched-sub {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 4px 70px;
+}
+
+.sched-text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.sched-switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 21px;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  border-radius: 11px;
+  background: var(--border-hover);
+  cursor: pointer;
+}
+
+.sched-switch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+  transition: left 120ms;
+}
+
+.sched-switch.on {
+  background: var(--blue-strong);
+}
+
+.sched-switch.on i {
+  left: 17px;
+}
+
+.sched-switch:hover {
+  background: var(--border-hover);
+}
+
+.sched-switch.on:hover {
+  background: var(--blue-strong);
+}
+
+.sched-err {
+  font-size: var(--fs-sm);
+  color: var(--red);
+}
+
+.sched-muted {
+  font-size: var(--fs-sm);
+  color: var(--faint);
+}
+
+.sched-check {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  font-size: var(--fs-base);
+  cursor: pointer;
+}
+
+.sched-done {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.sched-sum {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+/* 루틴이 자동으로 잡아둔 날 — 흐린 점선 딱지 + [이 날로 확정] */
+.sched-tent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.sched-tent-tag {
+  padding: 1px 7px;
+  border: 1px dashed var(--border-hover);
+  border-radius: 5px;
+}
+
+/* 루틴 수정 폼의 미리 알림 — 상세 패널과 같은 칸(AlarmField)을 폼 한 줄 전체에 */
+.rt-alarm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.rt-alarm-k {
+  flex-basis: 100%;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.rt-alarm .sched-sub {
+  padding-left: 0;
 }
 
 .edit-form .edit-select {
@@ -4533,6 +4763,15 @@ main {
     overflow: hidden;
   }
 
+  /* 미리 알림 칩도 폰에선 색 막대만 — 체크는 아래 날짜 목록에서 */
+  .cal-ev.ev-alarm {
+    display: block;
+  }
+
+  .cal-ev.ev-alarm input {
+    display: none;
+  }
+
   /* 폰은 칸 안 스크롤을 막는다 — 56px 칸에서 손가락 스크롤이 화면 스크롤과 싸운다.
      넘치는 건 원래대로 날짜를 탭해 아래 목록에서 본다 */
   .cal-chips {
@@ -4885,10 +5124,29 @@ main {
   .desc-input,
   .tl-input,
   .meta-date-input,
+  .sched-input,
   .cal-add input,
   .edit-form input,
   .work-form-grid input {
     font-size: 16px;
+  }
+
+  /* 일정 칸 — 손가락 크기, 이름표를 줄이고 선택 뒤 칸은 들여쓰지 않는다 */
+  .sched-row {
+    min-height: 46px;
+    padding: 6px 10px;
+  }
+
+  .sched-k {
+    width: 54px;
+  }
+
+  .sched-sub {
+    padding-left: 0;
+  }
+
+  .sched-time {
+    width: 118px;
   }
 
   /* 검색 지우기 × 도 손가락 크기로 — 글자가 × 밑으로 들어가지 않게 오른쪽을 그만큼 비운다 */

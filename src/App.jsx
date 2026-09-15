@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, dedupeCycles, cleanupBlankRoutines, blankTitle, adoptDoneDays, alignTentative, importData, importRoutineRows,
+  getRoutines, ensureThisMonth, ensureAlarmCycles, convertRepeatMemos, dedupeCycles, cleanupBlankRoutines, blankTitle, adoptDoneDays, alignTentative, importData, importRoutineRows,
   routineHasMonth, labelYm,
 } from './store'
 import { readRoutineXlsx } from './importXlsx'
@@ -173,11 +173,23 @@ export default function App() {
   // ⚠️ **서버와 맞춘 뒤(auth.synced)** 만든다 — 로그인 확인만 되면 바로 만들던 때는 다른
   // 기기가 이미 만든 회차가 도착하기 전에 똑같은 것을 하나 더 만들어, 달력 한 날에 같은
   // 줄이 두 개 뜨는 일이 있었다. 만들기 전에 그렇게 겹친 회차를 먼저 치운다. (2026-09-07)
+  // 미리 알림이 걸린 루틴은 알림 날이 온 달의 회차도 미리 만든다 — 10월 3일 일정의 1주 전
+  // 알림은 9월에 떠야 한다(ensureAlarmCycles). 알림 규칙이 바뀌면 다시 돈다. (2026-09-15)
+  const alarmKey = routines.map((r) => (r.alarm ? `${r.id}:${r.alarm.n}${r.alarm.unit}` : '')).join()
   useEffect(() => {
     if (!auth.ready || !auth.synced) return
     dedupeCycles()
     ensureThisMonth()
-  }, [auth.ready, auth.synced, routines.length])
+    ensureAlarmCycles()
+  }, [auth.ready, auth.synced, routines.length, alarmKey])
+
+  // 예전 반복 메모(매달·매년)를 루틴으로 옮긴다 — 서버와 맞춘 뒤 앱을 열 때 한 번 (2026-09-15)
+  const convertedOnce = useRef(false)
+  useEffect(() => {
+    if (!auth.ready || !auth.synced || convertedOnce.current) return
+    convertedOnce.current = true
+    convertRepeatMemos()
+  }, [auth.ready, auth.synced])
 
   // 8월에 실제로 한 날로 옮겨 완료해 둔 회차 — 그 날을 루틴 예정일로 한 번에 맞춘다.
   // 앞으로는 회차 상세가 그때그때 물어보므로(매달 N일로) 이건 이미 쌓인 8월을 따라잡는

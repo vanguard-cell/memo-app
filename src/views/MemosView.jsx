@@ -1,7 +1,7 @@
 import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
-import { completeMemo, reopenMemo, updateMemo, setDayOrder } from '../store'
+import { completeMemo, reopenMemo, updateMemo, setDayOrder, alarmItems } from '../store'
 import { todayStr } from '../parser'
 import useIsNarrow from '../useIsNarrow'
 
@@ -9,36 +9,32 @@ const pad = (n) => String(n).padStart(2, '0')
 
 // 기한 배지: 며칠 밀림(빨강) / 오늘(주황) / D-n(은은한 파랑 하나).
 // 날짜별 색 그라데이션은 2026-07-30 제거 — 보드가 알록달록해지는 주범이었다 (스티치 시안 톤).
-// withDate: 보드 카드는 날짜 칸이 없어 마감형 배지에 날짜를 같이 담고("7.30까지 D-11"),
-// 표는 날짜 칸이 따로 있어 D-n만 담는다 (마감형만 표기가 튀던 문제, 2026-08-01 통일)
+// (마감형 "7.30까지" 배지는 마감 기능과 함께 2026-09-15 없앴다)
 // 며칠 남았나를 셀 때 기준이 되는 날. 아직 시작 안 한 기간은 **시작하는 날**까지 센다 —
 // "기간의 시작은 예정에 흡수"라는 앱의 날짜 규칙(2026-08-03) 그대로다. 예전엔 늘 끝나는
 // 날만 세서, 내일 시작하는 3일짜리 교육이 보드에서 D-3으로 뜨고 D-3 무리 사이에 파묻혔다.
 // (2026-08-22 사용자: "내일 시작이고 3일뒤 마감인데 보드에서는 D-3으로 나오네")
-// 마감형("~까지"로 던진 것)은 예외 — 그건 끝나는 날이 전부라 시작을 세지 않는다.
 const dueAnchor = (m, today) => {
   if (m.due) return m.due
   if (!m.period) return null
-  return !m.deadline && today < m.period.start ? m.period.start : m.period.end
+  return today < m.period.start ? m.period.start : m.period.end
 }
 
 // 이미 시작해서 지금 굴러가는 기간인가 — 이때는 배지가 끝나는 날을 세므로 "마감"을 붙여
 // 구분한다. 안 그러면 오늘 D-1(시작)이던 게 내일 D-2(마감)로 늘어나 보여 헷갈린다.
 const inPeriod = (m, today) =>
-  !m.due && !!m.period && !m.deadline && today >= m.period.start
+  !m.due && !!m.period && today >= m.period.start
 
-function dueBadge(m, today, withDate = true) {
+function dueBadge(m, today) {
   if (m.status === 'done' || m.keep) return null
   const at = dueAnchor(m, today)
   if (!at) return null
   const dd = diffDays(at, today)
-  const md = `${Number(at.slice(5, 7))}.${Number(at.slice(8, 10))}`
-  const pre = m.deadline && withDate ? `${md}까지` : ''
   const rp = m.repeat ? '↻ ' : '' // 반복 메모 표시 — 완료하면 다음 주기로 굴러감 (2026-07-31)
   const run = inPeriod(m, today)
-  if (dd < 0) return ['b-red', rp + (m.deadline ? (pre ? `${pre} · ${-dd}일 지남` : `${-dd}일 지남`) : `${-dd}일째`)]
-  if (dd === 0) return ['b-amber', rp + (m.deadline || run ? '마감 오늘' : '오늘')]
-  return ['b-blue', rp + (pre ? `${pre} D-${dd}` : run ? `마감 D-${dd}` : `D-${dd}`)]
+  if (dd < 0) return ['b-red', rp + `${-dd}일째`]
+  if (dd === 0) return ['b-amber', rp + (run ? '마감 오늘' : '오늘')]
+  return ['b-blue', rp + (run ? `마감 D-${dd}` : `D-${dd}`)]
 }
 
 function checkInfo(m) {
@@ -68,13 +64,15 @@ const boardIdx = (dayOrder, col, id) => {
 }
 
 // 급한 순서도 배지와 같은 기준으로 센다 — 내일 시작하는 일이 D-3 무리에 파묻히지 않게
-const urgency = (m, today) => {
+// 오늘 미리 알림이 뜬 일은 오늘 할 일처럼 위로 올린다 (alarmIds — 보드만 넘긴다, 2026-09-15)
+const urgency = (m, today, alarmIds) => {
   const at = dueAnchor(m, today)
-  return at ? diffDays(at, today) : Number.MAX_SAFE_INTEGER
+  const u = at ? diffDays(at, today) : Number.MAX_SAFE_INTEGER
+  return alarmIds && alarmIds.has(m.id) ? Math.min(u, 0) : u
 }
 
-const prioSort = (dayOrder, col, today) => (a, b) =>
-  urgency(a, today) - urgency(b, today) ||
+const prioSort = (dayOrder, col, today, alarmIds) => (a, b) =>
+  urgency(a, today, alarmIds) - urgency(b, today, alarmIds) ||
   boardIdx(dayOrder, col, a.id) - boardIdx(dayOrder, col, b.id) ||
   byUpdated(a, b)
 
@@ -87,7 +85,7 @@ const COLS = [
 ]
 const DONE_SHOWN = 8
 
-function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardDrop }) {
+function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardDrop, alarm }) {
   const st = memoStatus(m)
   const badge = dueBadge(m, today)
   const chk = checkInfo(m)
@@ -96,10 +94,10 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
       ? `${Number(m.completedAt.slice(5, 7))}.${Number(m.completedAt.slice(8, 10))}`
       : null
   // 기간 메모에 오늘 날짜 진행기록이 있으면 카드에 그 줄을 보여준다 (예: 오늘의 식단).
-  // 단 마감형은 제외하고, 오늘이 기간 안일 때만 — 오늘 추가한 일반 기록까지 걸려서
+  // 오늘이 기간 안일 때만 — 오늘 추가한 일반 기록까지 걸려서
   // 아래 힌트 줄과 같은 내용이 두 번 보이던 버그 (2026-07-31)
   const dayLine =
-    m.period && !m.deadline && m.period.start <= today && today <= m.period.end
+    m.period && m.period.start <= today && today <= m.period.end
       ? (m.history || []).find((h) => h.date === today && h.text)
       : null
   // "다음 할 일" 흐린 힌트 줄은 2026-07-31 제거 — 실제로 안 읽게 되어 자리만 차지 (사용자 결정)
@@ -125,6 +123,8 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
         <span className={'kb-title' + (m.title ? '' : ' kb-untitled')}>{m.title || '제목 없음'}</span>
       </div>
       {dayLine && <div className="kb-dayline">{dayLine.text}</div>}
+      {/* 오늘 떠 있는 미리 알림 — 체크는 상세의 일정 칸이나 달력에서 (2026-09-15) */}
+      {alarm && <div className="kb-alarm">알림 · {alarm.text}</div>}
       {chk && (
         <div className={'kb-prog-row' + (st === 'done' ? ' done' : '')}>
           <div className="kb-prog">
@@ -139,7 +139,7 @@ function Card({ m, col, today, onOpen, dropCls, onCardOver, onCardLeave, onCardD
   )
 }
 
-function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
+function BoardView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDetail }) {
   const today = todayStr()
   const narrow = useIsNarrow()
   const [over, setOver] = useState(null)
@@ -180,8 +180,14 @@ function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
     if (by[st]) by[st].push(m)
   }
 
-  by.todo.sort(prioSort(dayOrder, 'todo', today))
-  by.active.sort(prioSort(dayOrder, 'active', today))
+  // 오늘 떠 있는(아직 체크 안 한) 미리 알림 — 카드에 한 줄, 급한 순서에서 오늘 일처럼 위로
+  const alarmBy = new Map()
+  for (const it of alarmItems(memos, routines, today, today, { rules: false })) {
+    if (!it.done && it.memo) alarmBy.set(it.memo.id, it)
+  }
+
+  by.todo.sort(prioSort(dayOrder, 'todo', today, alarmBy))
+  by.active.sort(prioSort(dayOrder, 'active', today, alarmBy))
   by.done.sort(byCompleted)
 
   function reorderIn(col, draggedId, targetId, after) {
@@ -255,10 +261,10 @@ function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
             return (
               <Fragment key={(L && L.id) || (R && R.id) || i}>
                 <div className="kbf-cell">
-                  {L && !Ld && <Card m={L} col="todo" today={today} onOpen={onOpen} dropCls="" />}
+                  {L && !Ld && <Card m={L} col="todo" today={today} onOpen={onOpen} dropCls="" alarm={alarmBy.get(L.id)} />}
                 </div>
                 <div className="kbf-cell">
-                  {R && !Rd && <Card m={R} col="active" today={today} onOpen={onOpen} dropCls="" />}
+                  {R && !Rd && <Card m={R} col="active" today={today} onOpen={onOpen} dropCls="" alarm={alarmBy.get(R.id)} />}
                 </div>
                 {Ld && <div className="kbf-detail">{Ld}</div>}
                 {Rd && <div className="kbf-detail">{Rd}</div>}
@@ -328,6 +334,7 @@ function BoardView({ memos, dayOrder, onOpen, onCompose, renderDetail }) {
                   <Card
                     m={m}
                     col={id}
+                    alarm={alarmBy.get(m.id)}
                     today={today}
                     onOpen={onOpen}
                     dropCls={rowDrop && rowDrop.id === m.id ? (rowDrop.after ? ' drop-below' : ' drop-above') : ''}
@@ -441,7 +448,7 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
 
   const renderRow = (m) => {
     const st = memoStatus(m)
-    const badge = dueBadge(m, today, false) // 표는 날짜 칸이 따로 있어 배지는 D-n만
+    const badge = dueBadge(m, today)
     const chk = checkInfo(m)
     const matched = words.length
       ? m.history.filter((h) => words.some((w) => h.text.toLowerCase().includes(w))).slice(0, 3)
@@ -461,8 +468,8 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
           <td><span className={'badge st-' + st}>{STATUS_LABEL[st]}</span></td>
           <td className="mv-title">{m.title}</td>
           <td className="mv-date">
-            {/* 마감형도 날짜는 텍스트로, 배지는 D-n만 — 예정·기간과 같은 꼴 (2026-08-01, 깃발 은퇴 08-03) */}
-            {m.period ? (m.deadline ? fmtDate(m.period.end) : fmtPeriod(m.period)) : m.due ? fmtDate(m.due) : ''}
+            {m.period ? fmtPeriod(m.period) : m.due ? fmtDate(m.due) : ''}
+            {m.time && <span className="ev-time"> {m.time}</span>}
             {badge && <span className={'kb-badge ' + badge[0]}> {badge[1]}</span>}
           </td>
           <td className="mv-date">
@@ -831,7 +838,7 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
           )}
         </span>
       </div>
-      {view === 'board' && <BoardView memos={list} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
+      {view === 'board' && <BoardView memos={list} routines={routines} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
           memos={searchList}

@@ -10,30 +10,28 @@ import {
   importRoutineRows,
   importRoutineCycles,
   setGroupDueDay,
-  setGroupFlexible,
   renameGroup,
   removeGroup,
   reorderRoutines,
   thisYm,
+  shiftYm,
   blankTitle,
   cycleYm,
+  routineStopped,
 } from '../store'
 import { readRoutinePaste } from '../importXlsx'
 import useIsNarrow from '../useIsNarrow'
+import { AlarmField } from '../components/ScheduleFields'
+import { REPEAT_OPTIONS, kindOfMonths, monthsFor } from '../schedule'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 // 중단한 항목을 담는 가짜 묶음 이름 — 격자 맨 아래에 접힌 채로 붙는다
 const STOPPED = '__stopped__'
 
-// 주기 = 결국 "몇 월에 해당하는가"의 목록. 분기·반기는 시작 월이 제각각이라(1·4·7·10 vs 2·5·8·11)
-// 기본값만 주고, 그 밖의 조합은 정의를 고쳐 쓰는 쪽으로 둔다.
-const CYCLES = [
-  ['매월', null],
-  ['분기', [1, 4, 7, 10]],
-  ['반기', [6, 12]],
-  ['매년', [12]],
-]
+// 루틴 반복 주기 — 상세 패널의 [반복]과 같은 이름. 주기는 결국 "몇 월에 해당하나" 목록이라
+// 분기·반기는 기준 달(지금 목록의 첫 달)에서부터 편다. (2026-09-15 상세 패널과 통일)
+const ROUTINE_REPEAT = REPEAT_OPTIONS.filter(([k]) => k !== 'none' && k !== 'weekly')
 
 // 「루틴」 — 매달·분기·해마다 도는 일을 1년 격자로 (2026-08-11).
 // 행 = 반복 규칙(정의), 칸 = 그 달의 회차 메모.
@@ -84,8 +82,9 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
 
   // 중단한 항목은 목록에서 내려 접어둔다 — 지운 게 아니라 "끝난 것"이라 지난 기록은 그대로 남는다.
   // 격자 맨 아래 "중단 N건"을 펼치면 그때까지의 체크가 다 보인다. (2026-08-11)
-  const live = routines.filter((r) => !r.endYm)
-  const stoppedList = routines.filter((r) => r.endYm)
+  // 반복 종료 날짜가 아직 안 온 루틴은 살아 있다 — 이번 달이 끝난 달을 지나야 중단 묶음으로 간다
+  const live = routines.filter((r) => !routineStopped(r))
+  const stoppedList = routines.filter((r) => routineStopped(r))
 
   // 그룹 순서는 정의 순서를 따른다 (엑셀의 구분 열 순서가 그대로 들어온다)
   const groups = []
@@ -149,7 +148,6 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
     return {
       day,
       shift: rs.length > 0 && rs.every((r) => Number(r.dueShift) === 1) ? 1 : 0,
-      flexible: rs.length > 0 && rs.every((r) => r.flexible),
     }
   }
 
@@ -161,8 +159,11 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       desc: r.desc || '',
       dueDay: r.dueDay || 5,
       dueShift: Number(r.dueShift) || 0,
-      flexible: !!r.flexible,
       months: r.months || null,
+      kind: kindOfMonths(r.months),
+      // 분기·반기를 새로 고를 때 어느 달부터 펼지 — 지금 목록의 첫 달, 없으면 시작한 달
+      baseMonth: (r.months && r.months[0]) || Number((r.startYm || thisYm()).slice(5, 7)),
+      alarm: r.alarm || null,
       endNote: r.endNote || '',
     })
   }
@@ -184,8 +185,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       // 31일까지 받는다 — 그 날이 없는 달(2월 등)은 routineDue가 말일로 당긴다 (2026-08-14)
       dueDay: Math.min(31, Math.max(1, Number(form.dueDay) || 5)),
       dueShift: Number(form.dueShift) || 0,
-      flexible: !!form.flexible,
-      months: form.months,
+      months: form.kind === 'custom' ? form.months : monthsFor(form.kind, form.baseMonth),
+      alarm: form.alarm || null,
       endNote: form.endNote.trim(),
     })
     setEditId(null)
@@ -492,7 +493,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                         {/* 묶음 통째로 예정일 바꾸기 — 34건을 하나씩 고치지 않게 (2026-08-11) */}
                         <button
                           className="rt-add"
-                          title="이 묶음의 예정일·날짜 방식을 한 번에 바꿉니다"
+                          title="이 묶음의 예정일을 한 번에 바꿉니다"
                           onClick={() => setGDay(gDay && gDay.g === g ? null : { g, ...groupNow(g) })}
                         >
                           날짜
@@ -509,41 +510,11 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                   <tr className="rt-edit-row">
                     <td colSpan={14}>
                       <div className="rt-edit rt-gday">
-                        {/* 두 가지를 각각의 버튼으로 나눠 둔다 — 예정일은 항목마다 다른데,
-                            날짜 방식만 바꾸려다 예정일까지 묶음 전체에 덮이면 안 된다.
-                            (2026-08-13 사용자: "개별로 다 다른 건인데") */}
+                        {/* "날짜 방식(고정/매번 잡음)"은 2026-09-15 없앴다 — 자동으로 잡힌 날은
+                            전부 흐리게, 내가 옮기거나 확정하면 진하게 (규칙 하나) */}
                         <div className="rt-grow">
                           <label>
-                            「{g}」 날짜 방식
-                            <select
-                              className="edit-select"
-                              value={gDay.flexible ? 'flex' : 'fix'}
-                              onChange={(e) => setGDay({ ...gDay, flexible: e.target.value === 'flex' })}
-                            >
-                              <option value="fix">고정 — 매월 같은 날</option>
-                              <option value="flex">매번 잡음 — 업체와 조율</option>
-                            </select>
-                          </label>
-                          <button
-                            className="btn-done"
-                            onClick={() => {
-                              const n = setGroupFlexible(g, gDay.flexible)
-                              setGDay(null)
-                              setUndo({
-                                label: `「${g}」 ${n}건을 ${gDay.flexible ? '매번 잡는 일로 (달력에 흐리게)' : '날짜 고정으로'}`,
-                                fn: null,
-                              })
-                              clearTimeout(undoTimer.current)
-                              undoTimer.current = setTimeout(() => setUndo(null), 5000)
-                            }}
-                          >
-                            방식만 적용
-                          </button>
-                          <span className="rt-hint">예정일은 안 건드립니다</span>
-                        </div>
-                        <div className="rt-grow">
-                          <label>
-                            예정일 통일
+                            「{g}」 예정일 통일
                             <span className="rt-day">
                               <select
                                 className="edit-select rt-shift"
@@ -652,7 +623,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                     : []
                   : live.filter((r) => (r.group || '기타') === g)
                 ).map((r) => {
-                    const stopped = !!r.endYm
+                    const stopped = routineStopped(r)
                     const detail = renderDetail ? renderDetail((cycleOf(r.id, ymOf(selMonth)) || {}).id) : null
                     return (
                       <Fragment key={r.id}>
@@ -716,6 +687,17 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                             {stopped && (
                               <span className="rt-stop-tag" title={r.endNote}>
                                 {Number(r.endYm.slice(5, 7))}월 중단
+                              </span>
+                            )}
+                            {/* 반복 종료 날짜를 정해둔 루틴 — 그 달까지 하고 끝난다 (2026-09-15) */}
+                            {!stopped && r.endYm && (
+                              <span className="rt-stop-tag" title="반복 종료 — 상세의 [반복 종료]에서 바꿉니다">
+                                {Number(shiftYm(r.endYm, -1).slice(5, 7))}월까지
+                              </span>
+                            )}
+                            {r.alarm && (
+                              <span className="rt-stop-tag" title={`미리 알림 — ${r.alarm.text}`}>
+                                알림
                               </span>
                             )}
                           </td>
@@ -785,21 +767,25 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                     onChange={(e) => setForm({ ...form, desc: e.target.value })}
                                   />
                                 </label>
-                                {/* 날짜가 고정인 일(공과금)과 매번 잡아야 하는 일(업체 방문)을 가른다 —
-                                    매번 잡는 일의 회차는 달력에 '가예정'(점선·흐리게)으로 뜬다 (2026-08-13) */}
+                                {/* 반복·예정일·미리 알림 — 상세 패널의 일정 칸과 같은 이름·같은 순서 (2026-09-15).
+                                    "날짜: 고정/매번 잡음"은 없앴다 — 자동으로 잡힌 날은 전부 흐리게 뜬다 */}
                                 <label>
-                                  날짜
+                                  반복
                                   <select
                                     className="edit-select"
-                                    value={form.flexible ? 'flex' : 'fix'}
-                                    onChange={(e) => setForm({ ...form, flexible: e.target.value === 'flex' })}
+                                    value={form.kind}
+                                    onChange={(e) => setForm({ ...form, kind: e.target.value })}
                                   >
-                                    <option value="fix">고정 — 매월 같은 날</option>
-                                    <option value="flex">매번 잡음 — 업체와 조율</option>
+                                    {ROUTINE_REPEAT.map(([k, label]) => (
+                                      <option key={k} value={k}>
+                                        {label}
+                                      </option>
+                                    ))}
+                                    {form.kind === 'custom' && <option value="custom">정해둔 달</option>}
                                   </select>
                                 </label>
                                 <label>
-                                  {form.flexible ? '자리 잡을 날' : '예정일'}
+                                  예정일
                                   <span className="rt-day">
                                     {/* 그 달분을 언제 하는가 — 전기요금처럼 8월분 고지서가 익월
                                         3일에 나오는 것들. 이걸 안 두면 8월분을 손으로 9월로
@@ -833,25 +819,10 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                     </span>
                                   )}
                                 </label>
-                                <label>
-                                  주기
-                                  <select
-                                    className="edit-select"
-                                    value={(form.months || []).join()}
-                                    onChange={(e) =>
-                                      setForm({
-                                        ...form,
-                                        months: e.target.value ? e.target.value.split(',').map(Number) : null,
-                                      })
-                                    }
-                                  >
-                                    {CYCLES.map(([label, months]) => (
-                                      <option key={label} value={(months || []).join()}>
-                                        {label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
+                                <div className="rt-wide rt-alarm">
+                                  <span className="rt-alarm-k">미리 알림</span>
+                                  <AlarmField alarm={form.alarm} onChange={(a) => setForm((f) => ({ ...f, alarm: a }))} />
+                                </div>
                                 {stopped && (
                                   <label className="rt-wide">
                                     중단 메모

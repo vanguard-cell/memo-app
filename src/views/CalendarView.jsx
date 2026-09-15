@@ -4,6 +4,7 @@ import { todayStr, addDays } from '../parser'
 import {
   addMemo, updateMemo, setDayOrder, getMemos, purgeMemos,
   routineHasMonth, ensureCycle, thisYm, blankTitle, labelYm, cycleDue,
+  alarmItems, checkAlarm, uncheckAlarm, checkRoutineAlarm,
 } from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
@@ -39,11 +40,10 @@ const TYPE = {
   span: ['기간', 'ev-span'],
 }
 
-// 마감형 메모는 만기 대신 "마감"으로 표기
-const typeLabel = (e) => (e.type === 'end' && e.m.deadline ? '마감' : TYPE[e.type][0])
-
-// 마감형("~까지"로 던진 것) 판별 — 표기는 일반 마감과 같고, 칩 색 규칙에만 쓴다 (깃발 은퇴 2026-08-03)
-const isDeadline = (e) => e.type === 'end' && e.m.deadline
+// 시간 정한 일정의 시각 — 하루짜리·시작 조각은 시작 시각, 끝 조각은 끝 시각 (2026-09-15).
+// (마감 기능은 2026-09-15 없앴다 — "마감"은 이제 기간이 끝나는 날을 부르는 말로만 남는다)
+const timeOf = (e) =>
+  e.type === 'due' || e.type === 'start' ? e.m.time || '' : e.type === 'end' ? e.m.endTime || '' : ''
 
 // 그 날짜의 진행기록 줄 — 있으면 제목 대신 보여준다 (예: 주간 식단 — 월요일 칸엔 월요일 메뉴)
 const dayLine = (m, date) => {
@@ -267,6 +267,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   // 모르는 상태가 섞여도 정렬이 무너지지 않게 (빼기가 NaN이 되면 순서가 뒤죽박죽 된다)
   const stRank = (m) => ST_RANK[memoStatus(m)] ?? ST_RANK.todo
 
+  // 같은 상태 안에서는 시간 정한 일정이 먼저(시각 순), 하루 종일은 그 아래 드래그 순서 (2026-09-15)
   function orderedEvents(date, evs) {
     const order = (dayOrder && dayOrder[date]) || []
     const idx = (e) => {
@@ -275,7 +276,15 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     }
     return [...evs].sort((a, b) => {
       const r = stRank(a.m) - stRank(b.m)
-      return r !== 0 ? r : idx(a) - idx(b)
+      if (r !== 0) return r
+      const ta = timeOf(a)
+      const tb = timeOf(b)
+      if (ta || tb) {
+        if (!ta) return 1
+        if (!tb) return -1
+        if (ta !== tb) return ta < tb ? -1 : 1
+      }
+      return idx(a) - idx(b)
     })
   }
 
@@ -294,7 +303,11 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   function swapRow(date, evs, id, dir) {
     const list = orderedEvents(date, evs)
     const ids = [...new Set(list.map((x) => x.m.id))]
-    const stOf = (mid) => memoStatus(list.find((x) => x.m.id === mid).m)
+    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
+    const stOf = (mid) => {
+      const x = list.find((y) => y.m.id === mid)
+      return memoStatus(x.m) + (timeOf(x) ? ':t' : '')
+    }
     const i = ids.indexOf(id)
     const j = i + dir
     if (i === -1 || j < 0 || j >= ids.length || stOf(ids[i]) !== stOf(ids[j])) return
@@ -308,7 +321,11 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   function canSwap(date, evs, id, dir) {
     const list = orderedEvents(date, evs)
     const ids = [...new Set(list.map((x) => x.m.id))]
-    const stOf = (mid) => memoStatus(list.find((x) => x.m.id === mid).m)
+    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
+    const stOf = (mid) => {
+      const x = list.find((y) => y.m.id === mid)
+      return memoStatus(x.m) + (timeOf(x) ? ':t' : '')
+    }
     const i = ids.indexOf(id)
     const j = i + dir
     return i !== -1 && j >= 0 && j < ids.length && stOf(ids[i]) === stOf(ids[j])
@@ -345,12 +362,6 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     for (const m of memos) {
       if (m.due) push(m.due, { m, type: 'due', text: m.title })
       if (m.period && m.period.start && m.period.end) {
-        // 마감형("~까지"): 던진 날~마감의 기간은 오늘부터 보이게 하는 내부 장치일 뿐 —
-        // 달력엔 마감일 조각 하나만 그린다 (시작·중간까지 그리면 한 메모가 여러 개처럼 겹쳐 보임)
-        if (m.deadline) {
-          push(m.period.end, { m, type: 'end', text: m.title })
-          continue
-        }
         push(m.period.start, { m, type: 'start', text: dayLine(m, m.period.start) || m.title })
         if (m.period.end !== m.period.start)
           push(m.period.end, { m, type: 'end', text: dayLine(m, m.period.end) || m.title })
@@ -389,6 +400,32 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     return map
   }, [routines, memos, y, mo, filtered])
 
+  // 미리 알림 칩 — 보고 있는 달 안에서 날짜별로 (2026-09-15). 아직 회차가 없는 달의 루틴
+  // 알림도 규칙에서 계산해 그린다. 검색 중엔 걸러진 메모에 붙은 것만(규칙 계산은 뺀다).
+  const alarms = useMemo(() => {
+    const from = `${y}-${pad(mo + 1)}-01`
+    const to = `${y}-${pad(mo + 1)}-${pad(new Date(y, mo + 1, 0).getDate())}`
+    const map = {}
+    for (const it of alarmItems(memos, routines, from, to, { rules: !filtered })) {
+      ;(map[it.date] = map[it.date] || []).push(it)
+    }
+    return map
+  }, [memos, routines, y, mo, filtered])
+
+  // 체크 — 아직 회차가 없는 달의 루틴 알림이면 그 달 회차를 만들면서 체크한다
+  function toggleAlarm(it) {
+    if (it.memo) return it.done ? uncheckAlarm(it.memo.id) : checkAlarm(it.memo.id)
+    checkRoutineAlarm(it.routine.id, it.ym)
+  }
+
+  // 알림 칩·줄을 누르면 그 일정의 상세가 열린다
+  function openAlarm(it, date) {
+    const m = it.memo || ensureCycle(it.routine.id, it.ym)
+    if (!m) return
+    setSel(date)
+    openDetail(m.id)
+  }
+
   // 예정 자리를 누르면 그때 회차가 만들어지고 상세가 열린다
   function openGhost(r) {
     const ym = ghostYm(r)
@@ -410,7 +447,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
       (a.createdAt || '').localeCompare(b.createdAt || '')
     const all = memos.filter(
       (m) =>
-        m.period && m.period.start && m.period.end && !m.deadline &&
+        m.period && m.period.start && m.period.end &&
         diffDays(m.period.end, m.period.start) <= 31
     )
     // 묶음을 순서대로 받아 앞 묶음이 위 레인을 차지하게 채운다.
@@ -524,7 +561,6 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     memos.filter(
       (m) =>
         m.period && m.period.start && m.period.end && m.status !== 'done' &&
-        !m.deadline &&
         diffDays(m.period.end, m.period.start) > 31 &&
         m.period.start < date && date < m.period.end
     )
@@ -709,8 +745,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                     // 날아오는 동안엔 자리를 비워둔다 — 유령이 그대로 이 자리에 앉는다
                     (flyingId === e.m.id ? ' ev-incoming' : '') +
                     // 진행중인 메모는 보드 진행중과 같은 초록으로 — 굴러가는 중임이 달력에서도 보인다.
-                    // 단 마감(빨강)은 급한 표시가 우선이라 색을 안 바꾼다 (2026-07-26)
-                    (st === 'done' ? ' ev-done' : st === 'active' && !isDeadline(e) ? ' ev-doing' : '') +
+                    (st === 'done' ? ' ev-done' : st === 'active' ? ' ev-doing' : '') +
                     // 루틴이 자동으로 찍어둔 날 — 내가 잡은 약속과 구분되게 점선·흐리게 (2026-08-13)
                     (e.m.tentative ? ' ev-tent' : '')
                   }
@@ -730,6 +765,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                       종류는 이미 칩 색이 말한다(빨강=마감·파랑=예정·연보라=기간). 글자로 된
                       종류 표시는 오른쪽 날짜 목록의 배지와 상세에 그대로 있다. 깃발(⚑)을 뺀
                       것과 같은 정리 — 칸에는 제목이 한 글자라도 더. */}
+                  {timeOf(e) && <b className="ev-time">{timeOf(e)}</b>}
                   {e.text}
                 </span>
                 )
@@ -738,7 +774,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
               {(ghosts[date] || []).map((r) => (
                 <span
                   key={'g' + r.id}
-                  className={'cal-ev ev-due cal-ghost' + (r.flexible ? ' ev-tent' : '')}
+                  className="cal-ev ev-due cal-ghost ev-tent"
                   title={`${r.title} — 아직 만들지 않은 ${Number(ghostYm(r).slice(5, 7))}월분 (누르면 만들어집니다)`}
                   onClick={(ev) => {
                     ev.stopPropagation()
@@ -746,6 +782,27 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                   }}
                 >
                   {r.title}
+                </span>
+              ))}
+              {/* 미리 알림 — 체크박스는 체크, 글자는 그 일정 상세 (폰은 색 막대만, 체크는 아래 목록에서) */}
+              {(alarms[date] || []).map((it) => (
+                <span
+                  key={'a' + it.key}
+                  className={'cal-ev ev-alarm' + (it.done ? ' ev-done' : '')}
+                  title={`미리 알림 — ${it.text} (${it.memo ? it.memo.title : it.routine.title} · ${fmtDate(it.base)})`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    openAlarm(it, date)
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={it.done}
+                    aria-label="미리 알림 체크"
+                    onClick={(ev) => ev.stopPropagation()}
+                    onChange={() => toggleAlarm(it)}
+                  />
+                  <span>{it.text}</span>
                 </span>
               ))}
               </div>
@@ -783,7 +840,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             />
             <button onClick={quickAdd}>추가</button>
           </div>
-          {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && (
+          {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && !(alarms[sel] || []).length && (
             <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
           )}
           {orderedEvents(sel, events[sel] || []).map((e) => {
@@ -836,9 +893,12 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
               {memoStatus(e.m) === 'done' ? (
                 <span className="badge st-done">{STATUS_LABEL.done}</span>
               ) : (
-                <span className={'badge ' + TYPE[e.type][1]}>{typeLabel(e)}</span>
+                <span className={'badge ' + TYPE[e.type][1]}>{TYPE[e.type][0]}</span>
               )}
-              <span className="row-title">{e.text}</span>
+              <span className="row-title">
+                {timeOf(e) && <b className="ev-time">{timeOf(e)}</b>}
+                {e.text}
+              </span>
               {narrow && (
                 <span className="row-move" onClick={(ev) => ev.stopPropagation()}>
                   <button
@@ -865,7 +925,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
           {(ghosts[sel] || []).map((r) => (
             <div
               key={'g' + r.id}
-              className={'row row-ghost' + (r.flexible ? ' row-tent' : '')}
+              className="row row-ghost row-tent"
               title="아직 만들지 않은 회차 — 누르면 만들어집니다"
               onClick={() => openGhost(r)}
             >
@@ -874,6 +934,38 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
               <span className="row-date">루틴</span>
             </div>
           ))}
+          {/* 미리 알림 줄 — 폰은 칸에 색 막대만 있으니 체크는 여기서 한다 */}
+          {(alarms[sel] || []).map((it) => {
+            const owner = it.memo || null
+            // 폰: 그 일정이 이 날짜 목록에 줄로 없으면(알림 날 ≠ 일정 날) 여기서 상세를 펼친다
+            const hasRow = owner && (events[sel] || []).some((e) => e.m.id === owner.id)
+            const d = owner && !hasRow && renderDetail ? renderDetail(owner.id) : null
+            if (d) return <Fragment key={'a' + it.key}>{d}</Fragment>
+            const dd = diffDays(it.base, sel)
+            return (
+              <div
+                key={'a' + it.key}
+                className={'row row-alarm' + (it.done ? ' done' : '')}
+                onClick={() => openAlarm(it, sel)}
+              >
+                <input
+                  type="checkbox"
+                  className="tl-check"
+                  checked={it.done}
+                  aria-label="미리 알림 체크"
+                  onClick={(ev) => ev.stopPropagation()}
+                  onChange={() => toggleAlarm(it)}
+                />
+                <span className="badge ev-alarm">알림</span>
+                <span className="row-title">
+                  {it.text}{' '}
+                  <span className="muted-inline">
+                    {owner ? owner.title : it.routine.title} · {dd > 0 ? `D-${dd}` : dd === 0 ? '당일' : `${-dd}일 지남`}
+                  </span>
+                </span>
+              </div>
+            )
+          })}
         </div>
           )}
           {localOpen && (
