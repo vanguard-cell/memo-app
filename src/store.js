@@ -700,6 +700,32 @@ export function purgeMemos(ids) {
     })
 }
 
+// 제목 앞머리로 쓴 말머리 목록 — 최근에 쓴 순. 입력칸에서 "["를 쳤을 때 보여준다.
+// 고정 목록을 두지 않는 이유는 TagSuggest.jsx에 적어 뒀다(쓰는 말이 계속 늘어난다).
+// 루틴 회차 제목([전표]…)도 같이 센다 — 그게 제일 많이 쓰는 말머리다. (2026-10-07)
+const TAG_RE = /^\s*\[([^\][\n]{1,12})\]/
+export function knownTags(limit = 20) {
+  // 손으로 쓴 메모의 말머리를 먼저, 루틴 회차에서만 본 말머리는 뒤로. 루틴은 매달 1일에
+  // 서른 몇 건이 한꺼번에 생겨서, 그냥 최근순으로 세면 [전표]·[정기점검]이 한 달 내내
+  // 윗자리를 차지하고 정작 내가 쓰는 말이 밀린다. (2026-10-07)
+  const mine = new Map()
+  const auto = new Map()
+  for (const m of state.memos) {
+    if (m.deleted) continue
+    const g = TAG_RE.exec(m.title || '')
+    const tag = g && g[1].trim()
+    if (!tag) continue
+    const box = m.routineId ? auto : mine
+    const at = m.createdAt || m.updatedAt || ''
+    if (!box.has(tag) || box.get(tag) < at) box.set(tag, at)
+  }
+  const recent = (box) =>
+    [...box.entries()].sort((a, b) => (a[1] < b[1] ? 1 : -1)).map(([t]) => t)
+  const out = recent(mine)
+  for (const t of recent(auto)) if (!out.includes(t)) out.push(t)
+  return out.slice(0, limit)
+}
+
 // ---------- 루틴 (매달·분기·해마다 도는 일) — 2026-08-11 ----------
 // 정의와 회차를 나눈다:
 //  · 정의(routines) = 반복 규칙 그 자체. 이름·묶음·매달 같은 설명(엑셀 비고 열)·예정일·해당 월.

@@ -8,6 +8,7 @@ import {
 } from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
+import { useTagSuggest, TagList, TagChips } from '../components/TagSuggest'
 import useIsNarrow from '../useIsNarrow'
 
 // 메모 조각을 다른 날짜로 — 드래그와 "이동" 버튼이 같이 쓴다.
@@ -343,6 +344,10 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     const m = memos.find((x) => x.id === data.id)
     moveEvent(m, data.type, data.date, targetDate)
   }
+
+  // 빠른 추가 칸의 말머리 고르기 ("[" → 지금까지 쓴 말머리)
+  const qRef = useRef(null)
+  const qTag = useTagSuggest((next) => setQtext(next), qRef)
 
   function quickAdd() {
     const txt = qtext.trim()
@@ -830,16 +835,27 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             {sel === today && <span className="ag-now">오늘</span>}
           </div>
           <div className="cal-add">
-            <input
-              value={qtext}
-              placeholder={`${fmtDate(sel)}에 바로 추가 (Enter)`}
-              onChange={(e) => setQtext(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') quickAdd()
-              }}
-            />
+            {/* 말머리([전표]·[회의록]…)는 "["를 치면 그 자리에서 고른다 (2026-10-07) */}
+            <div className="tag-wrap">
+              <input
+                ref={qRef}
+                value={qtext}
+                placeholder={`${fmtDate(sel)}에 바로 추가 (Enter)`}
+                onChange={(e) => {
+                  setQtext(e.target.value)
+                  qTag.read(e.target)
+                }}
+                onBlur={qTag.close}
+                onKeyDown={(e) => {
+                  if (qTag.onKeyDown(e)) return
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) quickAdd()
+                }}
+              />
+              <TagList ctl={qTag} />
+            </div>
             <button onClick={quickAdd}>추가</button>
           </div>
+          <TagChips ctl={qTag} show={!qtext} />
           {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && !(alarms[sel] || []).length && (
             <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
           )}

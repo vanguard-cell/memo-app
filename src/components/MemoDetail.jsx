@@ -3,6 +3,7 @@ import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, co
 import { memoStatus, STATUS_LABEL, fmtDate } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
+import { useTagSuggest, TagList, TagChips } from './TagSuggest'
 import { ScheduleBlock } from './ScheduleFields'
 import SendToDateBtn from './SendToDateBtn'
 import FileSection from './FileSection'
@@ -93,6 +94,12 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const alive = useRef(true)
   const histRef = useRef(null)
   const titleEl = useRef(null)
+  // 제목 칸의 말머리 고르기 — "["를 치면 지금까지 쓴 말머리가 그 자리에 뜬다 (2026-10-07)
+  const tag = useTagSuggest((next) => {
+    setTitle(next)
+    titleLatest.current = next
+    fitTA(titleEl.current)
+  }, titleEl)
 
   function flashSaved(kind) {
     if (!alive.current) return
@@ -250,6 +257,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           ) : (
             <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>
           )}
+          {/* 말머리([전표]·[회의록]…)는 "["를 치면 그 자리에서 고른다 (2026-10-07) */}
+          <div className="tag-wrap">
           <textarea
             className={'panel-title-input' + (flash ? ' pti-' + flash : '')}
             value={title}
@@ -264,10 +273,16 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               setTitle(e.target.value)
               titleLatest.current = e.target.value
               fitTA(e.target)
+              tag.read(e.target)
             }}
             onFocus={() => { titleBase.current = titleLatest.current }}
-            onBlur={saveTitle}
+            onBlur={(e) => {
+              tag.close()
+              saveTitle(e)
+            }}
             onKeyDown={(e) => {
+              // 말머리 목록이 떠 있으면 ↑↓·Enter·Esc는 목록이 먼저 먹는다
+              if (tag.onKeyDown(e)) return
               if (e.key === 'Enter') {
                 // 한글 조합 중 Enter는 글자를 맺는 것 — 아래 진행사항 칸과 같은 규칙 (2026-08-06)
                 if (e.nativeEvent.isComposing) return
@@ -287,6 +302,9 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 })
             }}
           />
+          <TagList ctl={tag} />
+          <TagChips ctl={tag} show={!title} />
+          </div>
           {/* 접기는 폰의 아코디언 상세에서만 — PC는 어디서 열리든 × 로 통일 (2026-07-31) */}
           {inline && narrow ? (
             <button className="fold-btn" onClick={onClose}>접기</button>
