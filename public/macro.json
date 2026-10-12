@@ -1,0 +1,1506 @@
+{
+ "generatedAt": "2026-10-12T02:23:24.837Z",
+ "warns": [],
+ "events": [
+  {
+   "id": "hol-2026-01-01",
+   "date": "2026-01-01",
+   "title": "미 증시 휴장 — 신정",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2025-12",
+   "date": "2026-01-09",
+   "time": "22:30",
+   "title": "미 고용보고서 (12월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2025-12",
+   "date": "2026-01-13",
+   "time": "22:30",
+   "title": "미 CPI (12월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2025-11",
+   "date": "2026-01-14",
+   "time": "22:30",
+   "title": "미 PPI (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "bok-2026-01-15",
+   "date": "2026-01-15",
+   "time": "09:00",
+   "title": "한은 금통위",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "hol-2026-01-19",
+   "date": "2026-01-19",
+   "title": "미 증시 휴장 — 마틴 루터 킹 데이",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "fomc1-2026-01-27",
+   "date": "2026-01-27",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-01-28",
+   "date": "2026-01-29",
+   "time": "04:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2026-01-28 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "producer-2025-12",
+   "date": "2026-01-30",
+   "time": "22:30",
+   "title": "미 PPI (12월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "krcpi-2026-02-03",
+   "date": "2026-02-03",
+   "time": "08:00",
+   "title": "한국 소비자물가 (1월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-01",
+   "date": "2026-02-11",
+   "time": "22:30",
+   "title": "미 고용보고서 (1월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-01",
+   "date": "2026-02-13",
+   "time": "22:30",
+   "title": "미 CPI (1월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2026-02-16",
+   "date": "2026-02-16",
+   "title": "미 증시 휴장 — 대통령의 날",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "fomcmin-2026-02-18",
+   "date": "2026-02-19",
+   "time": "04:00",
+   "title": "FOMC 의사록",
+   "note": "2026-01-27 회의분",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "bok-2026-02-26",
+   "date": "2026-02-26",
+   "time": "09:00",
+   "title": "한은 금통위·수정 경제전망",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "producer-2026-01",
+   "date": "2026-02-27",
+   "time": "22:30",
+   "title": "미 PPI (1월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "krcpi-2026-03-06",
+   "date": "2026-03-06",
+   "time": "08:00",
+   "title": "한국 소비자물가 (2월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-02",
+   "date": "2026-03-06",
+   "time": "22:30",
+   "title": "미 고용보고서 (2월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "dst-on-2026",
+   "date": "2026-03-08",
+   "title": "미 서머타임 시작 — 발표 1시간 빨라짐",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "consumer-2026-02",
+   "date": "2026-03-11",
+   "time": "21:30",
+   "title": "미 CPI (2월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2026-03-17",
+   "date": "2026-03-17",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "producer-2026-02",
+   "date": "2026-03-18",
+   "time": "21:30",
+   "title": "미 PPI (2월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc-2026-03-18",
+   "date": "2026-03-19",
+   "time": "03:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2026-03-18 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "witch-2026-03-20",
+   "date": "2026-03-20",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "krcpi-2026-04-02",
+   "date": "2026-04-02",
+   "time": "08:00",
+   "title": "한국 소비자물가 (3월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "hol-2026-04-03",
+   "date": "2026-04-03",
+   "title": "미 증시 휴장 — 성금요일",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2026-03",
+   "date": "2026-04-03",
+   "time": "21:30",
+   "title": "미 고용보고서 (3월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomcmin-2026-04-08",
+   "date": "2026-04-09",
+   "time": "03:00",
+   "title": "FOMC 의사록",
+   "note": "2026-03-17 회의분",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "bok-2026-04-10",
+   "date": "2026-04-10",
+   "time": "09:00",
+   "title": "한은 금통위",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "consumer-2026-03",
+   "date": "2026-04-10",
+   "time": "21:30",
+   "title": "미 CPI (3월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-03",
+   "date": "2026-04-14",
+   "time": "21:30",
+   "title": "미 PPI (3월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2026-04-28",
+   "date": "2026-04-28",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-04-29",
+   "date": "2026-04-30",
+   "time": "03:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2026-04-29 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "krcpi-2026-05-06",
+   "date": "2026-05-06",
+   "time": "08:00",
+   "title": "한국 소비자물가 (4월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-04",
+   "date": "2026-05-08",
+   "time": "21:30",
+   "title": "미 고용보고서 (4월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-04",
+   "date": "2026-05-12",
+   "time": "21:30",
+   "title": "미 CPI (4월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-04",
+   "date": "2026-05-13",
+   "time": "21:30",
+   "title": "미 PPI (4월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomcmin-2026-05-20",
+   "date": "2026-05-21",
+   "time": "03:00",
+   "title": "FOMC 의사록",
+   "note": "2026-04-28 회의분",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "hol-2026-05-25",
+   "date": "2026-05-25",
+   "title": "미 증시 휴장 — 메모리얼 데이",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "bok-2026-05-28",
+   "date": "2026-05-28",
+   "time": "09:00",
+   "title": "한은 금통위·수정 경제전망",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "krcpi-2026-06-02",
+   "date": "2026-06-02",
+   "time": "08:00",
+   "title": "한국 소비자물가 (5월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-05",
+   "date": "2026-06-05",
+   "time": "21:30",
+   "title": "미 고용보고서 (5월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-05",
+   "date": "2026-06-10",
+   "time": "21:30",
+   "title": "미 CPI (5월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-05",
+   "date": "2026-06-11",
+   "time": "21:30",
+   "title": "미 PPI (5월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2026-06-16",
+   "date": "2026-06-16",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-06-17",
+   "date": "2026-06-18",
+   "time": "03:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2026-06-17 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "witch-2026-06-19",
+   "date": "2026-06-19",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "hol-2026-06-19",
+   "date": "2026-06-19",
+   "title": "미 증시 휴장 — 준틴스",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "krcpi-2026-07-02",
+   "date": "2026-07-02",
+   "time": "08:00",
+   "title": "한국 소비자물가 (6월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-06",
+   "date": "2026-07-02",
+   "time": "21:30",
+   "title": "미 고용보고서 (6월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2026-07-03",
+   "date": "2026-07-03",
+   "title": "미 증시 휴장 — 독립기념일",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "fomcmin-2026-07-08",
+   "date": "2026-07-09",
+   "time": "03:00",
+   "title": "FOMC 의사록",
+   "note": "2026-06-16 회의분",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "consumer-2026-06",
+   "date": "2026-07-14",
+   "time": "21:30",
+   "title": "미 CPI (6월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-06",
+   "date": "2026-07-15",
+   "time": "21:30",
+   "title": "미 PPI (6월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "bok-2026-07-16",
+   "date": "2026-07-16",
+   "time": "09:00",
+   "title": "한은 금통위",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "fomc1-2026-07-28",
+   "date": "2026-07-28",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-07-29",
+   "date": "2026-07-30",
+   "time": "03:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2026-07-29 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "krcpi-2026-08-04",
+   "date": "2026-08-04",
+   "time": "08:00",
+   "title": "한국 소비자물가 (7월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-07",
+   "date": "2026-08-07",
+   "time": "21:30",
+   "title": "미 고용보고서 (7월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-07",
+   "date": "2026-08-12",
+   "time": "21:30",
+   "title": "미 CPI (7월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-07",
+   "date": "2026-08-13",
+   "time": "21:30",
+   "title": "미 PPI (7월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomcmin-2026-08-19",
+   "date": "2026-08-20",
+   "time": "03:00",
+   "title": "FOMC 의사록",
+   "note": "2026-07-28 회의분",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "bok-2026-08-27",
+   "date": "2026-08-27",
+   "time": "09:00",
+   "title": "한은 금통위·수정 경제전망",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "krcpi-2026-09-02",
+   "date": "2026-09-02",
+   "time": "08:00",
+   "title": "한국 소비자물가 (8월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-08",
+   "date": "2026-09-04",
+   "time": "21:30",
+   "title": "미 고용보고서 (8월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2026-09-07",
+   "date": "2026-09-07",
+   "title": "미 증시 휴장 — 노동절",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "producer-2026-08",
+   "date": "2026-09-10",
+   "time": "21:30",
+   "title": "미 PPI (8월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-08",
+   "date": "2026-09-11",
+   "time": "21:30",
+   "title": "미 CPI (8월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2026-09-15",
+   "date": "2026-09-15",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-09-16",
+   "date": "2026-09-17",
+   "time": "03:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2026-09-16 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "witch-2026-09-18",
+   "date": "2026-09-18",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "krcpi-2026-10-02",
+   "date": "2026-10-02",
+   "time": "08:00",
+   "title": "한국 소비자물가 (9월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-09",
+   "date": "2026-10-02",
+   "time": "21:30",
+   "title": "미 고용보고서 (9월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomcmin-2026-10-07",
+   "date": "2026-10-08",
+   "time": "03:00",
+   "title": "FOMC 의사록",
+   "note": "2026-09-15 회의분",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "consumer-2026-09",
+   "date": "2026-10-14",
+   "time": "21:30",
+   "title": "미 CPI (9월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-09",
+   "date": "2026-10-15",
+   "time": "21:30",
+   "title": "미 PPI (9월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "bok-2026-10-22",
+   "date": "2026-10-22",
+   "time": "09:00",
+   "title": "한은 금통위",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "fomc1-2026-10-27",
+   "date": "2026-10-27",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-10-28",
+   "date": "2026-10-29",
+   "time": "03:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2026-10-28 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "pce-2026-10-29",
+   "date": "2026-10-29",
+   "time": "21:30",
+   "title": "미 PCE물가·개인소비 (9월)",
+   "kind": "us",
+   "src": "BEA",
+   "g": "bea-pce"
+  },
+  {
+   "id": "dst-off-2026",
+   "date": "2026-11-01",
+   "title": "미 서머타임 해제 — 발표 1시간 늦어짐",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "krcpi-2026-11-03",
+   "date": "2026-11-03",
+   "time": "08:00",
+   "title": "한국 소비자물가 (10월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-10",
+   "date": "2026-11-06",
+   "time": "22:30",
+   "title": "미 고용보고서 (10월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-10",
+   "date": "2026-11-10",
+   "time": "22:30",
+   "title": "미 CPI (10월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-10",
+   "date": "2026-11-13",
+   "time": "22:30",
+   "title": "미 PPI (10월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "pce-2026-11-25",
+   "date": "2026-11-25",
+   "time": "22:30",
+   "title": "미 PCE물가·개인소비 (10월)",
+   "kind": "us",
+   "src": "BEA",
+   "g": "bea-pce"
+  },
+  {
+   "id": "hol-2026-11-26",
+   "date": "2026-11-26",
+   "title": "미 증시 휴장 — 추수감사절",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "bok-2026-11-26",
+   "date": "2026-11-26",
+   "time": "09:00",
+   "title": "한은 금통위·수정 경제전망",
+   "kind": "kr",
+   "src": "한국은행",
+   "g": "bok"
+  },
+  {
+   "id": "half-2026-11-27",
+   "date": "2026-11-27",
+   "title": "미 증시 조기폐장 (추수감사절 다음날)",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "krcpi-2026-12-02",
+   "date": "2026-12-02",
+   "time": "08:00",
+   "title": "한국 소비자물가 (11월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "employment-2026-11",
+   "date": "2026-12-04",
+   "time": "22:30",
+   "title": "미 고용보고서 (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2026-12-08",
+   "date": "2026-12-08",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2026-12-09",
+   "date": "2026-12-10",
+   "time": "04:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2026-12-09 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "consumer-2026-11",
+   "date": "2026-12-10",
+   "time": "22:30",
+   "title": "미 CPI (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-11",
+   "date": "2026-12-15",
+   "time": "22:30",
+   "title": "미 PPI (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "witch-2026-12-18",
+   "date": "2026-12-18",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "pce-2026-12-23",
+   "date": "2026-12-23",
+   "time": "22:30",
+   "title": "미 PCE물가·개인소비 (11월)",
+   "kind": "us",
+   "src": "BEA",
+   "g": "bea-pce"
+  },
+  {
+   "id": "half-2026-12-24",
+   "date": "2026-12-24",
+   "title": "미 증시 조기폐장 (성탄 전날)",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "hol-2026-12-25",
+   "date": "2026-12-25",
+   "title": "미 증시 휴장 — 성탄절",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "krcpi-2026-12-31",
+   "date": "2026-12-31",
+   "time": "08:00",
+   "title": "한국 소비자물가 (12월)",
+   "kind": "kr",
+   "src": "국가데이터처",
+   "g": "kostat"
+  },
+  {
+   "id": "hol-2027-01-01",
+   "date": "2027-01-01",
+   "title": "미 증시 휴장 — 신정",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2026-12",
+   "date": "2027-01-08",
+   "time": "22:30",
+   "title": "미 고용보고서 (12월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2026-12",
+   "date": "2027-01-13",
+   "time": "22:30",
+   "title": "미 CPI (12월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2026-12",
+   "date": "2027-01-14",
+   "time": "22:30",
+   "title": "미 PPI (12월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2027-01-18",
+   "date": "2027-01-18",
+   "title": "미 증시 휴장 — 마틴 루터 킹 데이",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "fomc1-2027-01-26",
+   "date": "2027-01-26",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-01-27",
+   "date": "2027-01-28",
+   "time": "04:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2027-01-27 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "employment-2027-01",
+   "date": "2027-02-05",
+   "time": "22:30",
+   "title": "미 고용보고서 (1월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2027-01",
+   "date": "2027-02-11",
+   "time": "22:30",
+   "title": "미 CPI (1월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-01",
+   "date": "2027-02-12",
+   "time": "22:30",
+   "title": "미 PPI (1월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2027-02-15",
+   "date": "2027-02-15",
+   "title": "미 증시 휴장 — 대통령의 날",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2027-02",
+   "date": "2027-03-05",
+   "time": "22:30",
+   "title": "미 고용보고서 (2월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2027-02",
+   "date": "2027-03-10",
+   "time": "22:30",
+   "title": "미 CPI (2월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-02",
+   "date": "2027-03-12",
+   "time": "22:30",
+   "title": "미 PPI (2월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "dst-on-2027",
+   "date": "2027-03-14",
+   "title": "미 서머타임 시작 — 발표 1시간 빨라짐",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "fomc1-2027-03-16",
+   "date": "2027-03-16",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-03-17",
+   "date": "2027-03-18",
+   "time": "03:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2027-03-17 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "witch-2027-03-19",
+   "date": "2027-03-19",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "hol-2027-03-26",
+   "date": "2027-03-26",
+   "title": "미 증시 휴장 — 성금요일",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2027-03",
+   "date": "2027-04-02",
+   "time": "21:30",
+   "title": "미 고용보고서 (3월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2027-03",
+   "date": "2027-04-13",
+   "time": "21:30",
+   "title": "미 CPI (3월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-03",
+   "date": "2027-04-14",
+   "time": "21:30",
+   "title": "미 PPI (3월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2027-04-27",
+   "date": "2027-04-27",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-04-28",
+   "date": "2027-04-29",
+   "time": "03:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2027-04-28 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "employment-2027-04",
+   "date": "2027-05-07",
+   "time": "21:30",
+   "title": "미 고용보고서 (4월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2027-04",
+   "date": "2027-05-12",
+   "time": "21:30",
+   "title": "미 CPI (4월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-04",
+   "date": "2027-05-13",
+   "time": "21:30",
+   "title": "미 PPI (4월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2027-05-31",
+   "date": "2027-05-31",
+   "title": "미 증시 휴장 — 메모리얼 데이",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2027-05",
+   "date": "2027-06-04",
+   "time": "21:30",
+   "title": "미 고용보고서 (5월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2027-06-08",
+   "date": "2027-06-08",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-06-09",
+   "date": "2027-06-10",
+   "time": "03:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2027-06-09 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "consumer-2027-05",
+   "date": "2027-06-10",
+   "time": "21:30",
+   "title": "미 CPI (5월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-05",
+   "date": "2027-06-11",
+   "time": "21:30",
+   "title": "미 PPI (5월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "witch-2027-06-18",
+   "date": "2027-06-18",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "hol-2027-06-18",
+   "date": "2027-06-18",
+   "title": "미 증시 휴장 — 준틴스",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2027-06",
+   "date": "2027-07-02",
+   "time": "21:30",
+   "title": "미 고용보고서 (6월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2027-07-05",
+   "date": "2027-07-05",
+   "title": "미 증시 휴장 — 독립기념일",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "consumer-2027-06",
+   "date": "2027-07-14",
+   "time": "21:30",
+   "title": "미 CPI (6월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-06",
+   "date": "2027-07-15",
+   "time": "21:30",
+   "title": "미 PPI (6월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2027-07-27",
+   "date": "2027-07-27",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-07-28",
+   "date": "2027-07-29",
+   "time": "03:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2027-07-28 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "employment-2027-07",
+   "date": "2027-08-06",
+   "time": "21:30",
+   "title": "미 고용보고서 (7월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-07",
+   "date": "2027-08-10",
+   "time": "21:30",
+   "title": "미 PPI (7월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2027-07",
+   "date": "2027-08-11",
+   "time": "21:30",
+   "title": "미 CPI (7월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "employment-2027-08",
+   "date": "2027-09-03",
+   "time": "21:30",
+   "title": "미 고용보고서 (8월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2027-09-06",
+   "date": "2027-09-06",
+   "title": "미 증시 휴장 — 노동절",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "producer-2027-08",
+   "date": "2027-09-10",
+   "time": "21:30",
+   "title": "미 PPI (8월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2027-09-14",
+   "date": "2027-09-14",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "consumer-2027-08",
+   "date": "2027-09-14",
+   "time": "21:30",
+   "title": "미 CPI (8월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc-2027-09-15",
+   "date": "2027-09-16",
+   "time": "03:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2027-09-15 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "witch-2027-09-17",
+   "date": "2027-09-17",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2027-09",
+   "date": "2027-10-08",
+   "time": "21:30",
+   "title": "미 고용보고서 (9월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "consumer-2027-09",
+   "date": "2027-10-14",
+   "time": "21:30",
+   "title": "미 CPI (9월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-09",
+   "date": "2027-10-15",
+   "time": "21:30",
+   "title": "미 PPI (9월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2027-10-26",
+   "date": "2027-10-26",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-10-27",
+   "date": "2027-10-28",
+   "time": "03:00",
+   "title": "FOMC 결과·기자회견",
+   "note": "현지 2027-10-27 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "employment-2027-10",
+   "date": "2027-11-05",
+   "time": "21:30",
+   "title": "미 고용보고서 (10월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "dst-off-2027",
+   "date": "2027-11-07",
+   "title": "미 서머타임 해제 — 발표 1시간 늦어짐",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "consumer-2027-10",
+   "date": "2027-11-10",
+   "time": "22:30",
+   "title": "미 CPI (10월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-10",
+   "date": "2027-11-12",
+   "time": "22:30",
+   "title": "미 PPI (10월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "hol-2027-11-25",
+   "date": "2027-11-25",
+   "title": "미 증시 휴장 — 추수감사절",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "half-2027-11-26",
+   "date": "2027-11-26",
+   "title": "미 증시 조기폐장 (추수감사절 다음날)",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "employment-2027-11",
+   "date": "2027-12-03",
+   "time": "22:30",
+   "title": "미 고용보고서 (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "fomc1-2027-12-07",
+   "date": "2027-12-07",
+   "title": "FOMC 1일차",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "fomc-2027-12-08",
+   "date": "2027-12-09",
+   "time": "04:00",
+   "title": "FOMC 결과·점도표",
+   "note": "현지 2027-12-08 회의 종료",
+   "kind": "fed",
+   "src": "연준",
+   "g": "fomc"
+  },
+  {
+   "id": "consumer-2027-11",
+   "date": "2027-12-10",
+   "time": "22:30",
+   "title": "미 CPI (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "producer-2027-11",
+   "date": "2027-12-15",
+   "time": "22:30",
+   "title": "미 PPI (11월)",
+   "kind": "us",
+   "src": "BLS",
+   "g": "bls"
+  },
+  {
+   "id": "witch-2027-12-17",
+   "date": "2027-12-17",
+   "title": "쿼드러플 위칭",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "hol-2027-12-24",
+   "date": "2027-12-24",
+   "title": "미 증시 휴장 — 성탄절",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  },
+  {
+   "id": "half-2027-12-24",
+   "date": "2027-12-24",
+   "title": "미 증시 조기폐장 (성탄 전날)",
+   "kind": "mkt",
+   "src": "계산",
+   "g": "market"
+  }
+ ]
+}

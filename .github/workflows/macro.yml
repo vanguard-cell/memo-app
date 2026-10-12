@@ -1,0 +1,39 @@
+name: 거시 일정 갱신
+
+# 발표 기관 공식 일정표를 주 1회 읽어 public/macro.json을 새로 쓴다.
+# 앱은 서버가 없어서 브라우저에서 직접 기관 사이트를 못 부른다(CORS) — 그 자리를
+# 이 작업이 대신한다. 바뀐 게 있을 때만 커밋하고, 커밋하면 배포가 따라 돈다.
+on:
+  schedule:
+    # 매주 월요일 05:20 (한국시간) = 일요일 20:20 UTC
+    - cron: '20 20 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macro
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 일정 받아오기
+        run: node scripts/fetch-macro.mjs
+      - name: 바뀐 게 있으면 커밋
+        run: |
+          if git diff --quiet -- public/macro.json; then
+            echo "바뀐 일정 없음 — 커밋 안 함"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/macro.json
+          git commit -m "거시 일정 갱신 ($(TZ=Asia/Seoul date +%Y-%m-%d))"
+          git push

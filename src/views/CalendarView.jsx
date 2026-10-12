@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import {
@@ -10,6 +10,7 @@ import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
 import { useTagSuggest, TagList, TagChips } from '../components/TagSuggest'
 import useIsNarrow from '../useIsNarrow'
+import { subscribeMacro, getMacro, macroByDate } from '../macro'
 
 // 메모 조각을 다른 날짜로 — 드래그와 "이동" 버튼이 같이 쓴다.
 // 기한→기한 이동 / 시작·만기 조각→그쪽 끝만 / 중간(기간) 조각→기간 전체 평행이동
@@ -417,6 +418,16 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     return map
   }, [memos, routines, y, mo, filtered])
 
+  // 거시경제 일정 — 읽기 전용 참고 일정(메모가 아니다). 보고 있는 달만 꺼내 쓴다.
+  // 검색 중엔 안 그린다 — 검색은 있는 것만 보는 자리다(루틴 예정 자리와 같은 규칙).
+  const macroData = useSyncExternalStore(subscribeMacro, getMacro)
+  const macro = useMemo(() => {
+    if (filtered) return {}
+    const from = `${y}-${pad(mo + 1)}-01`
+    const to = `${y}-${pad(mo + 1)}-${pad(new Date(y, mo + 1, 0).getDate())}`
+    return macroByDate(from, to)
+  }, [macroData, y, mo, filtered])
+
   // 체크 — 아직 회차가 없는 달의 루틴 알림이면 그 달 회차를 만들면서 체크한다
   function toggleAlarm(it) {
     if (it.memo) return it.done ? uncheckAlarm(it.memo.id) : checkAlarm(it.memo.id)
@@ -810,6 +821,21 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                   <span>{it.text}</span>
                 </span>
               ))}
+              {/* 거시경제 일정 — 누를 것이 없는 참고 칩. 색은 하나로 조용하게 (2026-10-12) */}
+              {(macro[date] || []).map((e) => (
+                <span
+                  key={'m' + e.id}
+                  className="cal-ev ev-macro"
+                  title={`${e.title}${e.time ? ` · ${e.time}` : ''}${e.note ? ` (${e.note})` : ''} — ${e.src}`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    setSel(date)
+                  }}
+                >
+                  {e.time && <b className="ev-time">{e.time}</b>}
+                  {e.title}
+                </span>
+              ))}
               </div>
               {/* 안 보이는 칩이 있다는 표시 — 마우스를 올리면(=굴릴 수 있으면) 비켜준다 */}
               {evs.length > chipLimit && <span className="cal-more">+{evs.length - chipLimit}</span>}
@@ -982,6 +1008,17 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
               </div>
             )
           })}
+          {/* 거시경제 일정 줄 — 시각(한국시간)과 출처를 같이 보여준다 */}
+          {(macro[sel] || []).map((e) => (
+            <div key={'m' + e.id} className="row row-macro">
+              <span className="badge ev-macro">지표</span>
+              <span className="row-title">
+                {e.title}
+                {e.note && <span className="muted-inline"> · {e.note}</span>}
+              </span>
+              <span className="row-date">{e.time ? `${e.time} · ${e.src}` : e.src}</span>
+            </div>
+          ))}
         </div>
           )}
           {localOpen && (

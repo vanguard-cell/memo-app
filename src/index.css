@@ -2414,6 +2414,33 @@ main {
   text-overflow: ellipsis;
 }
 
+/* 거시경제 일정 — 메모가 아니라 "그날 있는 일"이라 색을 쓰지 않고 조용한 회색으로.
+   파랑(예정)·빨강(마감)·보라(기간)·초록(진행중)은 전부 내 일에 쓰는 색이라 비워 둔다.
+   왼쪽 가는 막대로 "이건 종류가 다른 줄"임을 표시한다. (2026-10-12) */
+.cal-ev.ev-macro {
+  background: var(--fill);
+  color: var(--muted);
+  border-left: 2px solid var(--faint);
+  border-radius: 3px;
+}
+
+.cal-ev.ev-macro .ev-time {
+  color: var(--faint);
+}
+
+.badge.ev-macro {
+  background: var(--fill);
+  color: var(--muted);
+}
+
+.row.row-macro {
+  color: var(--muted);
+}
+
+.row.row-macro .row-title {
+  font-weight: 400;
+}
+
 .cal-ev.ev-alarm.ev-done,
 .row.row-alarm.done .row-title {
   background: #f0f2f4;
