@@ -916,12 +916,11 @@ export function setGroupDueDay(group, day, shift) {
   return ids.size
 }
 
-// 가예정 표시를 바꿔도 되는 회차인가 — 켤 때는 "아직 손 안 댄 것"만 (내가 날짜를 확정했거나
-// 기록을 쓴 회차는 이미 내가 잡은 약속이다), 끌 때는 가예정인 것만. (2026-08-22)
-const tentativeTouchable = (m, wantTentative) =>
-  wantTentative
-    ? !m.tentative && !m.dateFixed && !(m.history || []).length
-    : !!m.tentative
+// 아직 손 안 댄 "앱이 잡아둔 날"인가 — 흐리게 둬도 되는 회차의 조건 하나.
+// 기록을 썼거나, [이 날로 확정]을 눌렀거나(dateFixed), 규칙이 찍은 날에서 옮겼으면
+// 이미 내가 잡은 약속이다. (2026-08-22 → 2026-10-12 조건을 한 군데로 모음)
+const untouchedAutoDay = (m, r) =>
+  !m.dateFixed && !(m.history || []).length && (!m.due || m.due === cycleDue(r, m.ym))
 
 // 자동으로 찍힌 날짜가 마침 맞을 때 — 날짜를 안 옮기고 "이 날 맞다"만 표시한다
 // dateFixed 표식을 같이 남긴다 — 나중에 날짜 방식을 다시 켜거나 일괄 정리가 돌 때
@@ -1142,14 +1141,14 @@ export function adoptCycleDay(memoId) {
 // 지난 달들을 한 번에 맞추기 — 그 달 회차를 실제로 한 날로 옮겨 완료해 뒀다면
 // 그 날을 규칙의 예정일로 삼는다. 앞으로는 상세에서 그때그때 물어보므로(adoptCycleDay)
 // 이건 이미 쌓인 달을 따라잡기 위한 일괄 처리다. 34건을 한 번에 저장한다.
-// 매번 날짜를 새로 잡는 유동 루틴(가예정)은 건드리지 않는다 — 그 날짜는 그 달의 약속일 뿐이다.
 // (2026-08-20 사용자 요청: "8월에 완료한 것들은 이번만 루틴에서 날짜 바꿔줘")
+// ⚠️ 이미 다 돌고 끝난 일회성 정리다 — 기기마다 localStorage 표식으로 한 번만 돈다.
 export function adoptDoneDays(ym) {
   const now = new Date().toISOString()
   const dayById = new Map()
   const changes = []
   for (const r of state.routines) {
-    if (r.deleted || r.flexible) continue
+    if (r.deleted) continue // flexible(고정/매번 잡음)은 2026-09-15에 없어진 필드
     const c = state.memos.find((m) => !m.deleted && m.routineId === r.id && m.ym === ym)
     if (!c || c.status !== 'done' || !c.due) continue
     const day = Number(c.due.slice(8, 10))
@@ -1244,13 +1243,14 @@ export function convertRepeatMemos() {
   return list.length
 }
 
-// 이미 만들어진 회차의 가예정 표시를 지금 규칙에 맞춘다 — **앱을 열 때마다** 돈다.
-// 손 안 댄 회차만 건드린다: 기록을 썼거나, 내가 날짜를 확정했거나(dateFixed),
-// 자동 날짜에서 옮겨둔 회차는 이미 내가 잡은 약속이라 그대로 둔다. 그래서 여러 번 돌아도
-// 결과가 같다(같은 것을 두 번 바꾸지 않는다).
-// 처음엔 한 기기에서 한 번만 도는 일회성 정리였는데(2026-08-22), 그 뒤에 다시 어긋나면
-// 되돌릴 길이 없었다 — 10월 예정 자리(규칙을 읽어 그리므로 점선)는 흐린데 9월 회차는
-// 진하게 남는 식으로 어긋난다. 규칙이 진실이므로 열 때마다 맞춘다. (2026-09-07)
+// 이미 만들어진 회차의 가예정(흐린) 표시를 지금 규칙에 맞춘다 — **앱을 열 때마다** 돈다.
+// 규칙은 하나다: **손 안 댄 자동 날짜는 흐리게**(2026-09-15 "고정/매번 잡음"을 없애면서
+// 모든 루틴이 같아졌다). 진하게 만드는 건 그때그때 하는 일이라(날짜 옮기기 → settle,
+// 기록 → addHistory, 완료 → completeMemo, [이 날로 확정] → confirmDate) 여기서는
+// **흐리게만** 되돌린다. 손댄 회차는 untouchedAutoDay가 걸러 내므로 몇 번을 돌아도
+// 결과가 같다.
+// 열 때마다 도는 이유: 한 기기에서 한 번만 돌던 때(2026-08-22)는 그 뒤에 어긋나면
+// 되돌릴 길이 없었다 — 이번 달 회차만 진하게 남는 식으로. (2026-09-07)
 export function alignTentative() {
   const now = new Date().toISOString()
   const byId = new Map(state.routines.filter((r) => !r.deleted).map((r) => [r.id, r]))
@@ -1259,13 +1259,8 @@ export function alignTentative() {
     if (!m.routineId || !m.ym || m.deleted || m.status === 'done') return m
     const r = byId.get(m.routineId)
     if (!r) return m
-    // 2026-09-15부터 모든 루틴이 같은 규칙 — 손 안 댄 자동 날짜는 흐리게
-    const want = true
-    if (!!m.tentative === want) return m
-    if (!tentativeTouchable(m, want)) return m
-    // 자동으로 찍힌 날에서 옮겨둔 회차는 내가 잡은 날 — 흐리게 되돌리지 않는다
-    if (want && m.due && m.due !== cycleDue(r, m.ym)) return m
-    const next = { ...m, tentative: want, updatedAt: now }
+    if (m.tentative || !untouchedAutoDay(m, r)) return m
+    const next = { ...m, tentative: true, updatedAt: now }
     moved.push(next)
     return next
   })
