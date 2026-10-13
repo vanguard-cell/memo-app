@@ -269,7 +269,8 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   // 모르는 상태가 섞여도 정렬이 무너지지 않게 (빼기가 NaN이 되면 순서가 뒤죽박죽 된다)
   const stRank = (m) => ST_RANK[memoStatus(m)] ?? ST_RANK.todo
 
-  // 같은 상태 안에서는 시간 정한 일정이 먼저(시각 순), 하루 종일은 그 아래 드래그 순서 (2026-09-15)
+  // 같은 상태 안에서는 확정된 것 → 흐린 루틴 회차(가예정), 그 안에서 시간 정한 일정이 먼저(시각 순),
+  // 하루 종일은 그 아래 드래그 순서 (2026-09-15, 가예정 아래로 2026-10-13)
   function orderedEvents(date, evs) {
     const order = (dayOrder && dayOrder[date]) || []
     const idx = (e) => {
@@ -279,6 +280,9 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     return [...evs].sort((a, b) => {
       const r = stRank(a.m) - stRank(b.m)
       if (r !== 0) return r
+      // 같은 상태면 루틴이 자동으로 잡은 날(흐린 것)은 아래로 — 내가 정한 일이 묻히지 않게 (2026-10-13)
+      const tn = (a.m.tentative ? 1 : 0) - (b.m.tentative ? 1 : 0)
+      if (tn !== 0) return tn
       const ta = timeOf(a)
       const tb = timeOf(b)
       if (ta || tb) {
@@ -305,10 +309,10 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   function swapRow(date, evs, id, dir) {
     const list = orderedEvents(date, evs)
     const ids = [...new Set(list.map((x) => x.m.id))]
-    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
+    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는, 흐린 줄은 확정된 줄과는 자리를 못 바꾼다
     const stOf = (mid) => {
       const x = list.find((y) => y.m.id === mid)
-      return memoStatus(x.m) + (timeOf(x) ? ':t' : '')
+      return memoStatus(x.m) + (timeOf(x) ? ':t' : '') + (x.m.tentative ? ':p' : '')
     }
     const i = ids.indexOf(id)
     const j = i + dir
@@ -323,10 +327,10 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   function canSwap(date, evs, id, dir) {
     const list = orderedEvents(date, evs)
     const ids = [...new Set(list.map((x) => x.m.id))]
-    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
+    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는, 흐린 줄은 확정된 줄과는 자리를 못 바꾼다
     const stOf = (mid) => {
       const x = list.find((y) => y.m.id === mid)
-      return memoStatus(x.m) + (timeOf(x) ? ':t' : '')
+      return memoStatus(x.m) + (timeOf(x) ? ':t' : '') + (x.m.tentative ? ':p' : '')
     }
     const i = ids.indexOf(id)
     const j = i + dir
