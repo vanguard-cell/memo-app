@@ -5087,6 +5087,32 @@ main {
   color: var(--muted);
 }
 
+/* 날짜 목록 줄 오른쪽의 바로 완료 버튼 — 평소엔 빈 동그라미, 완료면 채워진 초록 */
+.row-move .row-done {
+  border-radius: 50%;
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--faint);
+}
+
+.row-move .row-done:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.row-move .row-done.on {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+@media (min-width: 900px) {
+  .row-move .row-done {
+    width: 26px;
+    height: 26px;
+  }
+}
+
 .row-move button:disabled {
   opacity: 0.3;
   cursor: default;

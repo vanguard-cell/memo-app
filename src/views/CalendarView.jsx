@@ -3,6 +3,7 @@ import { fmtDate, fmtPeriod, memoStatus, STATUS_LABEL, diffDays } from '../deriv
 import { todayStr, addDays } from '../parser'
 import {
   addMemo, updateMemo, setDayOrder, getMemos, purgeMemos,
+  completeMemo, reopenMemo,
   routineHasMonth, ensureCycle, thisYm, blankTitle, labelYm, cycleDue,
   alarmItems, checkAlarm, uncheckAlarm, checkRoutineAlarm,
 } from '../store'
@@ -941,8 +942,9 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                 {timeOf(e) && <b className="ev-time">{timeOf(e)}</b>}
                 {e.text}
               </span>
-              {narrow && (
-                <span className="row-move" onClick={(ev) => ev.stopPropagation()}>
+              <span className="row-move" onClick={(ev) => ev.stopPropagation()}>
+                {narrow && (
+                  <>
                   <button
                     aria-label="위로"
                     disabled={!canSwap(sel, events[sel] || [], e.m.id, -1)}
@@ -957,8 +959,18 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                   >
                     ▼
                   </button>
-                </span>
-              )}
+                  </>
+                )}
+                {/* 바로 완료 — 상세를 열지 않고 줄에서 끝낸다. 완료된 줄은 다시 누르면 되돌린다 */}
+                <button
+                  className={'row-done' + (memoStatus(e.m) === 'done' ? ' on' : '')}
+                  aria-label={memoStatus(e.m) === 'done' ? '완료 취소' : '완료'}
+                  title={memoStatus(e.m) === 'done' ? '완료 취소' : '완료'}
+                  onClick={() => (memoStatus(e.m) === 'done' ? reopenMemo(e.m.id) : completeMemo(e.m.id))}
+                >
+                  ✓
+                </button>
+              </span>
             </div>
             </Fragment>
             )
