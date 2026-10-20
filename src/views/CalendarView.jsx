@@ -268,7 +268,13 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
   const ST_RANK = { active: 0, todo: 1, hold: 2, keep: 3, done: 4 }
   // 모르는 상태가 섞여도 정렬이 무너지지 않게 (빼기가 NaN이 되면 순서가 뒤죽박죽 된다)
-  const stRank = (m) => ST_RANK[memoStatus(m)] ?? ST_RANK.todo
+  // 루틴이 자동으로 잡은 날(흐린 회차)은 확정된 할일 아래로 — 내가 정한 일·새로 쓴 일·진행중이
+  // 위에 먼저 보이게 (2026-10-20 사용자: "확정 안 된 루틴 업무는 항상 하단으로")
+  const stRank = (m) => {
+    const st = memoStatus(m)
+    if (st === 'todo' && m.tentative) return 1.5
+    return ST_RANK[st] ?? ST_RANK.todo
+  }
 
   // 같은 상태 안에서는 시간 정한 일정이 먼저(시각 순), 하루 종일은 그 아래 드래그 순서 (2026-09-15)
   function orderedEvents(date, evs) {
@@ -309,7 +315,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
     const stOf = (mid) => {
       const x = list.find((y) => y.m.id === mid)
-      return memoStatus(x.m) + (timeOf(x) ? ':t' : '')
+      return stRank(x.m) + (timeOf(x) ? ':t' : '')
     }
     const i = ids.indexOf(id)
     const j = i + dir
@@ -327,7 +333,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
     const stOf = (mid) => {
       const x = list.find((y) => y.m.id === mid)
-      return memoStatus(x.m) + (timeOf(x) ? ':t' : '')
+      return stRank(x.m) + (timeOf(x) ? ':t' : '')
     }
     const i = ids.indexOf(id)
     const j = i + dir
