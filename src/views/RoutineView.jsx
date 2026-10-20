@@ -31,6 +31,7 @@ const STOPPED = '__stopped__'
 
 // 루틴 반복 주기 — 상세 패널의 [반복]과 같은 이름. 주기는 결국 "몇 월에 해당하나" 목록이라
 // 분기·반기는 기준 달(지금 목록의 첫 달)에서부터 편다. (2026-09-15 상세 패널과 통일)
+const SPAN_STEP = { quarter: 3, half: 6, yearly: 12 }
 const ROUTINE_REPEAT = REPEAT_OPTIONS.filter(([k]) => k !== 'none' && k !== 'weekly')
 
 // 「루틴」 — 매달·분기·해마다 도는 일을 1년 격자로 (2026-08-11).
@@ -771,10 +772,17 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                     "날짜: 고정/매번 잡음"은 없앴다 — 자동으로 잡힌 날은 전부 흐리게 뜬다 */}
                                 <label>
                                   반복
+                                  <span className="rt-day">
                                   <select
                                     className="edit-select"
                                     value={form.kind}
-                                    onChange={(e) => setForm({ ...form, kind: e.target.value })}
+                                    onChange={(e) => {
+                                      const kind = e.target.value
+                                      // 분기·반기를 새로 고르면 1·4·7·10월(1·7월)부터 — 만든 달에
+                                      // 끌려가 11월에 만들면 2·5·8·11월로 굳던 문제 (2026-10-20)
+                                      const fresh = kind !== form.kind && (kind === 'quarter' || kind === 'half')
+                                      setForm({ ...form, kind, baseMonth: fresh ? 1 : form.baseMonth })
+                                    }}
                                   >
                                     {ROUTINE_REPEAT.map(([k, label]) => (
                                       <option key={k} value={k}>
@@ -783,6 +791,22 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                     ))}
                                     {form.kind === 'custom' && <option value="custom">정해둔 달</option>}
                                   </select>
+                                  {/* 분기·반기·매년은 몇 월에 하는지 고른다 — 만든 달로 정해지면 고칠 길이 없었다 */}
+                                  {SPAN_STEP[form.kind] && (
+                                    <select
+                                      className="edit-select"
+                                      aria-label="해당 달"
+                                      value={((Number(form.baseMonth) || 1) - 1) % SPAN_STEP[form.kind] + 1}
+                                      onChange={(e) => setForm({ ...form, baseMonth: Number(e.target.value) })}
+                                    >
+                                      {MONTHS.slice(0, SPAN_STEP[form.kind]).map((b) => (
+                                        <option key={b} value={b}>
+                                          {monthsFor(form.kind, b).join('·')}월
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )}
+                                  </span>
                                 </label>
                                 <label>
                                   예정일
