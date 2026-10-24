@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { uploadFile, fileUrl, removeStoredFile, isImageFile } from '../files'
+import { uploadFile, fileUrl, removeStoredFile, isImageFile, isHtmlFile, fileHtml, showHtml } from '../files'
 
 const fmtSize = (n) =>
   n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'
@@ -75,9 +75,20 @@ export default function FileSection({ files = [], onAttach, onRemove }) {
   }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function open(f) {
+    // 창은 누른 순간 먼저 연다 — 받아오는 동안 기다렸다 열면 아이폰 사파리가 팝업으로 막는다
+    const w = window.open('', '_blank')
     try {
-      window.open(await fileUrl(f.path), '_blank')
+      if (isHtmlFile(f)) {
+        const html = await fileHtml(f.path)
+        if (w) showHtml(w, f.name, html)
+        else setError('팝업이 막혀 열 수 없습니다')
+        return
+      }
+      const url = await fileUrl(f.path)
+      if (w) w.location.href = url
+      else window.open(url, '_blank')
     } catch {
+      if (w) w.close()
       setError('파일을 여는 데 실패했습니다')
     }
   }

@@ -29,6 +29,40 @@ export async function fileUrl(path, downloadName) {
   return data.signedUrl
 }
 
+// HTML 첨부 — 저장소가 보안상 HTML을 글자(text/plain)로 내보내서 그냥 열면 코드만 보인다.
+// 받아서 새 창의 격리된 틀(sandbox iframe) 안에 그린다: 그 안의 스크립트는 돌지만
+// 이 앱의 로그인 정보·저장 데이터에는 손을 못 댄다. (2026-10-24 사용자: "html 넣어두고 핸드폰으로 볼수있나")
+export const isHtmlFile = (f) => (f.type || '') === 'text/html' || /\.html?$/i.test(f.name || f.path)
+
+export async function fileHtml(path) {
+  const { data, error } = await supabase.storage.from('files').download(path)
+  if (error) throw error
+  const buf = await data.arrayBuffer()
+  const utf8 = new TextDecoder('utf-8').decode(buf)
+  // 옛 한글 문서(EUC-KR)는 utf-8로 읽으면 깨진다 — 깨진 글자가 보이면 다시 읽는다
+  if (!utf8.includes('\uFFFD')) return utf8
+  try {
+    return new TextDecoder('euc-kr').decode(buf)
+  } catch {
+    return utf8
+  }
+}
+
+export function showHtml(w, name, html) {
+  const d = w.document
+  d.open()
+  d.write(
+    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<style>html,body{margin:0;height:100%;background:#fff}iframe{border:0;width:100%;height:100%;display:block}</style>'
+  )
+  d.close()
+  d.title = name
+  const fr = d.createElement('iframe')
+  fr.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms allow-modals')
+  fr.srcdoc = html
+  d.body.appendChild(fr)
+}
+
 export async function removeStoredFile(path) {
   await supabase.storage.from('files').remove([path])
 }
