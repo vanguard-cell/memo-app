@@ -383,7 +383,7 @@ function BoardView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDe
 // ---------- 표 ----------
 
 // 컬럼 헤더가 곧 정렬·필터 (2026-07-30 시안): 제목·날짜·체크·작성일 클릭 = ▲→▼→해제,
-// 상태 클릭 = 상태별 걸러 보기(전체→진행중→할일→보류→보관→완료 순환). 별도 버튼 줄 없음.
+// 상태 클릭 = 상태별 걸러 보기(전체→진행중→할일→보관→완료 순환). 별도 버튼 줄 없음.
 const SORT_VAL = {
   title: (m) => (m.title || '').toLowerCase(),
   date: (m) => m.due || (m.period && m.period.end) || '9999-99-99',
@@ -393,7 +393,7 @@ const SORT_VAL = {
   },
   created: (m) => m.createdAt || '',
 }
-const ST_ORDER = ['active', 'todo', 'hold', 'keep', 'done']
+const ST_ORDER = ['active', 'todo', 'keep', 'done']
 const FILTER_CYCLE = [null, ...ST_ORDER]
 
 function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDetail }) {
@@ -433,12 +433,11 @@ function TableView({ memos, dayOrder, words, flat, onOpen, onCompose, renderDeta
       { st: null, items: [...shown].sort((a, b) => urgency(a, today) - urgency(b, today) || byUpdated(a, b)) },
     ]
   } else {
-    // 진행중 → 할일 → 보류 → 보관 → 완료 그룹. 진행중·할일 안에서는 보드와 같은 우선순위.
-    const groups = { active: [], todo: [], hold: [], keep: [], done: [] }
+    // 진행중 → 할일 → 보관 → 완료 그룹. 진행중·할일 안에서는 보드와 같은 우선순위.
+    const groups = { active: [], todo: [], keep: [], done: [] }
     for (const m of shown) groups[memoStatus(m)].push(m)
     groups.active.sort(prioSort(dayOrder, 'active', today))
     groups.todo.sort(prioSort(dayOrder, 'todo', today))
-    groups.hold.sort(byUpdated)
     groups.keep.sort(byUpdated)
     groups.done.sort(byCompleted)
     sections = ST_ORDER.filter((st) => groups[st].length > 0).map((st) => ({ st, items: groups[st] }))
@@ -612,7 +611,7 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
   }
 
   const items = memos
-    .filter((m) => !m.keep && !m.hold)
+    .filter((m) => !m.keep)
     .map((m) => {
       const sp = spanOf(m)
       return sp && { m, s: sp[0], e: sp[1] }
@@ -789,11 +788,8 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
     localStorage.setItem('memo-view', v)
   }
 
-  // 보드에는 보관·보류 메모가 안 나오므로, 검색 중이면 걸린 것들을 아래에 따로 보여준다
-  const keepHits =
-    view === 'board' && words.length
-      ? list.filter((m) => ['keep', 'hold'].includes(memoStatus(m)))
-      : []
+  // 보드에는 보관 메모가 안 나오므로, 검색 중이면 걸린 것들을 아래에 따로 보여준다
+  const keepHits = view === 'board' && words.length ? list.filter((m) => memoStatus(m) === 'keep') : []
 
   return (
     <div className="view">
@@ -821,7 +817,7 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
                 setQ('')
               }
             }}
-            placeholder="검색 — 제목·진행기록, 보관·보류·완료까지"
+            placeholder="검색 — 제목·진행기록, 보관·완료까지"
           />
           {q && (
             <button
@@ -856,7 +852,7 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
       {view === 'timeline' && <TimelineView memos={list} dayOrder={dayOrder} onOpen={onOpen} renderDetail={renderDetail} />}
       {keepHits.length > 0 && (
         <div className="kb-keep">
-          <div className="done-divider">검색에 걸린 보관·보류 메모 · {keepHits.length}건</div>
+          <div className="done-divider">검색에 걸린 보관 메모 · {keepHits.length}건</div>
           {keepHits.map((m) => {
             const d = renderDetail ? renderDetail(m.id) : null
             const st = memoStatus(m)

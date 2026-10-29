@@ -1803,22 +1803,7 @@ main {
   color: #6b5cb8;
 }
 
-/* 보류 — 잠시 멈춰 있다는 느낌의 차분한 청회색 (할일 주황·진행중 초록과 구분) */
-.st-hold {
-  background: #e7edf2;
-  color: #52708a;
-}
-
-/* 보류함 목록: 제목 아래 마지막 진행기록 한 줄 — 멈춘 지점 떠올리기용 */
-.hold-last {
-  display: block;
-  font-size: var(--fs-sm);
-  color: var(--muted);
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* (보류 배지·보류함 줄 스타일은 2026-10-29 보류를 없애며 같이 지웠다) */
 
 .filters {
   display: flex;
@@ -2886,7 +2871,8 @@ main {
 .tl-date-input,
 .meta-date-input,
 .sched-input,
-.sched-select {
+.sched-select,
+.kp-input {
   background: var(--field);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -2901,7 +2887,8 @@ main {
 .tl-date-input:hover,
 .meta-date-input:hover,
 .sched-input:hover,
-.sched-select:hover {
+.sched-select:hover,
+.kp-input:hover {
   border-color: var(--border-hover);
 }
 
@@ -2911,7 +2898,8 @@ main {
 .tl-date-input:focus,
 .meta-date-input:focus,
 .sched-input:focus,
-.sched-select:focus {
+.sched-select:focus,
+.kp-input:focus {
   background: var(--card);
   border-color: var(--blue-strong);
   box-shadow: 0 0 0 3px rgb(53 104 224 / 13%);
@@ -5542,5 +5530,235 @@ main {
     font-size: 14.5px;
     color: var(--text);
     margin-bottom: 12px;
+  }
+}
+
+/* ==========================================================================
+   보관 화면 (2026-10-29) — 아래 서랍에서 메뉴로 올리며 다시 짰다.
+   달력을 보다가 한 번씩 들어와 체크하는 곳: 목록마다 카드 한 장, 체크리스트를 카드에서 바로 체크·추가.
+   체크한 것은 접어 둔다. 카드는 만든 순서 그대로(체크해도 자리가 안 바뀐다).
+   ========================================================================== */
+.kp-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.kp-top b {
+  font-size: var(--fs-title);
+}
+
+.kp-new {
+  display: flex;
+  gap: 6px;
+  max-width: 520px;
+  margin-bottom: 14px;
+}
+
+.kp-input {
+  font: inherit;
+  font-size: var(--fs-base);
+  padding: 6px 10px;
+  min-width: 0;
+}
+
+.kp-new .kp-input {
+  flex: 1;
+}
+
+.kp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.kp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px 8px;
+}
+
+.kp-card:hover {
+  border-color: var(--border-hover);
+}
+
+/* 상세가 열려 있는 카드 */
+.kp-card.on {
+  border-color: var(--blue-strong);
+  box-shadow: 0 0 0 3px rgb(53 104 224 / 13%);
+}
+
+/* 다 체크한 카드 — 초록 테두리로 "끝내도 된다"를 알린다 */
+.kp-card.kp-alldone {
+  border-color: var(--teal-strong);
+}
+
+.kp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kp-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: var(--fs-base);
+  line-height: 1.45;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.kp-title:hover {
+  text-decoration: underline dotted var(--faint);
+  text-underline-offset: 3px;
+}
+
+.kp-count {
+  font-size: var(--fs-label);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* 작업 설명 — 두 줄까지만 (전체는 제목을 눌러 상세에서) */
+.kp-desc {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kp-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kp-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: var(--fs-base);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.kp-line input {
+  flex-shrink: 0;
+  margin: 3px 0 0;
+}
+
+.kp-line span {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.kp-done .kp-line span {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.kp-line.kp-log {
+  cursor: default;
+  color: var(--faint);
+}
+
+.kp-done .kp-line.kp-log span {
+  text-decoration: none;
+}
+
+.kp-alldone-msg {
+  font-size: var(--fs-sm);
+  color: var(--teal);
+}
+
+.kp-fold {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-size: var(--fs-label);
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.kp-fold:hover {
+  background: none;
+  color: var(--text);
+}
+
+.kp-add {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.kp-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.kp-foot .linkish {
+  font-size: var(--fs-label);
+  text-decoration: none;
+  color: var(--faint);
+}
+
+.kp-foot .linkish:hover {
+  color: var(--text);
+}
+
+/* 다 체크했으면 [완료]를 눈에 띄게 */
+.kp-foot .linkish.kp-finish {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+/* 폰 상세는 카드 자리에서 펼쳐진다 — 그리드 전체 폭 */
+.kp-detail {
+  grid-column: 1 / -1;
+}
+
+/* 폰 — 한 줄에 카드 하나, 누르는 것 40px, 입력 글씨 16px (CLAUDE.md 폰 규칙) */
+@media (max-width: 899px) {
+  .kp-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kp-input {
+    font-size: 16px;
+    min-height: 40px;
+  }
+
+  .kp-line {
+    min-height: 40px;
+    align-items: center;
+    padding: 0;
+  }
+
+  .kp-line input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+  }
+
+  .kp-fold {
+    min-height: 36px;
+  }
+
+  .kp-foot .linkish {
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: var(--fs-base);
   }
 }

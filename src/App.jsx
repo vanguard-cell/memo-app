@@ -14,7 +14,6 @@ import Login from './components/Login'
 import MemosView from './views/MemosView'
 import TrashView from './views/TrashView'
 import KeepView from './views/KeepView'
-import HoldView from './views/HoldView'
 import RoutineView from './views/RoutineView'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ICONS } from './icons'
@@ -74,12 +73,16 @@ export default function App() {
   const [openId, setOpenId] = useState(null)
   const [showTrash, setShowTrash] = useState(false)
   const [showKeep, setShowKeep] = useState(false)
-  const [showHold, setShowHold] = useState(false)
   const [showRoutine, setShowRoutine] = useState(false)
   const [closing, setClosing] = useState(false)
   const closeTimer = useRef(null)
-  const keeps = memos.filter((m) => m.keep)
-  const holds = memos.filter((m) => m.hold)
+  // 보관 — 날짜 없이 넣어둔 메모 (완료한 건 메모 표의 완료 묶음으로 간다)
+  const keeps = memos.filter((m) => m.keep && m.status !== 'done')
+  // 메뉴 옆 숫자 = 보관 메모들에 남은 체크 개수 — "들어가서 체크할 게 몇 개 남았나" (2026-10-29)
+  const keepLeft = keeps.reduce(
+    (n, m) => n + (m.history || []).filter((h) => h.type !== 'log' && !h.done).length,
+    0
+  )
   // 사이드바 배지 — 이번 달에 아직 안 끝난 루틴 건수
   const nowYm = todayStr().slice(0, 7)
   const routineLeft = routines.filter((r) => {
@@ -94,14 +97,14 @@ export default function App() {
   const open = memos.find((m) => m.id === openId)
   // 지금 보고 있는 화면 — 화면별 안전장치(ErrorBoundary)의 key로 쓴다.
   // 다른 화면으로 옮기면 key가 바뀌어 오류 상태가 저절로 풀린다.
-  const screen = showTrash ? 'trash' : showRoutine ? 'routine' : showHold ? 'hold' : showKeep ? 'keep' : 'memo'
+  const screen = showTrash ? 'trash' : showRoutine ? 'routine' : showKeep ? 'keep' : 'memo'
 
   // 제목·기록·설명이 모두 빈 "임시 메모"(+ 로 만들었다가 안 쓰고 닫은 것)는 완전히 지운다.
   // 톰스톤(휴지통)이 아니라 purge — 빈 초안이 휴지통에 쌓이지 않게.
   function discardIfEmptyDraft(id) {
     // 최신 store 상태를 직접 읽는다 (제목 저장 직후 닫힘 등 타이밍에서 stale 방지)
     const m = getMemos().find((x) => x.id === id)
-    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && (!m.files || m.files.length === 0) && !m.keep && !m.hold) {
+    if (m && !(m.title || '').trim() && (!m.history || m.history.length === 0) && !(m.desc || '').trim() && (!m.files || m.files.length === 0) && !m.keep) {
       purgeMemos([m.id])
     }
   }
@@ -131,7 +134,6 @@ export default function App() {
   function backToMemo() {
     setOpenId(null)
     setShowKeep(false)
-    setShowHold(false)
     setShowTrash(false)
     setShowRoutine(false)
   }
@@ -140,7 +142,6 @@ export default function App() {
   function goTo(which) {
     setOpenId(null)
     setShowKeep(which === 'keep' && !showKeep)
-    setShowHold(which === 'hold' && !showHold)
     setShowTrash(which === 'trash' && !showTrash)
     setShowRoutine(which === 'routine' && !showRoutine)
   }
@@ -339,7 +340,7 @@ export default function App() {
         >
           <div className="brand">내 기록</div>
           <button
-            className={'stab' + (!showKeep && !showHold && !showTrash && !showRoutine ? ' on' : '')}
+            className={'stab' + (!showKeep && !showTrash && !showRoutine ? ' on' : '')}
             onClick={backToMemo}
           >
             <span className="stab-ic">{ICONS.memo}</span>메모
@@ -353,14 +354,21 @@ export default function App() {
             <span className="stab-ic">{ICONS.routine}</span>루틴
             {routineLeft > 0 && <span className="stab-n">{routineLeft}</span>}
           </button>
-          {/* 위는 "매일 쓰는 화면"(메모·루틴)만. 나머지 서랍(보류함·보관함·휴지통)과
-              도구(백업·가져오기)는 아래에 아이콘 한 줄로 내렸다 — 폰 상단 줄과 같은 문법.
-              계정도 로그아웃 옆으로 (2026-08-11 사용자 지시) */}
+          {/* 보관 — 날짜 없이 넣어둔 목록(살 것 등). 달력을 보다가 한 번씩 들어와 체크하는 곳이라
+              아래 서랍에서 메뉴로 올렸다. 숫자 = 남은 체크 개수 (2026-10-29 사용자 지시) */}
+          <button
+            className={'stab' + (showKeep ? ' on' : '')}
+            title="날짜 없이 넣어둔 목록 — 들어가서 바로 체크·추가"
+            onClick={() => goTo('keep')}
+          >
+            <span className="stab-ic">{ICONS.keep}</span>보관
+            {keepLeft > 0 && <span className="stab-n">{keepLeft}</span>}
+          </button>
+          {/* 위는 "매일 쓰는 화면"(메모·루틴·보관)만. 휴지통과 도구(백업·가져오기)는 아래에
+              아이콘 한 줄로 — 폰 상단 줄과 같은 문법. 계정도 로그아웃 옆으로 (2026-08-11 사용자 지시) */}
           <div className="sidenav-foot">
             <div className="sfoot-row">
               {[
-                ['hold', ICONS.hold, '보류함', holds.length, showHold, () => goTo('hold')],
-                ['keep', ICONS.keep, '보관함', keeps.length, showKeep, () => goTo('keep')],
                 ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => goTo('trash')],
               ].map(([key, icon, label, n, on, go]) => (
                 <button key={key} className={'sfoot-ic' + (on ? ' on' : '')} title={label} aria-label={label} onClick={go}>
@@ -407,7 +415,8 @@ export default function App() {
       )}
       <div className="workarea">
         {/* 폰 상단 — PC 사이드바와 같은 아이콘 언어로 한 줄에 (2026-08-05).
-            예전엔 이메일+보류함/보관함/휴지통/백업/로그아웃이 작은 글자로 두 줄을 차지했다. */}
+            예전엔 이메일+보관함/휴지통/백업/로그아웃이 작은 글자로 두 줄을 차지했다.
+            순서는 PC 메뉴와 같게 루틴 → 보관 → 휴지통 (보류는 2026-10-29 없앴다). */}
         {narrow && (
           <header className="topbar">
             <div className="brand">
@@ -425,8 +434,7 @@ export default function App() {
             <nav className="ptabs">
               {[
                 ['routine', ICONS.routine, '루틴', routineLeft, showRoutine, () => goTo('routine')],
-                ['hold', ICONS.hold, '보류함', holds.length, showHold, () => goTo('hold')],
-                ['keep', ICONS.keep, '보관함', keeps.length, showKeep, () => goTo('keep')],
+                ['keep', ICONS.keep, '보관', keepLeft, showKeep, () => goTo('keep')],
                 ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => goTo('trash')],
               ].map(([key, icon, label, n, on, go]) => (
                 <button
@@ -465,29 +473,10 @@ export default function App() {
               <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
             )}
           </div>
-        ) : showHold ? (
-          <div className="layout">
-            <main>
-              <HoldView
-                memos={holds}
-                onOpen={openMemo}
-                renderDetail={renderDetail}
-                onClose={() => setShowHold(false)}
-              />
-            </main>
-            {sidePanel && open && (
-              <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />
-            )}
-          </div>
         ) : showKeep ? (
           <div className="layout">
             <main>
-              <KeepView
-                memos={keeps}
-                onOpen={openMemo}
-                renderDetail={renderDetail}
-                onClose={() => setShowKeep(false)}
-              />
+              <KeepView memos={keeps} openId={openId} onOpen={openMemo} renderDetail={renderDetail} />
             </main>
             {sidePanel && open && (
               <MemoDetail key={open.id} memo={open} closing={closing} onOpen={openMemo} onClose={closePanel} />

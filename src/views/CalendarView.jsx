@@ -267,7 +267,7 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
 
   // 상태 우선 정렬: 진행중 → 할일 → 완료는 맨 아래 (달력 칸·아래 날짜 목록 공통).
   // 드래그로 정한 순서는 같은 상태끼리 안에서만 갈린다 (2026-07-22)
-  const ST_RANK = { active: 0, todo: 1, hold: 2, keep: 3, done: 4 }
+  const ST_RANK = { active: 0, todo: 1, keep: 3, done: 4 }
   // 모르는 상태가 섞여도 정렬이 무너지지 않게 (빼기가 NaN이 되면 순서가 뒤죽박죽 된다)
   // 루틴이 자동으로 잡은 날(흐린 회차)은 확정된 할일 아래로 — 내가 정한 일·새로 쓴 일·진행중이
   // 위에 먼저 보이게 (2026-10-20 사용자: "확정 안 된 루틴 업무는 항상 하단으로")

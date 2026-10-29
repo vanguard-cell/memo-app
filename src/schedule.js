@@ -144,7 +144,7 @@ export function splitTime(title) {
 const dayNum = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 864e5
 
 export function isWeeklyLive(memo) {
-  return memo.repeat === 'weekly' && !!memo.due && memo.status !== 'done' && !memo.keep && !memo.hold
+  return memo.repeat === 'weekly' && !!memo.due && memo.status !== 'done' && !memo.keep
 }
 
 export function weeklyAhead(memo, from, to) {

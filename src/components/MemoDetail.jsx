@@ -14,7 +14,8 @@ import useIsNarrow from '../useIsNarrow'
 
 // 액션 아이콘 기본 순서 — 세로 구분선(div)도 한 자리를 차지해 같이 끌 수 있다
 // (마감·정보 수정 아이콘은 2026-09-15 없앴다 — 날짜·반복은 위의 일정 칸에서 바로 고친다)
-const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'hold', 'keep', 'del']
+// (보류는 2026-10-29 없앴다 — 보관과 뜻이 겹친다. 기기에 저장된 순서의 'hold'는 아래에서 걸러진다)
+const PA_DEFAULT = ['done', 'postpone', 'date', 'div', 'keep', 'del']
 
 const REPEAT_LABEL = { weekly: '매주', monthly: '매달', yearly: '매년' }
 
@@ -256,8 +257,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
     >
         <div className="panel-head">
           {/* PC: 상태를 드롭다운 칩으로 바로 변경 — 드래그 없이도 클릭 한 번 (2026-07-30 시안 채택).
-              보관·보류는 상태 개념 밖이라 배지 유지. 폰은 아래 상태 버튼 줄 그대로. */}
-          {!narrow && !memo.keep && !memo.hold ? (
+              보관은 상태 개념 밖이라 배지 유지. 폰은 아래 상태 버튼 줄 그대로. */}
+          {!narrow && !memo.keep ? (
             <select
               className="stage-select"
               value={st}
@@ -382,11 +383,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               )}
             </div>
           )}
-          {memo.hold && (
-            <span className="meta-date">
-              보류 {fmtDate(memo.holdAt || (memo.updatedAt || '').slice(0, 10))}
-            </span>
-          )}
           {linkedWork && onOpen && (
             <button className="linkish" onClick={() => onOpen(linkedWork.id)} title="연결된 점검 열기">
               점검: {linkedWork.title}
@@ -398,7 +394,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           </span>
         </div>
         {/* 폰: 드래그가 없으니 여기서 보드 열을 옮긴다 (PC는 상태 드롭다운 — 버튼 안 보임) */}
-        {narrow && !memo.keep && !memo.hold && (
+        {narrow && !memo.keep && (
           <div className="stage-row">
             <span className="stage-label">상태</span>
             {[
@@ -422,38 +418,29 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           </div>
         )}
         {/* 액션 줄 — 전부 아이콘 + 마우스 설명 (2026-07-31 확정). 아이콘은 드래그로 순서를
-            바꿀 수 있다(세로 구분선 포함, 기기별 저장). 보류·보관·삭제 아이콘은 사이드바의
-            보류함·보관함·휴지통과 같은 그림 — 누르면 어디로 가는지 그림이 말해준다.
-            보관·보류 메모의 꺼내기만 글자 버튼 유지. */}
+            바꿀 수 있다(세로 구분선 포함, 기기별 저장). 보관·삭제 아이콘은 왼쪽 메뉴의
+            보관·휴지통과 같은 그림 — 누르면 어디로 가는지 그림이 말해준다.
+            보관 메모의 꺼내기만 글자 버튼 유지 (보류의 "날짜 지정"도 2026-10-29 여기로 합쳤다). */}
         <div className="panel-actions">
           {memo.status !== 'done' && memo.keep && (
-            <button
-              className="btn-done"
-              title="보관에서 꺼내 오늘 할 일로 보냅니다"
-              onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
-            >
-              오늘 할 일로 꺼내기
-            </button>
-          )}
-          {memo.status !== 'done' && memo.hold && (
             <>
               <button
                 className="btn-done"
-                title="보류를 풀고 오늘 할 일로 보냅니다"
-                onClick={() => updateMemo(memo.id, { hold: false, due: todayStr() })}
+                title="보관에서 꺼내 오늘 할 일로 보냅니다"
+                onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
               >
                 오늘 할 일로 꺼내기
               </button>
               <SendToDateBtn
                 label="날짜 지정"
                 min={todayStr()}
-                onPick={(d) => updateMemo(memo.id, { hold: false, due: d })}
+                onPick={(d) => updateMemo(memo.id, { keep: false, due: d })}
               />
             </>
           )}
           {paOrder.map((k) => {
             if (k === 'done') {
-              if (narrow || memo.keep || memo.hold) return null
+              if (narrow || memo.keep) return null
               return memo.status !== 'done' ? (
                 <button
                   key={k}
@@ -472,7 +459,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 </button>
               )
             }
-            const dated = memo.status !== 'done' && !memo.keep && !memo.hold && (memo.due || memo.period)
+            const dated = memo.status !== 'done' && !memo.keep && (memo.due || memo.period)
             if (k === 'postpone') {
               if (!dated) return null
               return (
@@ -509,37 +496,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               )
             }
             if (k === 'div') return <span key={k} className={paCls(k, 'pa-div')} {...paDrag(k)} />
-            const openPlain = memo.status !== 'done' && !memo.keep && !memo.hold
-            if (k === 'hold') {
-              if (!openPlain || !(memo.due || memo.period)) return null
-              return (
-                <button
-                  key={k}
-                  className={paCls(k, 'pa-ic')}
-                  data-tip="보류 — 날짜를 떼고 보류함으로"
-                  {...paDrag(k)}
-                  onClick={() =>
-                    updateMemo(memo.id, {
-                      hold: true,
-                      holdAt: today,
-                      due: null,
-                      period: null,
-                      snoozeUntil: null,
-                    })
-                  }
-                >
-                  {ICONS.hold}
-                  <span className="pa-tx">보류</span>
-                </button>
-              )
-            }
+            const openPlain = memo.status !== 'done' && !memo.keep
             if (k === 'keep') {
               if (!openPlain) return null
               return (
                 <button
                   key={k}
                   className={paCls(k, 'pa-ic')}
-                  data-tip="보관 — 자료로 보관함에"
+                  data-tip="보관 — 날짜를 떼고 보관으로 (달력·보드에서 빠짐)"
                   {...paDrag(k)}
                   onClick={() =>
                     updateMemo(memo.id, {

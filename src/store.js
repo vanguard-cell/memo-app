@@ -49,9 +49,18 @@ function migrate(memos) {
     if (m.due && m.period && m.period.end && m.due === m.period.end) {
       m.due = null
     }
+    // 보류는 2026-10-29 없앴다 (사용자: "보류랑 보관이랑 의미가 겹친다") — 보류해 둔 메모는
+    // 보관으로 옮긴다. 둘 다 "날짜 없이 넣어둔 것"이라 진행기록·설명은 그대로 이어진다.
+    if (m.hold) {
+      m.keep = true
+      m.due = null
+      m.period = null
+    }
+    delete m.hold
+    delete m.holdAt
     // 날짜 없는 미완료 메모는 오늘 기한으로 — 완료 전까지 오늘 화면에서 괴롭힌다
-    // (보관·보류·삭제된 메모는 예외)
-    if (!m.due && !m.period && m.status !== 'done' && !m.keep && !m.hold && !m.deleted) {
+    // (보관·삭제된 메모는 예외)
+    if (!m.due && !m.period && m.status !== 'done' && !m.keep && !m.deleted) {
       m.due = todayStr()
     }
     return m
@@ -631,45 +640,6 @@ export function unkeepMemos(ids, due) {
     ...state,
     memos: state.memos.map((m) =>
       ids.includes(m.id) ? { ...m, keep: false, due, updatedAt: now } : m
-    ),
-  })
-  if (!hasSupabase || !session) return
-  pushMemoRows(state.memos.filter((m) => ids.includes(m.id)))
-    .then(() => setAuth({ syncError: false }))
-    .catch((e) => {
-      console.error('동기화 실패', e)
-      setAuth({ syncError: true })
-    })
-}
-
-// 보류함으로 보내기 — 날짜를 떼고 보류(hold) 표식을 단다. 진행기록·설명은 그대로 남고
-// 보드·달력에서만 사라진다. "하다가 멈췄는데 언제 다시 할지 모르는 일"을 넣어두는 곳.
-export function holdMemos(ids) {
-  const now = new Date().toISOString()
-  commit({
-    ...state,
-    memos: state.memos.map((m) =>
-      ids.includes(m.id)
-        ? { ...m, hold: true, holdAt: todayStr(), due: null, period: null, snoozeUntil: null, updatedAt: now }
-        : m
-    ),
-  })
-  if (!hasSupabase || !session) return
-  pushMemoRows(state.memos.filter((m) => ids.includes(m.id)))
-    .then(() => setAuth({ syncError: false }))
-    .catch((e) => {
-      console.error('동기화 실패', e)
-      setAuth({ syncError: true })
-    })
-}
-
-// 보류함에서 꺼내기 — 지정한 날짜(예정)를 달아 다시 할 일로 보낸다 (여러 개 한 번에 가능)
-export function unholdMemos(ids, due) {
-  const now = new Date().toISOString()
-  commit({
-    ...state,
-    memos: state.memos.map((m) =>
-      ids.includes(m.id) ? { ...m, hold: false, due, updatedAt: now } : m
     ),
   })
   if (!hasSupabase || !session) return
@@ -1411,7 +1381,7 @@ export function alarmItems(memos, routines, from, to, { rules = true } = {}) {
     for (const d of days) if (d.date >= from && d.date <= to) out.push({ ...rest, ...d })
   }
   for (const m of memos) {
-    if (m.deleted || m.status === 'done' || m.keep || m.hold) continue
+    if (m.deleted || m.status === 'done' || m.keep) continue
     const alarm = m.routineId ? (byId.get(m.routineId) || {}).alarm : m.alarm
     const base = m.due || (m.period && m.period.start)
     if (!alarm || !alarm.text || !base) continue
