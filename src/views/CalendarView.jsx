@@ -12,6 +12,7 @@ import MemoDetail from '../components/MemoDetail'
 import { useTagSuggest, TagList, TagChips } from '../components/TagSuggest'
 import useIsNarrow from '../useIsNarrow'
 import { subscribeMacro, getMacro, macroByDate } from '../macro'
+import { weeklyAhead } from '../schedule'
 
 // 메모 조각을 다른 날짜로 — 드래그와 "이동" 버튼이 같이 쓴다.
 // 기한→기한 이동 / 시작·만기 조각→그쪽 끝만 / 중간(기간) 조각→기간 전체 평행이동
@@ -413,6 +414,19 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     return map
   }, [routines, memos, y, mo, filtered])
 
+  // 매주 반복의 앞 회차 — 지금 예정일 뒤로 7일마다 "예정 자리"를 그린다 (2026-10-29, 사용자:
+  // "매주로 만들었는데 다음 달에 표시가 안 된다"). 매주는 메모 하나가 완료할 때마다 다음 주로
+  // 굴러가는 방식이라 앞 회차는 메모로 만들지 않는다 — 누르면 그 메모(지금 회차) 상세가 열린다.
+  // 검색 중엔 안 그린다 (루틴 예정 자리와 같은 규칙).
+  const weekly = useMemo(() => {
+    if (filtered) return {}
+    const from = `${y}-${pad(mo + 1)}-01`
+    const to = `${y}-${pad(mo + 1)}-${pad(new Date(y, mo + 1, 0).getDate())}`
+    const map = {}
+    for (const m of memos) for (const d of weeklyAhead(m, from, to)) (map[d] = map[d] || []).push(m)
+    return map
+  }, [memos, y, mo, filtered])
+
   // 미리 알림 칩 — 보고 있는 달 안에서 날짜별로 (2026-09-15). 아직 회차가 없는 달의 루틴
   // 알림도 규칙에서 계산해 그린다. 검색 중엔 걸러진 메모에 붙은 것만(규칙 계산은 뺀다).
   const alarms = useMemo(() => {
@@ -793,6 +807,22 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                 </span>
                 )
               })}
+              {/* 매주 반복의 앞 회차 — 흐린 "예정 자리". 누르면 그 메모 상세 (회차를 새로 만들지 않는다) */}
+              {(weekly[date] || []).map((m) => (
+                <span
+                  key={'w' + m.id}
+                  className="cal-ev ev-due cal-ghost ev-tent"
+                  title={`${m.time ? m.time + ' ' : ''}${m.title} — 매주 반복 (지금 회차를 완료하면 이 날로 넘어옵니다)`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    setSel(date)
+                    openDetail(m.id)
+                  }}
+                >
+                  {m.time && <b className="ev-time">{m.time}</b>}
+                  {m.title}
+                </span>
+              ))}
               {/* 앞으로 올 달의 루틴 — 아직 회차가 없는 "예정 자리". 누르면 그때 만들어진다 */}
               {(ghosts[date] || []).map((r) => (
                 <span
@@ -889,7 +919,8 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             <button onClick={quickAdd}>추가</button>
           </div>
           <TagChips ctl={qTag} show={!qtext} />
-          {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && !(alarms[sel] || []).length && (
+          {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && !(alarms[sel] || []).length &&
+            !(weekly[sel] || []).length && !(ghosts[sel] || []).length && (
             <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>
           )}
           {orderedEvents(sel, events[sel] || []).map((e) => {
@@ -982,6 +1013,26 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             )
           })}
           {spanningRows(sel)}
+          {/* 매주 반복의 앞 회차 줄 — 폰: 누르면 이 자리에서 그 메모 상세가 펼쳐진다 */}
+          {(weekly[sel] || []).map((m) => {
+            const d = renderDetail ? renderDetail(m.id) : null
+            if (d) return <Fragment key={'w' + m.id}>{d}</Fragment>
+            return (
+              <div
+                key={'w' + m.id}
+                className={'row row-ghost row-tent' + (localOpenId === m.id ? ' row-sel' : '')}
+                title="매주 반복 — 지금 회차를 완료하면 이 날로 넘어옵니다"
+                onClick={() => openDetail(m.id)}
+              >
+                <span className="badge ev-due">예정</span>
+                <span className="row-title">
+                  {m.time && <b className="ev-time">{m.time}</b>}
+                  {m.title}
+                </span>
+                <span className="row-date">매주</span>
+              </div>
+            )
+          })}
           {(ghosts[sel] || []).map((r) => (
             <div
               key={'g' + r.id}

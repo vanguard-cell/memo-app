@@ -109,3 +109,52 @@ export function timeText(memo) {
   if (memo.time && memo.endTime) return `${memo.time}~${memo.endTime}`
   return memo.time || `~${memo.endTime}`
 }
+
+// ---------- 제목 앞의 시각 ----------
+// "11:00 주간보고" · "09:30/ 종합안전기술" · "16:30~17:00 우미린 계약" · "09:00식수"
+// 사용자는 시간 칸 대신 제목 앞에 시각을 적어 왔다(2026-10-29 기준 43건, 시간 칸은 0건).
+// 날짜를 제목에서 떼듯 시각도 떼어 시간 칸(time·endTime)으로 옮긴다 — 그래야 달력에 굵게 찍히고
+// 시각 순으로 정렬된다. 맨 앞에 있을 때만 본다(본문 속 숫자를 건드리지 않게).
+// 한 자리 1~6시는 오후로 읽는다 — 업무 기록이라 "1:30 미팅"은 13:30이다.
+const TIME_RE = /^\s*(\d{1,2}):(\d{2})(?:\s*[~〜∼-]\s*(\d{1,2}):(\d{2}))?(?!\d)[\s/,·.~〜∼)\]-]*/
+
+function hhmm(h, m) {
+  let hh = Number(h)
+  const mm = Number(m)
+  if (h.length === 1 && hh >= 1 && hh <= 6) hh += 12
+  if (hh > 23 || mm > 59) return null
+  return `${pad(hh)}:${pad(mm)}`
+}
+
+export function splitTime(title) {
+  const m = TIME_RE.exec(title || '')
+  if (!m) return null
+  const time = hhmm(m[1], m[2])
+  const endTime = m[3] ? hhmm(m[3], m[4]) : null
+  if (!time || (m[3] && !endTime)) return null
+  const rest = title.slice(m[0].length).trim()
+  if (!rest) return null // 시각만 적은 제목은 그대로 둔다 — 떼면 이름이 비어 버린다
+  return { time, endTime: endTime && endTime > time ? endTime : null, title: rest }
+}
+
+// ---------- 매주 반복의 앞 회차 ----------
+// 매주는 메모 하나가 완료할 때마다 다음 주로 굴러가므로 앞 회차는 메모로 없다.
+// 달력·루틴 화면이 "언제 또 돌아오나"를 그릴 수 있게, 지금 예정일(due) 뒤로 7일마다의 날짜를
+// [from, to] 안에서 돌려준다. 반복 종료(repeatUntil)를 넘으면 멈춘다. (2026-10-29)
+const dayNum = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 864e5
+
+export function isWeeklyLive(memo) {
+  return memo.repeat === 'weekly' && !!memo.due && memo.status !== 'done' && !memo.keep && !memo.hold
+}
+
+export function weeklyAhead(memo, from, to) {
+  if (!isWeeklyLive(memo)) return []
+  // 보고 있는 범위의 첫 회차로 바로 건너뛴다 (몇 해 뒤 달을 봐도 한 주씩 세지 않게)
+  const k0 = Math.max(1, Math.ceil((dayNum(from) - dayNum(memo.due)) / 7))
+  const out = []
+  for (let d = addDays(memo.due, 7 * k0); d <= to; d = addDays(d, 7)) {
+    if (memo.repeatUntil && d > memo.repeatUntil) break
+    out.push(d)
+  }
+  return out
+}

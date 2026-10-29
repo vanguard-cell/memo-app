@@ -4293,6 +4293,13 @@ main {
   color: var(--border-hover);
 }
 
+/* 매주 반복 줄 — 칸은 "그 달 완료"가 아니라 그 달에 남은 횟수, 누르면 상세 (2026-10-29) */
+.rt-wk,
+.rt-t-wk {
+  color: var(--muted);
+  font-size: var(--fs-label);
+}
+
 .rt-empty-btn {
   margin-top: 10px;
 }

@@ -1,6 +1,6 @@
 import { todayStr, parse, addDays } from './parser'
 import { supabase, hasSupabase } from './supabase'
-import { alarmStart, alarmDays, alarmSpanMonths } from './schedule'
+import { alarmStart, alarmDays, alarmSpanMonths, splitTime } from './schedule'
 
 const KEY = 'hds-memo-data-v1'
 
@@ -20,6 +20,17 @@ function migrate(memos) {
       m.period = null
     }
     delete m.deadline
+    // 제목 앞의 시각("11:00 주간보고")은 시간 칸으로 — 날짜를 제목에서 떼는 것과 같은 규칙 (2026-10-29).
+    // 시간 칸이 이미 차 있으면 손대지 않는다(직접 정한 값이 먼저). 루틴 회차는 빼둔다 — 회차 제목은
+    // 규칙 이름에서 나오므로(cycleTitle) 떼면 "자동 제목 그대로" 판정(renamedRule 등)이 어긋난다.
+    if (!m.time && !m.endTime && !m.routineId) {
+      const t = splitTime(m.title)
+      if (t) {
+        m.title = t.title
+        m.time = t.time
+        if (t.endTime) m.endTime = t.endTime
+      }
+    }
     const p = parse(m.title)
     if (!m.period && p.period) {
       if (p.deadline) {
@@ -313,9 +324,12 @@ export async function runDiagnostics() {
 
 export function addMemo({ title, due, period, fromWork, keep }) {
   const now = new Date().toISOString()
+  // 달력 "바로 추가"에 "11:00 회의"처럼 적어도 시각은 시간 칸으로 (migrate와 같은 규칙)
+  const t = splitTime(title)
   const memo = {
     id: crypto.randomUUID(),
-    title,
+    title: t ? t.title : title,
+    ...(t ? { time: t.time, endTime: t.endTime } : {}),
     status: 'open',
     keep: !!keep,
     due: keep ? null : due || null,

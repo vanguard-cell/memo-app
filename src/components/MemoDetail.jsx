@@ -5,6 +5,7 @@ import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
 import { useTagSuggest, TagList, TagChips } from './TagSuggest'
 import { ScheduleBlock } from './ScheduleFields'
+import { splitTime } from '../schedule'
 import SendToDateBtn from './SendToDateBtn'
 import FileSection from './FileSection'
 import { attachFile, detachFile } from '../store'
@@ -143,13 +144,31 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
 
   // 저장했으면 true(그중 "등록"이면 'reg')를 돌려준다 — 부른 쪽이 뒷처리를 정하게.
   function saveTitle() {
-    const v = titleLatest.current.trim()
+    let v = titleLatest.current.trim()
     if (v === titleSaved.current) return null
+    // 제목 앞에 시각을 적으면("11:00 주간보고") 시간 칸으로 옮기고 제목에선 뗀다 (2026-10-29).
+    // 루틴 회차는 빼둔다 — 회차 제목은 규칙 이름에서 나온다 (store migrate와 같은 규칙)
+    const t = memo.routineId ? null : splitTime(v)
+    if (t) {
+      v = t.title
+      titleLatest.current = v
+      setTitle(v)
+    }
     // 빈 초안(+ 로 만들어 이름이 없던 것)에 이름이 붙는 순간이 이 앱의 "등록"이다.
     // 메모 자체는 + 를 누를 때 이미 만들어져 있어서, 이 순간 말고는 등록이랄 사건이 없다.
     const kind = !titleSaved.current && v ? 'reg' : 'edit'
     titleSaved.current = v
-    updateMemo(memo.id, { title: v })
+    updateMemo(
+      memo.id,
+      t
+        ? {
+            title: v,
+            time: t.time,
+            // 끝 시각을 안 적었으면 원래 끝 시각을 두되, 새 시작보다 이르면 지운다
+            endTime: t.endTime || (memo.endTime && memo.endTime > t.time ? memo.endTime : null),
+          }
+        : { title: v }
+    )
     flashSaved(kind)
     // 달력이 듣고, 제목 칸에서 그 날짜 칸으로 칩을 날려 보낸 뒤 한 번 번쩍여 준다.
     // 제목 칸의 위치를 같이 실어 보낸다 — 어디서 출발할지는 여기만 안다.

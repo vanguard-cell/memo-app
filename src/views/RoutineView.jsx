@@ -22,10 +22,12 @@ import {
 import { readRoutinePaste } from '../importXlsx'
 import useIsNarrow from '../useIsNarrow'
 import { AlarmField } from '../components/ScheduleFields'
-import { REPEAT_OPTIONS, kindOfMonths, monthsFor } from '../schedule'
+import { REPEAT_OPTIONS, kindOfMonths, monthsFor, isWeeklyLive, weeklyAhead } from '../schedule'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const DOW = ['일', '월', '화', '수', '목', '금', '토']
+const dowOf = (ymd) => new Date(ymd + 'T00:00').getDay()
 // 중단한 항목을 담는 가짜 묶음 이름 — 격자 맨 아래에 접힌 채로 붙는다
 const STOPPED = '__stopped__'
 
@@ -95,6 +97,24 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
   }
   // 중단한 것들은 맨 아래 한 묶음으로 모아 접어둔다 (묶음 하나를 더 두는 것과 같은 취급)
   if (stoppedList.length) groups.push(STOPPED)
+
+  // 매주 반복 메모 — 루틴(달마다 회차 하나)이 아니라 메모 하나가 매주 굴러가는 방식이라 격자의
+  // "그 달 완료" 칸을 가질 수 없다. 그래도 반복하는 일은 여기서 한눈에 보여야 하므로 (2026-10-29
+  // 사용자: "매주로 만들었는데 루틴 화면에 안 뜬다") 맨 위 '매주' 묶음에 줄로 둔다.
+  // 칸에는 그 달에 남은 횟수만 적는다(지금 회차 포함) — 완료는 상세·달력에서 한다. 요일·시각 순.
+  const weeklies = useMemo(
+    () =>
+      memos
+        .filter(isWeeklyLive)
+        .sort((a, b) => `${dowOf(a.due)}${a.time || '99'}`.localeCompare(`${dowOf(b.due)}${b.time || '99'}`)),
+    [memos]
+  )
+  const weeklyLeft = (m, month) => {
+    const from = `${ymOf(month)}-01`
+    const to = `${ymOf(month)}-${pad2(new Date(year, month, 0).getDate())}`
+    const cur = m.due >= from && m.due <= to ? 1 : 0
+    return cur + weeklyAhead(m, from, to).length
+  }
 
   // 왼쪽 위 배지는 "고른 달" 기준 — 월 머리를 누르면 그 달의 남은 건수로 바뀐다
   const selYm = ymOf(selMonth)
@@ -399,6 +419,72 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
             </tr>
           </thead>
           <tbody>
+            {/* 매주 묶음 — 고정 묶음이라 이름 고치기·끌어 옮기기·+가 없다 (항목은 상세의 [반복]에서 매주로) */}
+            {weeklies.length > 0 && (
+              <tr className="rt-group">
+                <td className="rt-gname">
+                  <span title="매주 반복하는 메모 — 완료하면 다음 주로 넘어갑니다. 반복은 상세의 [반복]에서 바꿉니다">
+                    매주
+                  </span>
+                </td>
+                {MONTHS.map((mm) => (
+                  <td key={mm} className={'rt-gcell' + (mm === selMonth ? ' sel' : '')} />
+                ))}
+                <td className="rt-gcell" />
+              </tr>
+            )}
+            {weeklies.map((m) => {
+              const detail = narrow && renderDetail ? renderDetail(m.id) : null
+              return (
+                <Fragment key={'w' + m.id}>
+                  <tr className="rt-row">
+                    <td className="rt-name">
+                      <span
+                        className="rt-title"
+                        title={m.desc ? `${m.title}\n${m.desc}` : m.title}
+                        onClick={() => onOpen(m.id)}
+                      >
+                        {m.title || '(이름 없음)'}
+                      </span>
+                      <span className="rt-stop-tag" title={`매주 ${DOW[dowOf(m.due)]}요일${m.time ? ' ' + m.time : ''}`}>
+                        {DOW[dowOf(m.due)]}
+                        {m.time ? ' ' + m.time : ''}
+                      </span>
+                      {m.repeatUntil && (
+                        <span className="rt-stop-tag" title="반복 종료 — 상세의 [반복 종료]에서 바꿉니다">
+                          {Number(m.repeatUntil.slice(5, 7))}/{Number(m.repeatUntil.slice(8, 10))}까지
+                        </span>
+                      )}
+                      {m.alarm && (
+                        <span className="rt-stop-tag" title={`미리 알림 — ${m.alarm.text}`}>
+                          알림
+                        </span>
+                      )}
+                    </td>
+                    {MONTHS.map((mm) => {
+                      const n = weeklyLeft(m, mm)
+                      return (
+                        <td
+                          key={mm}
+                          className={'rt-cell rt-wk' + (n ? '' : ' rt-na') + (mm === selMonth ? ' sel' : '')}
+                          title={n ? `${mm}월에 ${n}번 남음 — 누르면 상세` : ''}
+                          onClick={() => n && onOpen(m.id)}
+                        >
+                          {n || ''}
+                        </td>
+                      )
+                    })}
+                    <td className="rt-menu" />
+                  </tr>
+                  {/* 폰: 이름을 누르면 그 줄 아래에서 상세가 펼쳐진다 (루틴 줄과 같은 규칙) */}
+                  {detail && (
+                    <tr className="rt-detail-row">
+                      <td colSpan={14}>{detail}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
             {groups.map((g) => (
               <Fragment key={g}>
                 {/* 묶음 머리 — 칸 열을 colSpan으로 덮지 않는다. 덮으면 그 줄에서 열이 끊겨
@@ -950,6 +1036,11 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
         <span>
           <b className="rt-t-na">–</b> 해당 없음
         </span>
+        {weeklies.length > 0 && (
+          <span>
+            <b className="rt-t-wk">4</b> 매주 — 그 달에 남은 횟수
+          </span>
+        )}
       </div>
     </div>
   )

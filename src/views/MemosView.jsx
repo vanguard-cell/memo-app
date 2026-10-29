@@ -775,7 +775,8 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
   // 검색만 적용된 목록 — 달력 보기는 타일(시간) 필터를 무시한다 (달력 자체가 시간 화면이라 겹치면 텅 비어 보임)
   const searchList = memos.filter((m) => {
     if (!words.length) return true
-    const hay = [m.title, m.desc, ...m.history.map((h) => h.text)]
+    // 시각도 검색에 걸리게 — 제목 앞의 "11:00"을 시간 칸으로 옮긴 뒤에도 "11:00"으로 찾아진다
+    const hay = [m.title, m.time, m.endTime, m.desc, ...m.history.map((h) => h.text)]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
