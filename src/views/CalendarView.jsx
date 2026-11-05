@@ -449,8 +449,10 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     return macroByDate(from, to)
   }, [macroData, y, mo, filtered])
 
-  // 체크 — 아직 회차가 없는 달의 루틴 알림이면 그 달 회차를 만들면서 체크한다
+  // 체크 — 아직 회차가 없는 달의 루틴 알림이면 그 달 회차를 만들면서 체크한다.
+  // 매주 반복의 앞 회차 알림(ahead)은 미리보기라 체크하지 않는다 — 그 회차가 지금 회차가 되면 체크된다
   function toggleAlarm(it) {
+    if (it.ahead) return
     if (it.memo) return it.done ? uncheckAlarm(it.memo.id) : checkAlarm(it.memo.id)
     checkRoutineAlarm(it.routine.id, it.ym)
   }
@@ -461,6 +463,35 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     if (!m) return
     setSel(date)
     openDetail(m.id)
+  }
+
+  // 미리 알림 칩 — 체크박스는 체크, 글자는 그 일정 상세 (폰은 색 막대만, 체크는 아래 목록에서).
+  // 매주 반복의 앞 회차 알림(ahead)은 앞 회차 칩처럼 점선·흐리게, 체크박스는 잠근다
+  function alarmChip(it, date) {
+    return (
+      <span
+        key={'a' + it.key}
+        className={'cal-ev ev-alarm' + (it.done ? ' ev-done' : '') + (it.ahead ? ' ev-tent' : '')}
+        title={
+          `미리 알림 — ${it.text} (${it.memo ? it.memo.title : it.routine.title} · ${fmtDate(it.base)})` +
+          (it.ahead ? ' — 매주 반복 (지금 회차를 완료하면 체크할 수 있습니다)' : '')
+        }
+        onClick={(ev) => {
+          ev.stopPropagation()
+          openAlarm(it, date)
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={it.done}
+          disabled={!!it.ahead}
+          aria-label="미리 알림 체크"
+          onClick={(ev) => ev.stopPropagation()}
+          onChange={() => toggleAlarm(it)}
+        />
+        <span>{it.text}</span>
+      </span>
+    )
   }
 
   // 예정 자리를 누르면 그때 회차가 만들어지고 상세가 열린다
@@ -710,9 +741,11 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
           // 이 값은 "몇 개가 안 보이는지"(+N 표시)를 가늠하는 데만 쓴다.
           // 띠 한 줄은 칩 한 줄과 같은 20px, 완료 띠는 8px(≈0.4줄)이라 그만큼만 뺀다.
           // 폰은 칸이 66px 고정이라 예전대로 4줄 기준 (여기서 실제로 잘라 그린다).
+          // 맨 위에 그리는 체크 안 한 미리 알림도 칩 한 줄씩 차지한다.
+          const topAlarms = (alarms[date] || []).filter((it) => !it.done)
           const chipLimit = Math.max(
             1,
-            (narrow ? 4 : 5) - laneEls.length - Math.ceil(doneLaneEls.length * 0.4)
+            (narrow ? 4 : 5) - laneEls.length - Math.ceil(doneLaneEls.length * 0.4) - topAlarms.length
           )
           return (
             <div
@@ -767,6 +800,9 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
               <div className="cal-chips">
               {/* 폰은 칸 높이가 내용에 따라 늘어나는 구조라 전부 그리면 주 줄이 통째로 커진다 —
                   폰은 예전처럼 자르고, 넘치는 건 날짜를 탭해 아래 목록에서 본다 */}
+              {/* 체크 안 한 미리 알림은 칸 맨 위 — 일정이 많은 날 맨 아래에 묻혀 안 보였다
+                  (2026-11-05, 주간보고 전날 알림). 보드에서 알림 뜬 일을 위로 올리는 것과 같은 뜻 */}
+              {topAlarms.map((it) => alarmChip(it, date))}
               {(narrow ? evs.slice(0, chipLimit) : evs).map((e, j) => {
                 const st = memoStatus(e.m)
                 return (
@@ -837,27 +873,8 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                   {r.title}
                 </span>
               ))}
-              {/* 미리 알림 — 체크박스는 체크, 글자는 그 일정 상세 (폰은 색 막대만, 체크는 아래 목록에서) */}
-              {(alarms[date] || []).map((it) => (
-                <span
-                  key={'a' + it.key}
-                  className={'cal-ev ev-alarm' + (it.done ? ' ev-done' : '')}
-                  title={`미리 알림 — ${it.text} (${it.memo ? it.memo.title : it.routine.title} · ${fmtDate(it.base)})`}
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    openAlarm(it, date)
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={it.done}
-                    aria-label="미리 알림 체크"
-                    onClick={(ev) => ev.stopPropagation()}
-                    onChange={() => toggleAlarm(it)}
-                  />
-                  <span>{it.text}</span>
-                </span>
-              ))}
+              {/* 체크한 미리 알림은 맨 아래 (체크 안 한 것은 맨 위에 그렸다) */}
+              {(alarms[date] || []).filter((it) => it.done).map((it) => alarmChip(it, date))}
               {/* 거시경제 일정 — 누를 것이 없는 참고 칩. 색은 하나로 조용하게 (2026-10-12) */}
               {(macro[date] || []).map((e) => (
                 <span
@@ -1056,13 +1073,15 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             return (
               <div
                 key={'a' + it.key}
-                className={'row row-alarm' + (it.done ? ' done' : '')}
+                className={'row row-alarm' + (it.done ? ' done' : '') + (it.ahead ? ' row-tent' : '')}
+                title={it.ahead ? '매주 반복 — 지금 회차를 완료하면 체크할 수 있습니다' : undefined}
                 onClick={() => openAlarm(it, sel)}
               >
                 <input
                   type="checkbox"
                   className="tl-check"
                   checked={it.done}
+                  disabled={!!it.ahead}
                   aria-label="미리 알림 체크"
                   onClick={(ev) => ev.stopPropagation()}
                   onChange={() => toggleAlarm(it)}

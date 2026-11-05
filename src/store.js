@@ -1,6 +1,6 @@
 import { todayStr, parse, addDays } from './parser'
 import { supabase, hasSupabase } from './supabase'
-import { alarmStart, alarmDays, alarmSpanMonths, splitTime } from './schedule'
+import { alarmStart, alarmDays, alarmSpanMonths, splitTime, isWeeklyLive, weeklyAhead } from './schedule'
 
 const KEY = 'hds-memo-data-v1'
 
@@ -1371,8 +1371,8 @@ export function ensureAlarmCycles() {
 // 기간(from~to, 'YYYY-MM-DD') 안에 뜨는 미리 알림 칩 목록.
 // 메모(루틴 회차 포함)에 걸린 알림 + 아직 회차가 없는 달의 루틴 알림(규칙에서 계산).
 // 화면이 useMemo 안에서 부른다 — useSyncExternalStore getter로 쓰면 안 된다(새 배열).
-// rules=false면 규칙 계산은 빼고 있는 메모만 본다(검색 중인 달력).
-// 돌려주는 항목: { key, date, done, text, base, memo | (routine, ym) }
+// rules=false면 규칙 계산은 빼고 있는 메모만 본다(검색 중인 달력·보드).
+// 돌려주는 항목: { key, date, done, text, base, ahead?, memo | (routine, ym) }
 export function alarmItems(memos, routines, from, to, { rules = true } = {}) {
   const today = todayStr()
   const byId = new Map(routines.filter((r) => !r.deleted).map((r) => [r.id, r]))
@@ -1385,12 +1385,20 @@ export function alarmItems(memos, routines, from, to, { rules = true } = {}) {
     const alarm = m.routineId ? (byId.get(m.routineId) || {}).alarm : m.alarm
     const base = m.due || (m.period && m.period.start)
     if (!alarm || !alarm.text || !base) continue
-    add(alarmDays({ base, alarm, checkedAt: m.alarmCheckedAt, today }), {
-      key: m.id,
-      memo: m,
-      text: alarm.text,
-      base,
-    })
+    const days = alarmDays({ base, alarm, checkedAt: m.alarmCheckedAt, today })
+    add(days, { key: m.id, memo: m, text: alarm.text, base })
+    // 매주 반복의 앞 회차 알림 (2026-11-05, 사용자: "주간보고 전날 알림이 이번 주만 뜨고
+    // 18일엔 안 떠 있다"). 매주는 메모 하나가 굴러가서 앞 회차는 메모가 없다 — weeklyAhead
+    // 날짜마다 알림 칩을 미리 그린다(ahead). 체크는 그 회차가 지금 회차가 된 뒤에 한다.
+    // 알림 날이 이미 지난 회차는 안 그린다(그 몫은 지금 회차 알림이 오늘로 따라온다).
+    if (!rules || !isWeeklyLive(m)) continue
+    const taken = new Set(days.map((d) => d.date))
+    for (const b of weeklyAhead(m, from, addDays(to, 31 * alarmSpanMonths(alarm)))) {
+      if (alarmStart(b, alarm) < today) continue
+      const ahead = alarmDays({ base: b, alarm, checkedAt: null, today }).filter((d) => !taken.has(d.date))
+      for (const d of ahead) taken.add(d.date)
+      add(ahead, { key: m.id + '|' + b, memo: m, text: alarm.text, base: b, ahead: true })
+    }
   }
   if (!rules) return out
   for (const r of byId.values()) {
