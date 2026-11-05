@@ -1,8 +1,8 @@
 import { Fragment, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
-import { completeMemo, reopenMemo, updateMemo, setDayOrder, alarmItems } from '../store'
-import { todayStr } from '../parser'
+import { completeMemo, reopenMemo, updateMemo, setDayOrder, alarmItems, addMemo } from '../store'
+import { todayStr, parse } from '../parser'
 import useIsNarrow from '../useIsNarrow'
 
 const pad = (n) => String(n).padStart(2, '0')
@@ -759,6 +759,23 @@ const VIEWS = [
   ['timeline', '타임라인'],
 ]
 
+// 검색칸에 친 글로 새 메모를 만들 때의 제목·날짜 (2026-11-05).
+// 날짜는 제목에서 뗀다(핵심 컨셉 1 — migrate()와 같은 규칙): "11/20 우미린 잔금" → 11/20 · "우미린 잔금",
+// "11/20~11/22 교육" → 기간, "11/30까지" → 그날 하루. 날짜가 없으면 오늘. 시각은 addMemo가 뗀다.
+function draftFromSearch(text, today) {
+  const p = parse(text)
+  const title = p.cleaned || text
+  if (p.period && p.deadline) return { title, due: p.period.end }
+  if (p.period) return { title, period: p.period }
+  return { title, due: p.due || today }
+}
+
+const md = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}`
+function draftWhen(d, today) {
+  if (d.period) return `${md(d.period.start)}~${md(d.period.end)}`
+  return d.due === today ? '오늘' : md(d.due)
+}
+
 export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDetail }) {
   const [q, setQ] = useState('')
   const searchRef = useRef(null)
@@ -782,6 +799,18 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
     return words.every((w) => hay.includes(w))
   })
   const list = searchList
+
+  // 검색칸 = 새 메모 칸 (2026-11-05, 사용자: "앱을 켜면 메모 입력이 아니라 검색이 먼저 뜬다").
+  // 칸을 늘리지 않고 검색칸 하나로 — 치면 비슷한 메모가 아래에 걸러져 보이고(같은 건이면 거기에 이어 쓰기),
+  // 아니면 Enter로 새 메모. 만든 뒤 칸을 비우고 상세를 연다. 예전 "던지기 입력"(별도 칸, 7/24 제거)과 다르다.
+  const typed = q.trim()
+  const draft = typed ? draftFromSearch(typed, today) : null
+  function addFromSearch() {
+    if (!draft) return
+    const m = addMemo(draft)
+    setQ('')
+    onOpen(m.id)
+  }
 
   function pick(v) {
     setView(v)
@@ -811,13 +840,20 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
             className="search-input mv-search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            // PC는 앱을 열면 바로 칠 수 있게 커서를 둔다. 폰은 키보드가 화면을 덮으니 한 번 눌러서
+            autoFocus={!window.matchMedia('(max-width: 899px)').matches}
             onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && draft) {
+                e.preventDefault()
+                addFromSearch()
+                return
+              }
               if (e.key === 'Escape' && q) {
                 e.stopPropagation()
                 setQ('')
               }
             }}
-            placeholder="검색 — 제목·진행기록, 보관·완료까지"
+            placeholder="검색하거나 새 메모 쓰기 (Enter)"
           />
           {q && (
             <button
@@ -835,6 +871,16 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
           )}
         </span>
       </div>
+      {draft && (
+        <button className="mv-new" onClick={addFromSearch}>
+          <span className="mv-new-plus">＋</span>
+          <span className="mv-new-t">‘{draft.title}’ 새 메모로 추가</span>
+          <span className="mv-new-k">
+            {draftWhen(draft, today)} · {list.length ? `비슷한 메모 ${list.length}건 ↓` : '같은 메모 없음'}
+            <span className="mv-new-enter"> · Enter</span>
+          </span>
+        </button>
+      )}
       {view === 'board' && <BoardView memos={list} routines={routines} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
