@@ -850,7 +850,14 @@ export function routineHasMonth(r, ym) {
   const m = Number(ym.slice(5, 7))
   if (r.startYm && ym < r.startYm) return false
   if (r.endYm && ym >= r.endYm) return false
-  return !r.months || r.months.length === 0 || r.months.includes(m)
+  if (r.months && r.months.length > 0 && !r.months.includes(m)) return false
+  // N년마다 (2026-11-06) — 시작한 해부터 N년 간격의 해에만. 달력 예정 자리·격자·회차 만들기가 다 여기를 본다
+  const n = Number(r.everyYears) || 1
+  if (n > 1) {
+    const y0 = Number((r.startYm || ym).slice(0, 4))
+    if ((Number(ym.slice(0, 4)) - y0) % n !== 0) return false
+  }
+  return true
 }
 
 export const routineOf = (id) => state.routines.find((r) => r.id === id && !r.deleted) || null

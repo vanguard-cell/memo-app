@@ -6,7 +6,7 @@ import {
 import { diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import {
-  REPEAT_OPTIONS, ROUTINE_KINDS, kindOfMonths, monthsFor,
+  REPEAT_OPTIONS, ROUTINE_KINDS, routineKind, monthsFor,
   ALARM_PRESETS, ALARM_UNITS, alarmMode, alarmLabel, alarmStart, timeText,
 } from '../schedule'
 
@@ -130,7 +130,7 @@ export function ScheduleBlock({ memo }) {
   // 루틴이 이 회차 뒤로도 이어지나 — 이 회차에서 끊었으면(endYm = 다음 달) 반복 "안 함"으로 보인다
   const rtLive = !!rt && (!rt.endYm || (!!nextYm && rt.endYm > nextYm))
   const kind = rtLive
-    ? kindOfMonths(rt.months)
+    ? routineKind(rt)
     : ['weekly', 'monthly', 'yearly'].includes(memo.repeat)
       ? memo.repeat
       : 'none'
@@ -205,7 +205,7 @@ export function ScheduleBlock({ memo }) {
     const months = monthsFor(next, baseMonth)
     if (rt) {
       // 이미 루틴 회차 — 주기만 바꾸거나, 끊었던 루틴을 다시 잇는다
-      updateRoutine(rt.id, { months, ...(rtLive ? {} : { endYm: null }) })
+      updateRoutine(rt.id, { months, everyYears: null, ...(rtLive ? {} : { endYm: null }) })
       return
     }
     makeRoutineFromMemo(memo.id, { months })
@@ -229,6 +229,7 @@ export function ScheduleBlock({ memo }) {
     quarter: '분기마다',
     half: '반기마다',
     yearly: `매년 ${Number(start.slice(5, 7))}월 ${day}일`,
+    years: `${rt ? rt.everyYears : ''}년마다 ${Number(start.slice(5, 7))}월 ${day}일`,
     custom: '정해둔 달마다',
   }[kind]
   const summary = [
@@ -303,6 +304,7 @@ export function ScheduleBlock({ memo }) {
               </option>
             ))}
             {kind === 'custom' && <option value="custom">정해둔 달</option>}
+            {kind === 'years' && <option value="years">{rt.everyYears}년마다</option>}
           </select>
           {kind === 'monthly' && rtLive && (
             <select

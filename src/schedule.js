@@ -27,9 +27,13 @@ export function kindOfMonths(months) {
   return 'custom' // 엑셀에서 들어온 불규칙한 달 목록 — 고치지 않으면 그대로 둔다
 }
 
+// N년마다 (2026-11-06, 근골격계 유해요인조사 3년) — 루틴 정의의 everyYears. 달은 매년처럼 한 달,
+// 해는 시작한 해(startYm)부터 N년 간격만 (store의 routineHasMonth가 거른다)
+export const routineKind = (r) => (r && Number(r.everyYears) > 1 ? 'years' : kindOfMonths(r && r.months))
+
 export function monthsFor(kind, baseMonth) {
   const base = Math.min(12, Math.max(1, Number(baseMonth) || 1))
-  const step = { quarter: 3, half: 6, yearly: 12 }[kind]
+  const step = { quarter: 3, half: 6, yearly: 12, years: 12 }[kind]
   if (!step) return null // 매월
   const list = []
   for (let k = 0; k < 12 / step; k++) list.push(((base - 1 + step * k) % 12) + 1)

@@ -22,7 +22,7 @@ import {
 import { readRoutinePaste } from '../importXlsx'
 import useIsNarrow from '../useIsNarrow'
 import { AlarmField } from '../components/ScheduleFields'
-import { REPEAT_OPTIONS, kindOfMonths, monthsFor, isWeeklyLive, weeklyAhead } from '../schedule'
+import { REPEAT_OPTIONS, routineKind, monthsFor, isWeeklyLive, weeklyAhead } from '../schedule'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
@@ -33,7 +33,7 @@ const STOPPED = '__stopped__'
 
 // 루틴 반복 주기 — 상세 패널의 [반복]과 같은 이름. 주기는 결국 "몇 월에 해당하나" 목록이라
 // 분기·반기는 기준 달(지금 목록의 첫 달)에서부터 편다. (2026-09-15 상세 패널과 통일)
-const SPAN_STEP = { quarter: 3, half: 6, yearly: 12 }
+const SPAN_STEP = { quarter: 3, half: 6, yearly: 12, years: 12 }
 const ROUTINE_REPEAT = REPEAT_OPTIONS.filter(([k]) => k !== 'none' && k !== 'weekly')
 
 // 「루틴」 — 매달·분기·해마다 도는 일을 1년 격자로 (2026-08-11).
@@ -181,7 +181,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       dueDay: r.dueDay || 5,
       dueShift: Number(r.dueShift) || 0,
       months: r.months || null,
-      kind: kindOfMonths(r.months),
+      kind: routineKind(r),
+      everyYears: Number(r.everyYears) > 1 ? Number(r.everyYears) : null,
       // 분기·반기를 새로 고를 때 어느 달부터 펼지 — 지금 목록의 첫 달, 없으면 시작한 달
       baseMonth: (r.months && r.months[0]) || Number((r.startYm || thisYm()).slice(5, 7)),
       alarm: r.alarm || null,
@@ -207,6 +208,8 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
       dueDay: Math.min(31, Math.max(1, Number(form.dueDay) || 5)),
       dueShift: Number(form.dueShift) || 0,
       months: form.kind === 'custom' ? form.months : monthsFor(form.kind, form.baseMonth),
+      // N년마다는 이 폼에서 새로 고르지 않는다 — 다른 주기를 고르면 풀린다
+      everyYears: form.kind === 'years' ? form.everyYears : null,
       alarm: form.alarm || null,
       endNote: form.endNote.trim(),
     })
@@ -876,6 +879,7 @@ export default function RoutineView({ routines, memos, onOpen, renderDetail }) {
                                       </option>
                                     ))}
                                     {form.kind === 'custom' && <option value="custom">정해둔 달</option>}
+                                    {form.everyYears && <option value="years">{form.everyYears}년마다</option>}
                                   </select>
                                   {/* 분기·반기·매년은 몇 월에 하는지 고른다 — 만든 달로 정해지면 고칠 길이 없었다 */}
                                   {SPAN_STEP[form.kind] && (
