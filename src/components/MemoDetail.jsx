@@ -561,6 +561,19 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           {memo.areaAuto && !memo.routineId && <span className="sched-muted">자동</span>}
           {memo.routineId && <span className="sched-muted">루틴 전체에 적용</span>}
         </div>
+        {/* 완료하면 N년마다 루틴이 되는 메모 (2026-11-06) — 아직 한 번도 안 한 법정 조사 */}
+        {Number(memo.repeatYears) > 1 && !memo.routineId && memo.status !== 'done' && (
+          <div className="panel-years">
+            <span>완료하면 그날부터 {memo.repeatYears}년마다 루틴으로 돕니다</span>
+            <button
+              className="linkish"
+              title="완료해도 루틴을 만들지 않는 보통 메모로"
+              onClick={() => updateMemo(memo.id, { repeatYears: null })}
+            >
+              풀기
+            </button>
+          </div>
+        )}
         <div className="panel-desc">
           <div className="panel-sec-label">작업 설명</div>
           <textarea

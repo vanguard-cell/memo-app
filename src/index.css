@@ -3593,6 +3593,16 @@ main {
   margin-bottom: 0;
 }
 
+/* 완료하면 N년마다 루틴이 되는 메모 — 분야 아래 한 줄 */
+.panel-years {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
 /* 작업 설명 — 진행기록 위에 놓이는 고정 칸 (노션 세부정보의 '작업 설명') */
 .panel-desc {
   margin: 22px 0 24px;

@@ -638,6 +638,8 @@ export function nextRepeatDate(due, repeat) {
 
 export function completeMemo(id) {
   const now = new Date().toISOString()
+  const target = state.memos.find((m) => m.id === id)
+  const startsYears = target && Number(target.repeatYears) > 1 && !target.routineId && target.status !== 'done'
   commit({
     ...state,
     memos: state.memos.map((m) => {
@@ -668,6 +670,41 @@ export function completeMemo(id) {
     }),
   })
   remoteUpsert(id)
+  if (startsYears) startYearsRoutine(id)
+}
+
+// 완료하면 N년마다 루틴이 되는 메모 (2026-11-06, 근골격계 유해요인조사) — 아직 한 번도 안 한 법정 조사는
+// 시작 날을 미리 정할 수 없다(사용자: "새로 내가 작성하면 그때부터 시작"). 메모에 repeatYears를 두고,
+// 완료하는 순간 그 날(예정일이 있고 지났으면 예정일)부터 N년마다 도는 루틴을 만들고 이 메모를 첫 회차로 삼는다.
+// 그래서 격자에는 처음 한 해가 ✓로 남고 N년 뒤에 다음 회차가 뜬다. 되돌리기(다시 열기)는 회차만 다시 연다.
+function startYearsRoutine(id) {
+  const m = state.memos.find((x) => x.id === id)
+  if (!m || m.routineId) return
+  const n = Number(m.repeatYears)
+  const today = todayStr()
+  const date = m.due && m.due <= today ? m.due : today
+  const r = addRoutine({
+    title: m.title.trim(),
+    group: m.repeatGroup || '법정 의무',
+    desc: [`${n}년마다`, `최초 실시 ${date}`, m.desc && m.desc.trim()].filter(Boolean).join(' · '),
+    dueDay: Number(date.slice(8, 10)),
+    months: [Number(date.slice(5, 7))],
+    startYm: date.slice(0, 7),
+    area: m.area || null,
+    everyYears: n,
+  })
+  updateMemo(m.id, {
+    routineId: r.id,
+    ym: date.slice(0, 7),
+    keep: false,
+    due: date,
+    period: null,
+    repeatYears: null,
+    repeatGroup: null,
+    tentative: false,
+    dateFixed: true,
+    firstDue: m.firstDue ?? null, // 루틴으로 바꾸는 건 날짜를 미룬 게 아니다
+  })
 }
 
 export function reopenMemo(id) {
@@ -883,7 +920,7 @@ export const blankTitle = (t) => !String(t || '').replace(/[\s\u200b-\u200f\u206
 // 내가 날짜를 옮기거나 기록·완료하거나 [이 날로 확정]을 누르면 진해진다.
 // (2026-09-15 "고정 / 매번 잡음" 선택을 없애고 이 규칙 하나로 합쳤다. flexible 필드는 더 안 쓴다)
 // alarm = 미리 알림 규칙 { n, unit, daily, text } — 회차마다 규칙에서 계산해 칩을 띄운다.
-export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, alarm, area }) {
+export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, alarm, area, everyYears }) {
   const now = new Date().toISOString()
   const r = {
     id: crypto.randomUUID(),
@@ -896,6 +933,7 @@ export function addRoutine({ title, group, desc, dueDay, dueShift, months, start
     // 0이면 그 달 안, 1이면 다음 달에 처리하는 일(익월 발행 고지서 등)
     dueShift: Number(dueShift) || 0,
     months: months || null,
+    ...(Number(everyYears) > 1 ? { everyYears: Number(everyYears) } : {}),
     alarm: alarm || null,
     startYm: startYm || thisYm(),
     endYm: null,
@@ -1550,9 +1588,18 @@ export function importData(data) {
     throw new Error('내 기록 백업 파일이 아닙니다')
   }
   const has = (arr, id) => arr.some((x) => x.id === id)
+  // 지울 루틴 (2026-11-06) — 고침 파일이 예전에 넣은 루틴을 거둘 때. 회차를 한 번이라도 만든 루틴은
+  // 기록이 있을 수 있으니 건드리지 않는다
+  let removed = 0
+  for (const rid of data.removeRoutines || []) {
+    const r = state.routines.find((x) => x.id === rid && !x.deleted)
+    if (!r || state.memos.some((m) => m.routineId === rid)) continue
+    removeRoutine(rid)
+    removed++
+  }
   const newMemos = (data.memos || []).filter((m) => m && m.id && !has(state.memos, m.id))
   const newRoutines = (data.routines || []).filter((r) => r && r.id && !has(state.routines, r.id))
-  if (!newMemos.length && !newRoutines.length) return { memos: 0, routines: 0 }
+  if (!newMemos.length && !newRoutines.length) return { memos: 0, routines: 0, removed }
   const base = state.routines.length
   const routines = newRoutines.map((r, i) => ({ ...r, type: 'routine', order: r.order ?? base + i }))
   commit({
@@ -1563,7 +1610,7 @@ export function importData(data) {
   })
   for (const x of [...newMemos, ...routines]) remoteUpsert(x.id)
   if (data.dayOrder) remotePushState()
-  return { memos: newMemos.length, routines: routines.length }
+  return { memos: newMemos.length, routines: routines.length, removed }
 }
 
 // 분야 정리 파일 (2026-11-06) — Claude가 백업을 읽고 메모·루틴마다 분야를 정해 만든 파일을

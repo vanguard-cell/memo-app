@@ -239,9 +239,10 @@ export default function App() {
         return
       }
       window.alert(
-        n.memos + n.routines === 0
+        (n.memos + n.routines === 0
           ? '이미 다 들어 있는 내용입니다 (새로 추가된 것 없음)'
-          : `가져왔습니다 — 루틴 ${n.routines}건, 메모 ${n.memos}건`
+          : `가져왔습니다 — 루틴 ${n.routines}건, 메모 ${n.memos}건`) +
+          (n.removed ? `\n예전에 넣은 루틴 ${n.removed}개를 거뒀습니다` : '')
       )
     } catch (e) {
       console.error('가져오기 실패', e)
