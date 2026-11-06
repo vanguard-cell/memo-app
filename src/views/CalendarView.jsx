@@ -56,7 +56,7 @@ const dayLine = (m, date) => {
 }
 
 // 메모탭의 "달력" 보기. memos = 검색이 적용된 목록(달력에도 필터가 먹는다).
-export default function CalendarView({ memos, routines = [], dayOrder, onOpen, renderDetail, filtered }) {
+export default function CalendarView({ memos, routines = [], dayOrder, onOpen, renderDetail, filtered, hideMacro }) {
   const narrow = useIsNarrow()
   const t = new Date()
   const [y, setY] = useState(t.getFullYear())
@@ -442,12 +442,13 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   // 거시경제 일정 — 읽기 전용 참고 일정(메모가 아니다). 보고 있는 달만 꺼내 쓴다.
   // 검색 중엔 안 그린다 — 검색은 있는 것만 보는 자리다(루틴 예정 자리와 같은 규칙).
   const macroData = useSyncExternalStore(subscribeMacro, getMacro)
+  // 분야로 거르는 중에도 뺀다 — 메모가 아니라 어느 분야에도 안 든다 (2026-11-06)
   const macro = useMemo(() => {
-    if (filtered) return {}
+    if (filtered || hideMacro) return {}
     const from = `${y}-${pad(mo + 1)}-01`
     const to = `${y}-${pad(mo + 1)}-${pad(new Date(y, mo + 1, 0).getDate())}`
     return macroByDate(from, to)
-  }, [macroData, y, mo, filtered])
+  }, [macroData, y, mo, filtered, hideMacro])
 
   // 체크 — 아직 회차가 없는 달의 루틴 알림이면 그 달 회차를 만들면서 체크한다.
   // 매주 반복의 앞 회차 알림(ahead)은 미리보기라 체크하지 않는다 — 그 회차가 지금 회차가 되면 체크된다

@@ -231,6 +231,13 @@ export default function App() {
         return
       }
       const n = importData(JSON.parse(await file.text()))
+      if (n.kind === 'area') {
+        window.alert(
+          `분야를 정리했습니다 — 메모 ${n.areaMemos}건, 루틴 ${n.areaRoutines}개` +
+            (n.guessed ? `\n파일 뒤에 만든 메모 ${n.guessed}건은 비슷한 메모를 보고 자동으로 정했습니다` : '')
+        )
+        return
+      }
       window.alert(
         n.memos + n.routines === 0
           ? '이미 다 들어 있는 내용입니다 (새로 추가된 것 없음)'

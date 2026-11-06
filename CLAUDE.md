@@ -25,6 +25,7 @@
 3. 기한이 지난 일은 완료할 때까지 계속 따라온다 ("3일째" 식). 계약 만기는 D-60부터 미리 알린다.
 4. 완료된 것도 절대 버리지 않는다 — "25년 ○○업체 계약건" 검색이 몇 년 뒤에도 돼야 한다.
 5. 달력에는 모든 메모가 자기 날짜(기한·기간·작성일)에 표시된다. 드래그로 날짜 이동·순서 지정(폰은 ▲▼).
+6. 모든 메모는 **분야**(안전보건·소방·시설·기숙사·차량·총무·개인)를 가진다 — 주간·연간보고와 대장의 기준 (2026-11-06). 앱이 추정하고 사용자가 고친다. 루틴 회차는 루틴의 분야.
 
 ## 구조
 
@@ -33,7 +34,7 @@
 - `src/store.js` — 상태 전부 (localStorage 키 `hds-memo-data-v1`, useSyncExternalStore) + Supabase 동기화. `migrate()`가 로드 시 옛 데이터를 현재 스키마로 바꾼다 — 스키마를 바꾸면 여기에 마이그레이션 추가.
 - `src/views/` — MemosView(메모: 보드·표·타임라인), CalendarView(달력), RoutineView(루틴 격자), KeepView(보관 카드), TrashView(휴지통).
 - `src/components/` — MemoDetail(상세 패널), ScheduleFields(일정 칸·반복·미리 알림), Timeline(진행 기록), FileSection(파일 첨부), TagSuggest(`[` 말머리), ErrorBoundary, Login, SendToDateBtn.
-- 그 밖: `parser.js`(날짜 유틸·인식), `derive.js`(상태·날짜 표시), `schedule.js`(일정 계산·`splitTime`·`weeklyAhead`), `importXlsx.js`(엑셀 가져오기), `macro.js`(거시경제 일정), `holidays.js`, `files.js`, `supabase.js`, `useIsNarrow.js`(폰 판정, <900px).
+- 그 밖: `areas.js`(분야 목록·추정 `guessArea`), `parser.js`(날짜 유틸·인식), `derive.js`(상태·날짜 표시), `schedule.js`(일정 계산·`splitTime`·`weeklyAhead`), `importXlsx.js`(엑셀 가져오기), `macro.js`(거시경제 일정), `holidays.js`, `files.js`, `supabase.js`, `useIsNarrow.js`(폰 판정, <900px).
 - 상태는 자동 파생: 할일 → 진행중(체크가 하나라도 됨) → 완료. status 필드는 'open'/'done'만.
 - 서버: Supabase (memos·app_state 테이블, RLS 본인 것만, Storage 버킷 'files'). 배포: main 푸시 → GitHub Actions → https://vanguard-cell.github.io/memo-app/
 - 루틴 = **정의**(`state.routines`)와 **회차**(그냥 메모, `routineId`+`ym`)를 나눈 구조. 회차는 이번 달 것만 만든다. 자세한 규칙은 개발노트의 `루틴` 항목들.
@@ -54,6 +55,6 @@
 
 ## 진행 중인 과제
 
-- 보고서 자동화(/주간보고·/월간보고·/기안서 스킬): [양식/README.md](양식/README.md) 지침대로. 같은 요청이 3번 반복되면 스킬화를 제안.
+- **보고서 원본 만들기 3단계 (2026-11-06 중간점검, 사용자: "크게크게 가져가자")**: 1단계 기반(체크한 날·분야 완료, 법정 의무 루틴은 확인 대기) → 2단계 대장(표)·금액·합치기 → 3단계 주간보고 초안·연말 업무성과표. 결과·계획은 개발노트 `보고서 중간점검`. 보고서 양식은 [양식/README.md](양식/README.md)(회사 문서는 커밋 금지).
 - UI 재편(노션 모티브, "프로그램 같은 느낌"): [UI재편-스펙.md](UI재편-스펙.md).
 - 3단계(예정): PWA 폰 푸시 알림.

@@ -1075,6 +1075,27 @@ main {
   border-color: var(--blue-strong);
 }
 
+/* 분야 거르기 — 검색칸 왼쪽의 작은 선택 칸. 고르면 파랗게 (지금 걸러 보는 중이라는 표시) */
+.mv-area {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 4px 6px;
+  color: var(--muted);
+  background: #f7f8fa;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  outline: none;
+}
+
+.mv-area.on {
+  color: var(--blue);
+  font-weight: 700;
+  border-color: var(--blue);
+  background: var(--card);
+}
+
 .mv-head .mv-toggle {
   flex-shrink: 0;
   margin-right: auto;
@@ -3560,6 +3581,18 @@ main {
   margin-top: 22px;
 }
 
+/* 분야 — 작업 설명 위 한 줄 (2026-11-06) */
+.panel-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.panel-area .panel-sec-label {
+  margin-bottom: 0;
+}
+
 /* 작업 설명 — 진행기록 위에 놓이는 고정 칸 (노션 세부정보의 '작업 설명') */
 .panel-desc {
   margin: 22px 0 24px;
@@ -3633,6 +3666,13 @@ main {
   font-size: var(--fs-sm);
   min-width: 58px;
   padding-top: 1px;
+}
+
+.tl-doneat {
+  color: var(--faint);
+  font-size: var(--fs-label);
+  white-space: nowrap;
+  padding-top: 2px;
 }
 
 .tl-text {
@@ -5291,6 +5331,13 @@ main {
   .edit-form input,
   .work-form-grid input {
     font-size: 16px;
+  }
+
+  /* 분야 거르기·분야 칸 — 클래스 글씨 크기가 위 select 규칙을 이기므로 따로 16px (2026-11-06) */
+  .mv-area,
+  .panel-area .area-select {
+    font-size: 16px;
+    min-height: 40px;
   }
 
   /* 일정 칸 — 손가락 크기, 이름표를 줄이고 선택 뒤 칸은 들여쓰지 않는다 */

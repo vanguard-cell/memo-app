@@ -8,7 +8,8 @@ import { ScheduleBlock } from './ScheduleFields'
 import { splitTime } from '../schedule'
 import SendToDateBtn from './SendToDateBtn'
 import FileSection from './FileSection'
-import { attachFile, detachFile } from '../store'
+import { attachFile, detachFile, setArea, areaOf } from '../store'
+import { AREAS } from '../areas'
 import { ICONS } from '../icons'
 import useIsNarrow from '../useIsNarrow'
 
@@ -540,6 +541,25 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             }
             return null
           })}
+        </div>
+        {/* 분야 (2026-11-06) — 보고서·대장·연간실적을 묶는 기준. 새 메모는 비슷한 옛 메모를 보고
+            앱이 정해 두고("자동"), 고르면 내가 정한 것이 된다. 루틴 회차는 루틴의 분야를 바꾼다 */}
+        <div className="panel-area">
+          <span className="panel-sec-label">분야</span>
+          <select
+            className="sched-select area-select"
+            value={areaOf(memo) || ''}
+            onChange={(e) => setArea(memo, e.target.value)}
+          >
+            <option value="">미분류</option>
+            {AREAS.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {memo.areaAuto && !memo.routineId && <span className="sched-muted">자동</span>}
+          {memo.routineId && <span className="sched-muted">루틴 전체에 적용</span>}
         </div>
         <div className="panel-desc">
           <div className="panel-sec-label">작업 설명</div>

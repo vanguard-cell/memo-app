@@ -1,6 +1,7 @@
 import { todayStr, parse, addDays } from './parser'
 import { supabase, hasSupabase } from './supabase'
 import { alarmStart, alarmDays, alarmSpanMonths, splitTime, isWeeklyLive, weeklyAhead } from './schedule'
+import { guessArea, areaSample, isArea } from './areas'
 
 const KEY = 'hds-memo-data-v1'
 
@@ -339,6 +340,7 @@ export function addMemo({ title, due, period, fromWork, keep }) {
     id: crypto.randomUUID(),
     title: t ? t.title : title,
     ...(t ? { time: t.time, endTime: t.endTime } : {}),
+    ...autoArea(t ? t.title : title),
     status: 'open',
     keep: !!keep,
     due: keep ? null : due || null,
@@ -360,7 +362,11 @@ export function updateMemo(id, patch) {
   const before = state.memos.find((m) => m.id === id)
   commit({
     ...state,
-    memos: state.memos.map((m) => (m.id === id ? { ...m, ...patch, ...settle(m, patch), updatedAt: now } : m)),
+    memos: state.memos.map((m) =>
+      m.id === id
+        ? { ...m, ...patch, ...settle(m, patch), ...trackMove(m, patch), ...reArea(m, patch), updatedAt: now }
+        : m
+    ),
   })
   remoteUpsert(id)
   // 회차 제목을 고치면 루틴 이름도 따라 바뀐다 — 격자는 규칙 이름을, 상세는 회차 제목을
@@ -391,6 +397,60 @@ function renamedRule(m, next) {
 // dateFixed를 같이 남긴다 ([이 날로 확정]과 같은 표식): 앱을 열 때마다 도는 정렬
 // (alignTentative)이 "규칙은 매번 잡음인데 이 회차는 확정이네" 하고 도로 흐리게 만들지 않게.
 // 자동 날짜와 같은 날로 손수 고쳐둔 경우가 여기 걸린다. (2026-09-07)
+// ---------- 분야 (2026-11-06) ----------
+// 메모마다 area(안전보건·소방…, src/areas.js). 루틴 회차는 자기 칸을 쓰지 않고 루틴의 분야를 따른다 —
+// 회차가 달마다 새로 생겨도 같은 분야로 묶이게. areaAuto = 앱이 추정한 것(제목을 고치면 다시 추정한다).
+// 사용자가 고르거나 정리 파일로 들어온 분야는 areaAuto가 없고, 그것만 추정의 본보기가 된다.
+function areaSamples(exceptId) {
+  const out = []
+  for (const m of state.memos) {
+    if (m.deleted || m.routineId || !m.area || m.areaAuto || m.id === exceptId) continue
+    out.push(areaSample(m.title, m.area))
+  }
+  for (const r of state.routines) if (!r.deleted && r.area) out.push(areaSample(r.title, r.area))
+  return out
+}
+function autoArea(title, exceptId) {
+  const a = guessArea(title, areaSamples(exceptId))
+  return a ? { area: a, areaAuto: true } : null
+}
+// 제목을 고치면 다시 추정한다 — 단 내가 정한 분야는 건드리지 않는다
+const reArea = (m, patch) =>
+  typeof patch.title === 'string' && !('area' in patch) && !m.routineId && (m.areaAuto || !m.area)
+    ? autoArea(patch.title, m.id)
+    : null
+
+export const areaOf = (m) => {
+  if (!m) return null
+  if (m.routineId) {
+    const r = state.routines.find((x) => x.id === m.routineId)
+    return (r && r.area) || null
+  }
+  return m.area || null
+}
+
+// 상세에서 분야를 고른다. 루틴 회차면 루틴의 분야를 바꾼다(다음 달 회차도 같은 분야)
+export function setArea(m, area) {
+  const a = isArea(area) ? area : null
+  if (m.routineId) return updateRoutine(m.routineId, { area: a })
+  updateMemo(m.id, { area: a, areaAuto: false })
+}
+
+// 처음 잡은 날 · 미룬 횟수 (2026-11-06, 보고서 중간점검) — 날짜를 옮기면 원래 날짜가 덮여서
+// "계획보다 늦어진 일"을 뽑을 수 없었다. 화면엔 안 보이고 보고서를 만들 때만 쓴다.
+// · 기준 날짜는 하루짜리면 그날, 기간이면 끝나는 날 (늦어졌나를 보려는 것이라 끝을 본다)
+// · 보관(날짜 뗌)이나 날짜 없던 메모에 날짜를 주는 건 옮긴 걸로 안 센다
+// · 패치에 firstDue가 들어 있으면 되돌리기·변환이 직접 정하는 것이라 세지 않는다
+const planDay = (m) => m.due || (m.period && m.period.end) || null
+function trackMove(m, patch) {
+  if ('firstDue' in patch) return null
+  if (!('due' in patch) && !('period' in patch)) return null
+  const from = planDay(m)
+  const to = planDay({ ...m, ...patch })
+  if (!from || !to || from === to) return null
+  return { firstDue: m.firstDue || from, dueMoves: (m.dueMoves || 0) + 1 }
+}
+
 const settle = (m, patch) =>
   m.tentative && !('tentative' in patch) && ('due' in patch || 'period' in patch)
     ? { tentative: false, dateFixed: true }
@@ -471,7 +531,7 @@ export function checkAlarm(id) {
         ? {
             ...x,
             alarmCheckedAt: today,
-            history: [...x.history, { date: today, text: alarm.text, ts: Date.now(), done: true, alarm: true }],
+            history: [...x.history, { date: today, text: alarm.text, ts: Date.now(), done: true, doneAt: today, alarm: true }],
             stage: x.stage === 'todo' ? null : x.stage ?? null,
             tentative: false,
             updatedAt: now,
@@ -508,6 +568,17 @@ export function checkRoutineAlarm(routineId, ym) {
   if (c) checkAlarm(c.id)
 }
 
+// 체크한 날 (2026-11-06) — 진행 기록엔 "적은 날"만 있어서, 지난주에 적고 이번 주에 체크한 일이
+// 이번 주 실적으로 안 잡혔다. 체크하면 그날을 doneAt에 남기고, 풀면 지운다.
+function flipDone(h) {
+  if (h.done) {
+    const rest = { ...h, done: false }
+    delete rest.doneAt
+    return rest
+  }
+  return { ...h, done: true, doneAt: todayStr() }
+}
+
 export function toggleHistory(id, index) {
   const target = state.memos.find((m) => m.id === id)
   // 알림 체크 줄의 체크를 끄는 것 = 알림 체크 해제 (줄도 같이 사라진다)
@@ -532,7 +603,7 @@ export function toggleHistory(id, index) {
       m.id === id
         ? {
             ...m,
-            history: m.history.map((h, i) => (i === index ? { ...h, done: !h.done } : h)),
+            history: m.history.map((h, i) => (i === index ? flipDone(h) : h)),
             // 체크를 켜는 건 착수 — 보드에서 할일로 고정해둔 것도 풀어준다
             stage: !m.history[index].done && m.stage === 'todo' ? null : m.stage ?? null,
             updatedAt: now,
@@ -576,7 +647,21 @@ export function completeMemo(id) {
       if (m.repeat && m.due) {
         const next = nextRepeatDate(m.due, m.repeat)
         if (!m.repeatUntil || next <= m.repeatUntil) {
-          return { ...m, due: next, stage: 'todo', snoozeUntil: null, alarmCheckedAt: null, updatedAt: now }
+          // 한 회차를 끝낸 날을 남긴다 (2026-11-06) — 예전엔 날짜만 다음 주로 넘어가서
+          // "이번 주에 했다"는 흔적이 없었고, 주간회의 같은 반복 업무가 실적에서 통째로 빠졌다.
+          // due = 그 회차의 예정일, at = 완료를 누른 날. 다음 회차는 미룬 기록을 새로 센다.
+          const repeatDone = [...(m.repeatDone || []), { due: m.due, at: todayStr() }]
+          return {
+            ...m,
+            due: next,
+            stage: 'todo',
+            snoozeUntil: null,
+            alarmCheckedAt: null,
+            repeatDone,
+            firstDue: null,
+            dueMoves: 0,
+            updatedAt: now,
+          }
         }
       }
       return { ...m, status: 'done', completedAt: now, tentative: false, updatedAt: now }
@@ -791,12 +876,13 @@ export const blankTitle = (t) => !String(t || '').replace(/[\s\u200b-\u200f\u206
 // 내가 날짜를 옮기거나 기록·완료하거나 [이 날로 확정]을 누르면 진해진다.
 // (2026-09-15 "고정 / 매번 잡음" 선택을 없애고 이 규칙 하나로 합쳤다. flexible 필드는 더 안 쓴다)
 // alarm = 미리 알림 규칙 { n, unit, daily, text } — 회차마다 규칙에서 계산해 칩을 띄운다.
-export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, alarm }) {
+export function addRoutine({ title, group, desc, dueDay, dueShift, months, startYm, alarm, area }) {
   const now = new Date().toISOString()
   const r = {
     id: crypto.randomUUID(),
     type: 'routine',
     title: title || '',
+    area: isArea(area) ? area : guessArea(title, areaSamples()),
     group: group || '기타',
     desc: desc || '',
     dueDay: dueDay || 5,
@@ -1196,6 +1282,7 @@ export function makeRoutineFromMemo(memoId, { months = null } = {}) {
     months,
     startYm: ym,
     alarm: m.alarm || null,
+    area: m.area || null, // 메모의 분야를 루틴이 이어받는다 — 회차는 루틴의 분야를 따른다
   })
   // dateFixed — 원래 메모의 날짜는 내가 정한 날이다. 표식이 없으면 앱을 열 때 도는
   // 흐림 맞추기(alignTentative)가 "손 안 댄 자동 날짜"로 보고 흐리게 만든다.
@@ -1204,6 +1291,7 @@ export function makeRoutineFromMemo(memoId, { months = null } = {}) {
     ym,
     tentative: false,
     dateFixed: true,
+    firstDue: m.firstDue ?? null, // 루틴으로 바꾸는 건 날짜를 미룬 게 아니다
     due: date,
     period: null,
     repeat: null,
@@ -1450,6 +1538,7 @@ export function downloadBackup() {
 // 규칙: 같은 id가 이미 있으면 건드리지 않는다(덮어쓰기 없음) — 두 번 눌러도 안전하다.
 // 돌려주는 값은 {memos, routines} 실제로 추가된 건수.
 export function importData(data) {
+  if (data && data.kind === 'area-patch') return importAreaPatch(data)
   if (!data || (!Array.isArray(data.memos) && !Array.isArray(data.routines))) {
     throw new Error('내 기록 백업 파일이 아닙니다')
   }
@@ -1468,6 +1557,60 @@ export function importData(data) {
   for (const x of [...newMemos, ...routines]) remoteUpsert(x.id)
   if (data.dayOrder) remotePushState()
   return { memos: newMemos.length, routines: routines.length }
+}
+
+// 분야 정리 파일 (2026-11-06) — Claude가 백업을 읽고 메모·루틴마다 분야를 정해 만든 파일을
+// 가져오기로 넣는다. { kind:'area-patch', memos:{id:분야}, routines:{id:분야} }
+// · 이미 내가 고른 분야(areaAuto 없음)는 덮지 않는다 — 파일을 늦게 넣어도 손으로 고친 게 남게
+// · 파일에 없는 메모(백업 뒤에 만든 것)는 방금 들어온 분야를 본보기로 추정해서 채운다
+// · updatedAt은 1ms만 올린다 — 서버보다 새것이 되어 다른 기기로 퍼지되, 정렬(최근 고친 순)은 그대로
+// 돌려주는 값: { areaMemos, areaRoutines, guessed }
+function importAreaPatch(data) {
+  const pm = data.memos || {}
+  const pr = data.routines || {}
+  const bump = (u) => new Date(Date.parse(u || 0) + 1).toISOString()
+  const changed = []
+  let areaMemos = 0
+  let areaRoutines = 0
+  let guessed = 0
+  const routines = state.routines.map((r) => {
+    if (r.deleted || r.area || !isArea(pr[r.id])) return r
+    areaRoutines++
+    const next = { ...r, area: pr[r.id], updatedAt: bump(r.updatedAt) }
+    changed.push(next)
+    return next
+  })
+  let memos = state.memos.map((m) => {
+    if (m.deleted || m.routineId || (m.area && !m.areaAuto) || !isArea(pm[m.id])) return m
+    areaMemos++
+    const next = { ...m, area: pm[m.id], areaAuto: false, updatedAt: bump(m.updatedAt) }
+    changed.push(next)
+    return next
+  })
+  state = withVisible({ ...state, routines, memos })
+  const samples = areaSamples()
+  memos = memos.map((m) => {
+    if (m.deleted || m.routineId || m.area) return m
+    const a = guessArea(m.title, samples)
+    if (!a) return m
+    guessed++
+    const next = { ...m, area: a, areaAuto: true, updatedAt: bump(m.updatedAt) }
+    changed.push(next)
+    return next
+  })
+  commit({ ...state, routines, memos })
+  if (hasSupabase && session && changed.length) {
+    // 수백 건이라 한 번에 나눠 올린다 (한 건씩 올리면 요청이 수백 번 나간다)
+    const chunks = []
+    for (let i = 0; i < changed.length; i += 200) chunks.push(changed.slice(i, i + 200))
+    Promise.all(chunks.map(pushMemoRows))
+      .then(() => setAuth({ syncError: false }))
+      .catch((e) => {
+        console.error('동기화 실패', e)
+        setAuth({ syncError: true })
+      })
+  }
+  return { kind: 'area', areaMemos, areaRoutines, guessed }
 }
 
 // 엑셀에서 읽은 줄들을 루틴으로 들인다 (src/importXlsx.js가 넘겨준다, 2026-08-11).
@@ -1506,6 +1649,7 @@ export function importRoutineRows({ rows, year }) {
         id: crypto.randomUUID(),
         type: 'routine',
         title: key,
+        area: guessArea(key + ' ' + (row.group || ''), areaSamples()),
         group: row.group,
         desc: row.desc,
         dueDay: row.dueDay || 5,
@@ -1576,6 +1720,7 @@ export function importRoutineCycles({ items }) {
         id: crypto.randomUUID(),
         type: 'routine',
         title: key,
+        area: guessArea(key + ' ' + (it.group || ''), areaSamples()),
         group: it.group || '기타',
         desc: it.desc || '',
         dueDay: 5,

@@ -4,6 +4,7 @@ import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../deriv
 import { completeMemo, reopenMemo, updateMemo, setDayOrder, alarmItems, addMemo } from '../store'
 import { todayStr, parse } from '../parser'
 import useIsNarrow from '../useIsNarrow'
+import { AREAS, AREA_LABEL } from '../areas'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -161,7 +162,14 @@ function BoardView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDe
     if (col === 'done') {
       if (m.repeat && m.due) {
         // 반복 메모: 완료 = 다음 주기로 — 되돌리기는 이전 예정일 복원
-        const prev = { due: m.due, stage: m.stage ?? null }
+        // 끝낸 기록(repeatDone)·미룬 기록도 함께 되돌린다 — firstDue가 들어 있어 미룬 걸로 안 센다
+        const prev = {
+          due: m.due,
+          stage: m.stage ?? null,
+          repeatDone: m.repeatDone || [],
+          firstDue: m.firstDue ?? null,
+          dueMoves: m.dueMoves || 0,
+        }
         completeMemo(m.id)
         showUndo(`'${m.title}' 다음 주기로`, () => updateMemo(m.id, prev))
       } else {
@@ -752,6 +760,18 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
 
 // ---------- 메모탭 ----------
 
+// 분야 거르기 (2026-11-06) — 보드·달력·표·타임라인이 다 같이 걸러진다. '업무만' = 개인을 뺀 전부.
+const AREA_FILTERS = [['', '전체'], ['work', '업무만'], ...AREAS, ['none', '미분류']]
+const readAreaF = () => {
+  try {
+    const v = localStorage.getItem('memo-area') || ''
+    return AREA_FILTERS.some(([id]) => id === v) ? v : ''
+  } catch {
+    return ''
+  }
+}
+const areaPass = (f, a) => (!f ? true : f === 'work' ? a !== 'personal' : f === 'none' ? !a : a === f)
+
 const VIEWS = [
   ['board', '보드'],
   ['calendar', '달력'],
@@ -787,12 +807,19 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
   )
   const today = todayStr()
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const [areaF, setAreaF] = useState(readAreaF)
+  // 루틴 회차는 루틴의 분야를 따른다 (store의 areaOf와 같은 규칙 — 여기선 받은 routines로 본다)
+  const areaByRule = new Map(routines.map((r) => [r.id, r.area || null]))
+  const aOf = (m) => (m.routineId ? areaByRule.get(m.routineId) || null : m.area || null)
+  const shownRoutines = areaF ? routines.filter((r) => areaPass(areaF, r.area || null)) : routines
 
   // 검색만 적용된 목록 — 달력 보기는 타일(시간) 필터를 무시한다 (달력 자체가 시간 화면이라 겹치면 텅 비어 보임)
   const searchList = memos.filter((m) => {
+    if (areaF && !areaPass(areaF, aOf(m))) return false
     if (!words.length) return true
-    // 시각도 검색에 걸리게 — 제목 앞의 "11:00"을 시간 칸으로 옮긴 뒤에도 "11:00"으로 찾아진다
-    const hay = [m.title, m.time, m.endTime, m.desc, ...m.history.map((h) => h.text)]
+    // 시각도 검색에 걸리게 — 제목 앞의 "11:00"을 시간 칸으로 옮긴 뒤에도 "11:00"으로 찾아진다.
+    // 분야 이름도 걸리게 — "소방"으로 치면 제목에 소방이 없어도 소방 분야 메모가 나온다 (2026-11-06)
+    const hay = [m.title, m.time, m.endTime, m.desc, AREA_LABEL[aOf(m)], ...m.history.map((h) => h.text)]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -832,6 +859,26 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
             </button>
           ))}
         </div>
+        <select
+          className={'mv-area' + (areaF ? ' on' : '')}
+          value={areaF}
+          title="분야로 거르기 — 보드·달력·표·타임라인이 같이 걸러집니다"
+          aria-label="분야로 거르기"
+          onChange={(e) => {
+            setAreaF(e.target.value)
+            try {
+              localStorage.setItem('memo-area', e.target.value)
+            } catch {
+              /* 저장이 막힌 브라우저 — 이번만 적용 */
+            }
+          }}
+        >
+          {AREA_FILTERS.map(([id, label]) => (
+            <option key={id || 'all'} value={id}>
+              {id ? label : '전체 분야'}
+            </option>
+          ))}
+        </select>
         {/* 검색칸 오른쪽 × — 한 번에 지운다. 폰은 한 글자씩 지우기가 특히 번거롭다 (2026-08-07).
             지운 뒤에도 커서를 칸에 남겨둬서 키보드가 닫히지 않고 바로 다시 칠 수 있다. */}
         <span className="mv-searchwrap">
@@ -881,15 +928,16 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
           </span>
         </button>
       )}
-      {view === 'board' && <BoardView memos={list} routines={routines} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
+      {view === 'board' && <BoardView memos={list} routines={shownRoutines} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
           memos={searchList}
-          routines={routines}
+          routines={shownRoutines}
           dayOrder={dayOrder}
           onOpen={onOpen}
           renderDetail={renderDetail}
           filtered={words.length > 0}
+          hideMacro={!!areaF}
         />
       )}
       {view === 'table' && (

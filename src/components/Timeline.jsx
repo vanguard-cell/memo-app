@@ -102,6 +102,12 @@ export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove,
             <span className="tl-text tl-editable" title="누르면 수정" onClick={() => startLineEdit(i, h)}>
               {h.text}
             </span>
+            {/* 체크한 날 — 적은 날과 다를 때만 작게 (2026-11-06). "언제 처리했지"를 나중에 찾을 수 있게 */}
+            {h.done && h.doneAt && h.doneAt !== h.date && (
+              <span className="tl-doneat" title="체크한 날">
+                ✓{Number(h.doneAt.slice(5, 7))}/{Number(h.doneAt.slice(8, 10))}
+              </span>
+            )}
             <button
               className="tl-x"
               aria-label="이 줄 삭제"
