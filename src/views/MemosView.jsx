@@ -832,9 +832,11 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
   // 아니면 Enter로 새 메모. 만든 뒤 칸을 비우고 상세를 연다. 예전 "던지기 입력"(별도 칸, 7/24 제거)과 다르다.
   const typed = q.trim()
   const draft = typed ? draftFromSearch(typed, today) : null
+  // 글자는 칸에서 직접 읽는다 — 한글 마지막 글자가 막 완성된 순간엔 q가 아직 한 박자 늦을 수 있다
   function addFromSearch() {
-    if (!draft) return
-    const m = addMemo(draft)
+    const text = (searchRef.current ? searchRef.current.value : q).trim()
+    if (!text) return
+    const m = addMemo(draftFromSearch(text, today))
     setQ('')
     onOpen(m.id)
   }
@@ -880,8 +882,18 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
           ))}
         </select>
         {/* 검색칸 오른쪽 × — 한 번에 지운다. 폰은 한 글자씩 지우기가 특히 번거롭다 (2026-08-07).
-            지운 뒤에도 커서를 칸에 남겨둬서 키보드가 닫히지 않고 바로 다시 칠 수 있다. */}
-        <span className="mv-searchwrap">
+            지운 뒤에도 커서를 칸에 남겨둬서 키보드가 닫히지 않고 바로 다시 칠 수 있다.
+            Enter = 새 메모는 form 제출로 받는다 (2026-11-09, 사용자: "엔터치면 바로 저장되게").
+            keydown의 Enter는 한글을 치던 중이면 첫 번째가 글자 맺기로 먹혀서(특히 폰) 두 번 눌러야 했다 —
+            form 제출은 브라우저가 글자를 맺은 뒤 한 번만 보내준다(검색 사이트들이 쓰는 길). */}
+        <form
+          className="mv-searchwrap"
+          autoComplete="off"
+          onSubmit={(e) => {
+            e.preventDefault()
+            addFromSearch()
+          }}
+        >
           <input
             ref={searchRef}
             className="search-input mv-search"
@@ -889,12 +901,8 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
             onChange={(e) => setQ(e.target.value)}
             // PC는 앱을 열면 바로 칠 수 있게 커서를 둔다. 폰은 키보드가 화면을 덮으니 한 번 눌러서
             autoFocus={!window.matchMedia('(max-width: 899px)').matches}
+            autoComplete="off"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing && draft) {
-                e.preventDefault()
-                addFromSearch()
-                return
-              }
               if (e.key === 'Escape' && q) {
                 e.stopPropagation()
                 setQ('')
@@ -904,6 +912,7 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
           />
           {q && (
             <button
+              type="button"
               className="mv-search-x"
               title="검색어 지우기 (Esc)"
               aria-label="검색어 지우기"
@@ -916,7 +925,7 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
               ×
             </button>
           )}
-        </span>
+        </form>
       </div>
       {draft && (
         <button className="mv-new" onClick={addFromSearch}>
