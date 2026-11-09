@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, cycleDue, ymDiff, adoptCycleDay } from '../store'
-import { memoStatus, STATUS_LABEL, fmtDate } from '../derive'
+import { memoStatus, STATUS_LABEL, fmtDate, dueBadge } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
 import { useTagSuggest, TagList } from './TagSuggest'
@@ -64,6 +64,7 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   }
   const st = memoStatus(memo)
   const today = todayStr()
+  const ddBadge = dueBadge(memo, today)
   const narrow = useIsNarrow()
 
   function fitTA(el) {
@@ -250,7 +251,11 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
               예전의 예정일 한 칸 + "기간으로"·"루틴으로" 링크 + 정보 수정 폼을 대신한다 */}
           {(memo.due || memo.period) && (
             <div className="meta-block sched-wrap">
-              <div className="panel-sec-label">일정</div>
+              {/* 며칠 지났나·남았나는 "일정" 이름표 옆에 — 보드 카드와 같은 배지 (2026-11-09, 그전엔 시작 시간 옆 "3일 지남") */}
+              <div className="panel-sec-label sched-label">
+                일정
+                {ddBadge && <span className={'kb-badge ' + ddBadge[0]}>{ddBadge[1]}</span>}
+              </div>
               {/* 루틴이 자동으로 찍어둔 날짜 — 날짜를 옮기면 저절로 확정되지만,
                   자동 날짜가 마침 맞을 때를 위해 "이 날 맞다"만 누르는 길을 둔다 (2026-08-13) */}
               {memo.tentative && (

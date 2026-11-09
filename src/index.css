@@ -2978,10 +2978,6 @@ main {
   font-size: var(--fs-sm);
 }
 
-.meta-dday {
-  font-weight: 600;
-}
-
 /* 루틴 회차를 다른 날로 옮겼을 때 그 자리에서 묻는 줄 — "앞으로도 매달 18일에 할까요?"
    (2026-08-20) 눈에 띄되 재촉하지 않게 은은한 바탕만 준다 */
 .meta-ask {
@@ -3067,6 +3063,60 @@ main {
 
 .sched-time {
   width: 112px;
+}
+
+/* 일정 이름표 옆 D-day 배지 — 보드 카드와 같은 모양 (2026-11-09) */
+.sched-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 시간 칸 — 비어 있으면 브라우저의 "-- --:--" 를 감추고 흐린 "+ 시간"을 얹는다.
+   누르면(포커스) 원래 글자가 다시 보인다. 정한 시간은 옆 × 로 지운다 (2026-11-09) */
+.sched-timewrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sched-timewrap.no-time .sched-time:not(:focus) {
+  color: transparent;
+}
+
+.sched-time-ph {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--faint);
+  font-size: var(--fs-base);
+  pointer-events: none;
+}
+
+.sched-timewrap:focus-within .sched-time-ph {
+  display: none;
+}
+
+.sched-time-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--faint);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sched-time-x:hover {
+  background: var(--fill);
+  color: var(--text);
 }
 
 /* 반복 · 미리 알림 한 줄 (2026-11-09) — 미리 알림 이름표는 폭을 글자만큼, 앞에 틈 */
@@ -5179,8 +5229,9 @@ main {
     padding-left: 0;
   }
 
+  /* 폰은 16px 글씨라 "오후 02:30"+시계 그림이 118px에 다 안 들어간다 (2026-11-09) */
   .sched-time {
-    width: 118px;
+    width: 140px;
   }
 
   /* 검색 지우기 × 도 손가락 크기로 — 글자가 × 밑으로 들어가지 않게 오른쪽을 그만큼 비운다 */
@@ -5193,6 +5244,13 @@ main {
   .mv-head .mv-search {
     padding-right: 40px;
     min-height: 40px;
+  }
+
+  /* 시간 지우기 × — 손가락 크기 */
+  .sched-time-x {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
   }
 
   /* 보기 고르기 — 손가락 크기 (검색칸과 같은 높이) */

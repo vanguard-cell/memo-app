@@ -123,6 +123,34 @@ export function AlarmField({ alarm, onChange }) {
   )
 }
 
+// 시간 칸 (2026-11-09, 사용자: "-- --:-- 로 보여서 시간 입력하는 곳인가 싶다").
+// 비어 있으면 브라우저의 "-- --:--" 대신 흐린 "+ 시간"을 얹어 보여준다 — 칸 자체는 그대로라
+// 누르면 폰은 시간 고르기 창, PC는 칸에 커서가 간다(그때는 원래 글자가 보인다).
+// 정한 시간은 옆 × 로 지운다(하루 종일 스위치가 하던 일).
+function TimeField({ value, onChange, onClear, label }) {
+  return (
+    <span className={'sched-timewrap' + (value ? '' : ' no-time')}>
+      <input
+        type="time"
+        className="sched-input sched-time"
+        aria-label={label}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {!value && (
+        <span className="sched-time-ph" aria-hidden="true">
+          + 시간
+        </span>
+      )}
+      {value && (
+        <button type="button" className="sched-time-x" title="시간 지우기" aria-label={label + ' 지우기'} onClick={onClear}>
+          ×
+        </button>
+      )}
+    </span>
+  )
+}
+
 export function ScheduleBlock({ memo }) {
   const today = todayStr()
   const rt = memo.routineId ? routineOf(memo.routineId) : null
@@ -199,15 +227,6 @@ export function ScheduleBlock({ memo }) {
 
   const onAlarm = (a) => (rt ? updateRoutine(rt.id, { alarm: a }) : updateMemo(memo.id, { alarm: a }))
 
-  // D-day — 하루짜리는 그날, 아직 시작 안 한 기간은 시작일, 굴러가는 기간은 끝나는 날을 센다
-  let dd = null
-  let ddText = ''
-  if (memo.status !== 'done') {
-    const running = !memo.due && !!memo.period && today >= start
-    dd = diffDays(running ? end : start, today)
-    ddText = dd < 0 ? `${-dd}일 지남` : dd === 0 ? (running ? '마감 오늘' : '오늘') : running ? `마감 D-${dd}` : `D-${dd}`
-  }
-
   const aStart = alarm && alarm.text ? alarmStart(start, alarm) : null
 
   return (
@@ -221,13 +240,12 @@ export function ScheduleBlock({ memo }) {
           value={start}
           onChange={(e) => onStart(e.target.value)}
         />
-        <input
-          type="time"
-          className="sched-input sched-time"
-          value={memo.time || ''}
-          onChange={(e) => onTime('time', e.target.value)}
+        <TimeField
+          label="시작 시간"
+          value={memo.time}
+          onChange={(v) => onTime('time', v)}
+          onClear={() => updateMemo(memo.id, { time: null, endTime: null })}
         />
-        {ddText && <b className={'meta-dday' + (dd < 0 ? ' t-red' : '')}>{ddText}</b>}
       </div>
       <div className="sched-row">
         <span className="sched-k">종료</span>
@@ -241,12 +259,15 @@ export function ScheduleBlock({ memo }) {
           title={repeating ? '반복 일정은 하루짜리입니다' : ''}
           onChange={(e) => onEnd(e.target.value)}
         />
-        <input
-          type="time"
-          className="sched-input sched-time"
-          value={memo.endTime || ''}
-          onChange={(e) => onTime('endTime', e.target.value)}
-        />
+        {/* 종료 시간은 시작 시간을 정했을 때만 — 빈 칸 두 개가 나란히 있으면 더 헷갈린다 */}
+        {(memo.time || memo.endTime) && (
+          <TimeField
+            label="종료 시간"
+            value={memo.endTime}
+            onChange={(v) => onTime('endTime', v)}
+            onClear={() => updateMemo(memo.id, { endTime: null })}
+          />
+        )}
       </div>
       {/* 반복 · 미리 알림은 한 줄에 나란히 (2026-11-09). 고르면 나오는 칸(그 달/다음 달, 알림 내용)은
           이 줄 안에서 다음 줄로 내려간다. 폰처럼 좁으면 미리 알림이 저절로 둘째 줄로 */}
