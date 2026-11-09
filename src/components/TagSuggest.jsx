@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { knownTags } from '../store'
-import useIsNarrow from '../useIsNarrow'
 
 // 제목 앞머리 고르기 — **"[" 한 글자가 메뉴다** (2026-10-07 사용자: "매번 타이핑하긴 싫고
 // 선택해서 넣는것도 번거롭단 말이지?").
@@ -57,19 +56,6 @@ export function useTagSuggest(apply, elRef) {
     })
   }
 
-  // 폰 칩 — 빈 칸에 말머리부터 넣고 시작한다
-  function prefix(tag) {
-    const el = elRef.current
-    const head = `[${tag}]`
-    apply(head + (el ? el.value : ''))
-    close()
-    requestAnimationFrame(() => {
-      if (!elRef.current) return
-      elRef.current.focus()
-      elRef.current.setSelectionRange(head.length, head.length)
-    })
-  }
-
   // 돌려주는 값이 true면 그 키는 목록이 먹은 것 — 부르는 쪽은 자기 처리를 건너뛴다
   function onKeyDown(e) {
     if (q === null || !list.length) return false
@@ -93,7 +79,7 @@ export function useTagSuggest(apply, elRef) {
     return false
   }
 
-  return { q, sel, list, read, close, pick, prefix, onKeyDown, elRef }
+  return { q, sel, list, read, close, pick, onKeyDown, elRef }
 }
 
 // 입력칸 바로 아래 목록. **화면 맨 위(body)에 띄운다** — 달력의 날짜 목록(.cal-detail)과
@@ -143,26 +129,4 @@ export function TagList({ ctl }) {
   )
 }
 
-// 폰에서만 뜨는 최근 말머리 칩 — 폰은 "[" 치는 것도 일이라 한 번 탭으로 넣는다.
-// 칸이 비어 있을 때만 (쓰는 중에 밑에서 자리를 먹지 않게).
-export function TagChips({ ctl, show }) {
-  const narrow = useIsNarrow()
-  const tags = narrow && show ? knownTags(4) : []
-  if (!tags.length) return null
-  return (
-    <div className="tag-chips">
-      {tags.map((t) => (
-        <button
-          key={t}
-          className="tag-chip"
-          onMouseDown={(e) => {
-            e.preventDefault()
-            ctl.prefix(t)
-          }}
-        >
-          [{t}]
-        </button>
-      ))}
-    </div>
-  )
-}
+// 폰의 "최근 말머리 칩"(칸이 비면 [전표]·[서명]… 4개를 띄우던 것)은 2026-11-09 사용자 요청으로 없앴다 — 재도입 금지.

@@ -3,7 +3,7 @@ import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, co
 import { memoStatus, STATUS_LABEL, fmtDate } from '../derive'
 import { todayStr, addDays } from '../parser'
 import Timeline from './Timeline'
-import { useTagSuggest, TagList, TagChips } from './TagSuggest'
+import { useTagSuggest, TagList } from './TagSuggest'
 import { ScheduleBlock } from './ScheduleFields'
 import { splitTime } from '../schedule'
 import SendToDateBtn from './SendToDateBtn'
@@ -324,7 +324,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             }}
           />
           <TagList ctl={tag} />
-          <TagChips ctl={tag} show={!title} />
           </div>
           {/* 접기는 폰의 아코디언 상세에서만 — PC는 어디서 열리든 × 로 통일 (2026-07-31) */}
           {inline && narrow ? (

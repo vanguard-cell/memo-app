@@ -9,7 +9,7 @@ import {
 } from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
-import { useTagSuggest, TagList, TagChips } from '../components/TagSuggest'
+import { useTagSuggest, TagList } from '../components/TagSuggest'
 import useIsNarrow from '../useIsNarrow'
 import { subscribeMacro, getMacro, macroByDate } from '../macro'
 import { weeklyAhead } from '../schedule'
@@ -936,7 +936,6 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             </div>
             <button onClick={quickAdd}>추가</button>
           </div>
-          <TagChips ctl={qTag} show={!qtext} />
           {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && !(alarms[sel] || []).length &&
             !(weekly[sel] || []).length && !(ghosts[sel] || []).length && (
             <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>

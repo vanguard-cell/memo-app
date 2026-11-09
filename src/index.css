@@ -2911,24 +2911,6 @@ main {
   background: var(--fill);
 }
 
-/* 폰 전용 — "["를 치는 것도 일이라 최근 말머리를 한 번 탭으로 */
-.tag-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.tag-chip {
-  min-height: 40px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--fill);
-  color: var(--muted);
-  font-size: var(--fs-sm);
-}
-
 /* ---------- 쓰는 칸은 전부 같은 얼굴 (2026-08-11) ----------
    사용자: "제목·본문·추가가 뭔지 명확히 안 보인다, 여기 써야겠군! 하는 느낌이 안 든다".
    예전엔 제목·작업 설명이 테두리 없이 글자처럼만 보여서 눌러야 칸인 줄 알 수 있었다.
