@@ -799,10 +799,10 @@ function draftWhen(d, today) {
 export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDetail }) {
   const [q, setQ] = useState('')
   const searchRef = useRef(null)
-  // 폰은 들어올 때 항상 보드부터 — 마지막 보기 기억은 PC만 (사용자 요청 2026-07-19)
+  // 폰은 들어올 때 항상 달력부터 (2026-11-09, 그전엔 보드부터 — 2026-07-19) — 마지막 보기 기억은 PC만
   const [view, setView] = useState(() =>
     window.matchMedia('(max-width: 899px)').matches
-      ? 'board'
+      ? 'calendar'
       : localStorage.getItem('memo-view') || 'board'
   )
   const today = todayStr()

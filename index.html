@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- 폰 홈 화면 아이콘 (2026-11-09) — 아이폰은 apple-touch-icon, 안드로이드는 manifest의 그림을 쓴다.
+         display는 "browser" 그대로 — 앱처럼 따로 열리게(standalone) 바꾸면 로그인이 새로 필요해서 PWA 단계로 미뤘다. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- 글꼴 Pretendard — 윈도우 기본 한글 글꼴(맑은 고딕)이 작은 글씨에서 지저분해 보인다는
          지적(2026-08-11)으로 도입. 필요한 글자 묶음만 내려받는 판(dynamic subset).
