@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   updateMemo, updateRoutine, stopRoutine, makeRoutineFromMemo, routineOf, shiftYm,
   checkAlarm, uncheckAlarm, blankTitle,
@@ -7,15 +7,15 @@ import { diffDays } from '../derive'
 import { todayStr, addDays } from '../parser'
 import {
   REPEAT_OPTIONS, ROUTINE_KINDS, routineKind, monthsFor,
-  ALARM_PRESETS, ALARM_UNITS, alarmMode, alarmLabel, alarmStart, timeText,
+  ALARM_PRESETS, ALARM_UNITS, alarmMode, alarmStart,
 } from '../schedule'
 
-// 상세 패널의 "일정" 칸 — 아이폰 달력처럼 하루 종일 / 시작 / 종료 / 반복 / 미리 알림 (2026-09-15).
+// 상세 패널의 "일정" 칸 — 시작 / 종료 / 반복·미리 알림 (2026-09-15 아이폰 달력식, 2026-11-09 정리:
+// 하루 종일 스위치와 아래 요약 줄은 없앴다 — 시간 칸이 비어 있으면 그게 하루 종일이다).
 // 예전의 "기간으로"·"루틴으로" 링크, 정보 수정 폼, 마감 버튼을 이 한 묶음이 대신한다.
 // 저장 모양은 그대로다: 시작=종료면 due(하루짜리), 다르면 period. 시간은 time·endTime.
 
 const md = (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`
-const DOW = ['일', '월', '화', '수', '목', '금', '토']
 
 // 미리 알림 고르기 — 루틴 수정 폼도 같이 쓴다.
 // 내용(그날 할 일)은 필수: 비어 있으면 저장하지 않고 안내만 띄운다 (사용자 확정).
@@ -137,9 +137,7 @@ export function ScheduleBlock({ memo }) {
   const start = memo.due || (memo.period && memo.period.start) || today
   const end = memo.due || (memo.period && memo.period.end) || start
   const repeating = kind !== 'none'
-  const allDay = !memo.time && !memo.endTime
   const alarm = rt ? rt.alarm || null : memo.alarm || null
-  const timeRef = useRef(null)
   // 날짜 칸에 받을 수 없는 값을 넣었을 때 칸을 원래 값으로 되돌리는 용도
   const [bump, setBump] = useState(0)
   const [msg, setMsg] = useState('')
@@ -161,21 +159,9 @@ export function ScheduleBlock({ memo }) {
     writeDates(start, v)
   }
 
-  // 시간을 넣으면 하루 종일이 저절로 꺼지고, 둘 다 지우면 다시 켜진다(시간 유무로 판단)
+  // 시간 칸 — 비우면 하루 종일 (시간 유무로 판단)
   function onTime(field, v) {
     updateMemo(memo.id, { [field]: v || null })
-  }
-
-  function toggleAllDay() {
-    if (!allDay) return updateMemo(memo.id, { time: null, endTime: null })
-    const el = timeRef.current
-    if (!el) return
-    el.focus()
-    try {
-      el.showPicker()
-    } catch {
-      /* 고르기 창을 못 여는 브라우저 — 칸에 커서만 둔다 */
-    }
   }
 
   function onRepeat(next) {
@@ -222,187 +208,152 @@ export function ScheduleBlock({ memo }) {
     ddText = dd < 0 ? `${-dd}일 지남` : dd === 0 ? (running ? '마감 오늘' : '오늘') : running ? `마감 D-${dd}` : `D-${dd}`
   }
 
-  const day = Number(start.slice(8, 10))
-  const repeatText = {
-    weekly: `매주 ${DOW[new Date(start + 'T00:00').getDay()]}요일`,
-    monthly: `매월 ${rt && Number(rt.dueShift) === 1 ? '다음 달 ' : ''}${rt ? Number(rt.dueDay) || day : day}일`,
-    quarter: '분기마다',
-    half: '반기마다',
-    yearly: `매년 ${Number(start.slice(5, 7))}월 ${day}일`,
-    years: `${rt ? rt.everyYears : ''}년마다 ${Number(start.slice(5, 7))}월 ${day}일`,
-    custom: '정해둔 달마다',
-  }[kind]
-  const summary = [
-    start === end ? md(start) : `${md(start)} ~ ${md(end)}`,
-    allDay ? '하루 종일' : timeText(memo),
-    repeatText,
-    alarm ? `미리 알림 ${alarmLabel(alarm)}${alarm.daily ? ' 매일' : ''}` : '',
-  ].filter(Boolean)
-
   const aStart = alarm && alarm.text ? alarmStart(start, alarm) : null
 
   return (
-    <>
-      <div className="sched">
-        <div className="sched-row">
-          <span className="sched-k">하루 종일</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={allDay}
-            aria-label="하루 종일"
-            className={'sched-switch' + (allDay ? ' on' : '')}
-            title={allDay ? '시간을 넣으면 저절로 꺼집니다' : '누르면 시간을 지우고 하루 종일로'}
-            onClick={toggleAllDay}
-          >
-            <i />
-          </button>
-        </div>
-        <div className="sched-row">
-          <span className="sched-k">시작</span>
-          <input
-            key={'s' + bump}
-            type="date"
-            className="sched-input"
-            value={start}
-            onChange={(e) => onStart(e.target.value)}
-          />
-          <input
-            ref={timeRef}
-            type="time"
-            className="sched-input sched-time"
-            value={memo.time || ''}
-            onChange={(e) => onTime('time', e.target.value)}
-          />
-          {ddText && <b className={'meta-dday' + (dd < 0 ? ' t-red' : '')}>{ddText}</b>}
-        </div>
-        <div className="sched-row">
-          <span className="sched-k">종료</span>
-          <input
-            key={'e' + bump}
-            type="date"
-            className="sched-input"
-            value={end}
-            min={start}
-            disabled={repeating}
-            title={repeating ? '반복 일정은 하루짜리입니다' : ''}
-            onChange={(e) => onEnd(e.target.value)}
-          />
-          <input
-            type="time"
-            className="sched-input sched-time"
-            value={memo.endTime || ''}
-            onChange={(e) => onTime('endTime', e.target.value)}
-          />
-        </div>
-        <div className="sched-row">
-          <span className="sched-k">반복</span>
-          <select className="sched-select" value={kind} onChange={(e) => onRepeat(e.target.value)}>
-            {REPEAT_OPTIONS.map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-            {kind === 'custom' && <option value="custom">정해둔 달</option>}
-            {kind === 'years' && <option value="years">{rt.everyYears}년마다</option>}
-          </select>
-          {kind === 'monthly' && rtLive && (
-            <select
-              className="sched-select"
-              value={Number(rt.dueShift) || 0}
-              title="그 달분을 언제 처리하나 — 8월분 고지서가 9월에 나오면 다음 달"
-              onChange={(e) => updateRoutine(rt.id, { dueShift: Number(e.target.value) })}
-            >
-              <option value={0}>그 달</option>
-              <option value={1}>다음 달</option>
-            </select>
-          )}
-          {msg && <span className="sched-err">{msg}</span>}
-        </div>
-        {(rtLive || kind === 'weekly') && (
-          <div className="sched-row">
-            <span className="sched-k">반복 종료</span>
-            {rtLive ? (
-              <>
-                <select
-                  className="sched-select"
-                  value={rt.endYm ? 'date' : ''}
-                  onChange={(e) =>
-                    updateRoutine(rt.id, {
-                      endYm: e.target.value ? shiftYm(memo.ym || start.slice(0, 7), 12) : null,
-                    })
-                  }
-                >
-                  <option value="">없음</option>
-                  <option value="date">날짜 지정</option>
-                </select>
-                {rt.endYm && (
-                  <>
-                    <input
-                      type="month"
-                      className="sched-input"
-                      value={shiftYm(rt.endYm, -1)}
-                      min={memo.ym || undefined}
-                      onChange={(e) =>
-                        e.target.value &&
-                        (!memo.ym || e.target.value >= memo.ym) &&
-                        updateRoutine(rt.id, { endYm: shiftYm(e.target.value, 1) })
-                      }
-                    />
-                    <span className="sched-muted">까지</span>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <select
-                  className="sched-select"
-                  value={memo.repeatUntil ? 'date' : ''}
-                  onChange={(e) => updateMemo(memo.id, { repeatUntil: e.target.value ? addDays(start, 91) : null })}
-                >
-                  <option value="">없음</option>
-                  <option value="date">날짜 지정</option>
-                </select>
-                {memo.repeatUntil && (
-                  <>
-                    <input
-                      type="date"
-                      className="sched-input"
-                      value={memo.repeatUntil}
-                      min={start}
-                      onChange={(e) => e.target.value && updateMemo(memo.id, { repeatUntil: e.target.value })}
-                    />
-                    <span className="sched-muted">까지</span>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
-        <div className="sched-row">
-          <span className="sched-k">미리 알림</span>
-          <AlarmField alarm={alarm} onChange={onAlarm} />
-        </div>
-        {aStart && memo.status !== 'done' && (
-          <div className="sched-row">
-            <span className="sched-k" />
-            <label className="sched-check">
-              <input
-                type="checkbox"
-                checked={!!memo.alarmCheckedAt}
-                onChange={() => (memo.alarmCheckedAt ? uncheckAlarm(memo.id) : checkAlarm(memo.id))}
-              />
-              <span className={memo.alarmCheckedAt ? 'sched-done' : ''}>{alarm.text}</span>
-              <span className="sched-muted">
-                {memo.alarmCheckedAt
-                  ? `${md(memo.alarmCheckedAt)} 체크 — 진행 기록에 남음`
-                  : `${md(aStart)}부터${alarm.daily ? ' 매일' : ''} 달력에 표시`}
-              </span>
-            </label>
-          </div>
-        )}
+    <div className="sched">
+      <div className="sched-row">
+        <span className="sched-k">시작</span>
+        <input
+          key={'s' + bump}
+          type="date"
+          className="sched-input"
+          value={start}
+          onChange={(e) => onStart(e.target.value)}
+        />
+        <input
+          type="time"
+          className="sched-input sched-time"
+          value={memo.time || ''}
+          onChange={(e) => onTime('time', e.target.value)}
+        />
+        {ddText && <b className={'meta-dday' + (dd < 0 ? ' t-red' : '')}>{ddText}</b>}
       </div>
-      <div className="sched-sum">{summary.join(' · ')}</div>
-    </>
+      <div className="sched-row">
+        <span className="sched-k">종료</span>
+        <input
+          key={'e' + bump}
+          type="date"
+          className="sched-input"
+          value={end}
+          min={start}
+          disabled={repeating}
+          title={repeating ? '반복 일정은 하루짜리입니다' : ''}
+          onChange={(e) => onEnd(e.target.value)}
+        />
+        <input
+          type="time"
+          className="sched-input sched-time"
+          value={memo.endTime || ''}
+          onChange={(e) => onTime('endTime', e.target.value)}
+        />
+      </div>
+      {/* 반복 · 미리 알림은 한 줄에 나란히 (2026-11-09). 고르면 나오는 칸(그 달/다음 달, 알림 내용)은
+          이 줄 안에서 다음 줄로 내려간다. 폰처럼 좁으면 미리 알림이 저절로 둘째 줄로 */}
+      <div className="sched-row sched-pair">
+        <span className="sched-k">반복</span>
+        <select className="sched-select" value={kind} onChange={(e) => onRepeat(e.target.value)}>
+          {REPEAT_OPTIONS.map(([k, label]) => (
+            <option key={k} value={k}>
+              {label}
+            </option>
+          ))}
+          {kind === 'custom' && <option value="custom">정해둔 달</option>}
+          {kind === 'years' && <option value="years">{rt.everyYears}년마다</option>}
+        </select>
+        {kind === 'monthly' && rtLive && (
+          <select
+            className="sched-select"
+            value={Number(rt.dueShift) || 0}
+            title="그 달분을 언제 처리하나 — 8월분 고지서가 9월에 나오면 다음 달"
+            onChange={(e) => updateRoutine(rt.id, { dueShift: Number(e.target.value) })}
+          >
+            <option value={0}>그 달</option>
+            <option value={1}>다음 달</option>
+          </select>
+        )}
+        <span className="sched-k sched-k2">미리 알림</span>
+        <AlarmField alarm={alarm} onChange={onAlarm} />
+        {msg && <span className="sched-err">{msg}</span>}
+      </div>
+      {(rtLive || kind === 'weekly') && (
+        <div className="sched-row">
+          <span className="sched-k">반복 종료</span>
+          {rtLive ? (
+            <>
+              <select
+                className="sched-select"
+                value={rt.endYm ? 'date' : ''}
+                onChange={(e) =>
+                  updateRoutine(rt.id, {
+                    endYm: e.target.value ? shiftYm(memo.ym || start.slice(0, 7), 12) : null,
+                  })
+                }
+              >
+                <option value="">없음</option>
+                <option value="date">날짜 지정</option>
+              </select>
+              {rt.endYm && (
+                <>
+                  <input
+                    type="month"
+                    className="sched-input"
+                    value={shiftYm(rt.endYm, -1)}
+                    min={memo.ym || undefined}
+                    onChange={(e) =>
+                      e.target.value &&
+                      (!memo.ym || e.target.value >= memo.ym) &&
+                      updateRoutine(rt.id, { endYm: shiftYm(e.target.value, 1) })
+                    }
+                  />
+                  <span className="sched-muted">까지</span>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <select
+                className="sched-select"
+                value={memo.repeatUntil ? 'date' : ''}
+                onChange={(e) => updateMemo(memo.id, { repeatUntil: e.target.value ? addDays(start, 91) : null })}
+              >
+                <option value="">없음</option>
+                <option value="date">날짜 지정</option>
+              </select>
+              {memo.repeatUntil && (
+                <>
+                  <input
+                    type="date"
+                    className="sched-input"
+                    value={memo.repeatUntil}
+                    min={start}
+                    onChange={(e) => e.target.value && updateMemo(memo.id, { repeatUntil: e.target.value })}
+                  />
+                  <span className="sched-muted">까지</span>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {aStart && memo.status !== 'done' && (
+        <div className="sched-row">
+          <span className="sched-k" />
+          <label className="sched-check">
+            <input
+              type="checkbox"
+              checked={!!memo.alarmCheckedAt}
+              onChange={() => (memo.alarmCheckedAt ? uncheckAlarm(memo.id) : checkAlarm(memo.id))}
+            />
+            <span className={memo.alarmCheckedAt ? 'sched-done' : ''}>{alarm.text}</span>
+            <span className="sched-muted">
+              {memo.alarmCheckedAt
+                ? `${md(memo.alarmCheckedAt)} 체크 — 진행 기록에 남음`
+                : `${md(aStart)}부터${alarm.daily ? ' 매일' : ''} 달력에 표시`}
+            </span>
+          </label>
+        </div>
+      )}
+    </div>
   )
 }

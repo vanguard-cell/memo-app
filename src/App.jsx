@@ -269,7 +269,7 @@ export default function App() {
   useEffect(() => {
     if (narrow || !open) return
     const KEEP_OPEN =
-      '.detail, .panel-fold, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar, .rt-row, .rt-paste, .rt-edit-row, .mv-view'
+      '.detail, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar, .rt-row, .rt-paste, .rt-edit-row, .mv-view'
     const onDown = (e) => {
       if (e.target.closest && e.target.closest(KEEP_OPEN)) return
       closePanel()

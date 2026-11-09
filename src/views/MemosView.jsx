@@ -240,7 +240,7 @@ function BoardView({ memos, routines = [], dayOrder, onOpen, onCompose, renderDe
   }
 
   // 폰: PC처럼 할일|진행중 두 열 나란히 — 완료는 아래 접힌 목록.
-  // 열 이동은 드래그 대신 상세의 상태 버튼으로, 상세는 누른 카드 줄 아래 전체 폭으로.
+  // 열 이동은 체크(저절로 진행중)와 상세의 ✓ 완료로 (상태 버튼 줄은 2026-11-09 뺐다). 상세는 누른 카드 줄 아래 전체 폭으로.
   if (narrow) {
     const rows = Math.max(by.todo.length, by.active.length)
     return (

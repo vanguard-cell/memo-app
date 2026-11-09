@@ -52,9 +52,6 @@ export default function Timeline({ history, onAdd, onToggle, onUpdate, onRemove,
           return items.length > 0 ? <span className="tl-progress"> · 체크 {done}/{items.length}</span> : null
         })()}
       </div>
-      {history.length === 0 && (
-        <div className="empty small">아직 진행 기록이 없습니다. 아래에 한 줄씩 남기세요.</div>
-      )}
       {history.map((h, i) =>
         editIdx === i ? (
           <div key={i} className="tl-item tl-editing">

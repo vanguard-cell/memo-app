@@ -146,9 +146,7 @@ export default function FileSection({ files = [], onAttach, onRemove }) {
           e.target.value = ''
         }}
       />
-      {files.length === 0 && (
-        <div className="file-hint">파일을 끌어다 놓거나, 캡처를 붙여넣거나(Ctrl+V), [+ 올리기]</div>
-      )}
+      {/* "끌어다 놓거나 Ctrl+V" 안내 줄은 2026-11-09 없앴다 — 끌어 놓기·붙여넣기는 그대로 된다 */}
       {images.length > 0 && (
         <div className="file-thumbs">
           {images.map((f) => (
