@@ -321,12 +321,6 @@ main {
   color: var(--text);
 }
 
-.stab-n {
-  margin-left: auto;
-  font-size: var(--fs-sm);
-  color: var(--faint);
-}
-
 /* 가져오기 — 파일 고르기지만 옆 메뉴들과 같은 얼굴이어야 한다 (label 안에 input 숨김) */
 .stab-file {
   cursor: pointer;
@@ -1012,7 +1006,8 @@ main {
 
 /* ---------- 메모탭 보기 전환 (보드/표/타임라인) ---------- */
 
-/* 위쪽 줄: 보기전환 탭(왼쪽) + 검색(오른쪽) — 밑줄 탭 바, 아래 헤어라인 (2026-07-30 시안) */
+/* 위쪽 줄: 검색(= 새 메모 칸) + 보기 고르기 아이콘이 오른쪽에, 아래 헤어라인.
+   (2026-11-09 — 그전엔 왼쪽에 밑줄 탭 넷, 검색 옆에 분야 거르기 칸) */
 .mv-head {
   display: flex;
   align-items: center;
@@ -1032,6 +1027,7 @@ main {
 .mv-head .mv-searchwrap {
   flex-shrink: 0;
   width: 300px;
+  margin-left: auto;
   margin-bottom: 8px;
 }
 
@@ -1075,56 +1071,88 @@ main {
   border-color: var(--blue-strong);
 }
 
-/* 분야 거르기 — 검색칸 왼쪽의 작은 선택 칸. 고르면 파랗게 (지금 걸러 보는 중이라는 표시) */
-.mv-area {
+/* 보기 고르기 (2026-11-09) — 검색칸 오른쪽 아이콘 하나(지금 보기의 그림) + 누르면 그 밑에 작은 목록 */
+.mv-view {
+  position: relative;
   flex-shrink: 0;
   margin-bottom: 8px;
-  font: inherit;
-  font-size: var(--fs-sm);
-  padding: 4px 6px;
-  color: var(--muted);
-  background: #f7f8fa;
+}
+
+.mv-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 8px;
-  outline: none;
+  background: #f7f8fa;
+  color: var(--muted);
 }
 
-.mv-area.on {
+.mv-view-btn:hover,
+.mv-view-btn.on {
+  background: var(--blue-bg);
   color: var(--blue);
-  font-weight: 700;
-  border-color: var(--blue);
+}
+
+.mv-view-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.mv-view-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
   background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
-.mv-head .mv-toggle {
-  flex-shrink: 0;
-  margin-right: auto;
-  margin-left: 0;
-  gap: 2px;
-}
-
-/* 보기전환을 밑줄 탭으로 — 활성 탭만 파란 글씨 + 2px 밑줄 */
-.mv-toggle .pill {
+.mv-view-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
   border: none;
+  border-radius: 6px;
   background: none;
-  border-radius: 0;
-  padding: 10px 12px 11px;
-  font-size: var(--fs-sm);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px; /* 밑줄이 바의 헤어라인을 덮게 */
-}
-
-.mv-toggle .pill:hover {
   color: var(--text);
-  background: none;
+  font-size: var(--fs-base);
+  text-align: left;
+  white-space: nowrap;
 }
 
-.mv-toggle .pill.on {
-  background: none;
-  border-color: transparent;
-  border-bottom-color: var(--blue);
+.mv-view-item:hover {
+  background: var(--fill);
+}
+
+.mv-view-ic {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.mv-view-item.on {
   color: var(--blue);
   font-weight: 700;
+}
+
+.mv-view-item.on .mv-view-ic {
+  color: var(--blue);
+}
+
+.mv-view-check {
+  display: inline-flex;
+  margin-left: auto;
+  padding-left: 12px;
 }
 
 .mv-search {
@@ -1179,22 +1207,17 @@ main {
   }
 }
 
-/* 좁은 화면(폰): 검색과 보기전환을 세로로 쌓는다 */
+/* 좁은 화면(폰): 검색칸이 폭을 다 쓰고 보기 고르기 아이콘이 그 오른쪽에 (2026-11-09 — 탭 줄 하나가 통째로 빠졌다) */
 @media (max-width: 899px) {
-  .mv-head {
-    flex-wrap: wrap;
-  }
-
   .mv-head .mv-searchwrap {
-    flex-basis: 100%;
-    width: 100%;
-    order: 2;
+    flex: 1;
+    width: auto;
+    min-width: 0;
     margin-bottom: 10px;
   }
 
-  .mv-head .mv-toggle {
-    overflow-x: auto;
-    max-width: 100%;
+  .mv-view {
+    margin-bottom: 10px;
   }
 }
 
@@ -1230,13 +1253,6 @@ main {
   font-size: var(--fs-label);
   color: var(--faint);
   white-space: nowrap;
-}
-
-.mv-toggle {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
 }
 
 /* 보드 */
@@ -5306,8 +5322,7 @@ main {
     font-size: 16px;
   }
 
-  /* 분야 거르기·분야 칸 — 클래스 글씨 크기가 위 select 규칙을 이기므로 따로 16px (2026-11-06) */
-  .mv-area,
+  /* 분야 칸 — 클래스 글씨 크기가 위 select 규칙을 이기므로 따로 16px (2026-11-06) */
   .panel-area .area-select {
     font-size: 16px;
     min-height: 40px;
@@ -5340,6 +5355,23 @@ main {
 
   .mv-head .mv-search {
     padding-right: 40px;
+    min-height: 40px;
+  }
+
+  /* 보기 고르기 — 손가락 크기 (검색칸과 같은 높이) */
+  .mv-view-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mv-view-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mv-view-item {
+    min-height: 44px;
+    padding: 8px 12px;
   }
 
   .pill {

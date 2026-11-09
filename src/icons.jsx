@@ -32,4 +32,8 @@ export const ICONS = {
   flag: ic(<><path d="M5 21V4" /><path d="M5 4c4-2 6 2 10 0v9c-4 2-6-2-10 0" /></>),
   flagOff: ic(<><path d="M5 21V4" /><path d="M5 4c4-2 6 2 10 0v9c-4 2-6-2-10 0" /><path d="M3 3l18 18" /></>),
   chevronR: ic(<path d="M9 6l6 6-6 6" />),
+  // 보기 고르기 (2026-11-09) — 보드 = 세 칸, 표 = 줄 나뉜 칸, 타임라인 = 어긋난 막대
+  board: ic(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" /></>),
+  table: ic(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M3 15h18M9 10v10" /></>),
+  timeline: ic(<><path d="M4 6h9" /><path d="M9 12h11" /><path d="M6 18h8" /></>),
 }

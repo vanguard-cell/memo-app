@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   subscribe, getMemos, getTrash, getDayOrder, getAuth, signOut, downloadBackup, runDiagnostics,
   addMemo, updateMemo, completeMemo, purgeMemos,
-  getRoutines, ensureThisMonth, ensureAlarmCycles, convertRepeatMemos, dedupeCycles, cleanupBlankRoutines, blankTitle, adoptDoneDays, alignTentative, importData, importRoutineRows,
-  routineHasMonth, labelYm,
+  getRoutines, ensureThisMonth, ensureAlarmCycles, convertRepeatMemos, dedupeCycles, cleanupBlankRoutines, adoptDoneDays, alignTentative, importData, importRoutineRows,
 } from './store'
 import { readRoutineXlsx } from './importXlsx'
 import { todayStr } from './parser'
@@ -78,20 +77,7 @@ export default function App() {
   const closeTimer = useRef(null)
   // 보관 — 날짜 없이 넣어둔 메모 (완료한 건 메모 표의 완료 묶음으로 간다)
   const keeps = memos.filter((m) => m.keep && m.status !== 'done')
-  // 메뉴 옆 숫자 = 보관 메모들에 남은 체크 개수 — "들어가서 체크할 게 몇 개 남았나" (2026-10-29)
-  const keepLeft = keeps.reduce(
-    (n, m) => n + (m.history || []).filter((h) => h.type !== 'log' && !h.done).length,
-    0
-  )
-  // 사이드바 배지 — 이번 달에 아직 안 끝난 루틴 건수
-  const nowYm = todayStr().slice(0, 7)
-  const routineLeft = routines.filter((r) => {
-    // 이번 달에 "하는" 회차 — 익월 발행(dueShift)이면 그건 지난 달분이다 (2026-09-07)
-    const ym = labelYm(r, nowYm)
-    if (blankTitle(r.title) || !routineHasMonth(r, ym)) return false
-    const cyc = memos.find((m) => m.routineId === r.id && m.ym === ym)
-    return !cyc || cyc.status !== 'done'
-  }).length
+  // 루틴·보관 메뉴 옆 숫자(안 끝난 루틴 수·남은 체크 수)는 2026-11-09 사용자 요청으로 없앴다 — 재도입 금지
   const narrow = useIsNarrow()
   const updateReady = useUpdateReady()
   const open = memos.find((m) => m.id === openId)
@@ -283,7 +269,7 @@ export default function App() {
   useEffect(() => {
     if (narrow || !open) return
     const KEEP_OPEN =
-      '.detail, .panel-fold, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar, .rt-row, .rt-paste, .rt-edit-row'
+      '.detail, .panel-fold, .kb-card, .kb-add, .row, .mv-table tbody tr, .tlv-label, .tlv-bar, .cal-ev, .cal-period-chip, .update-bar, .undo-bar, .rt-row, .rt-paste, .rt-edit-row, .mv-view'
     const onDown = (e) => {
       if (e.target.closest && e.target.closest(KEEP_OPEN)) return
       closePanel()
@@ -360,17 +346,15 @@ export default function App() {
             onClick={() => goTo('routine')}
           >
             <span className="stab-ic">{ICONS.routine}</span>루틴
-            {routineLeft > 0 && <span className="stab-n">{routineLeft}</span>}
           </button>
           {/* 보관 — 날짜 없이 넣어둔 목록(살 것 등). 달력을 보다가 한 번씩 들어와 체크하는 곳이라
-              아래 서랍에서 메뉴로 올렸다. 숫자 = 남은 체크 개수 (2026-10-29 사용자 지시) */}
+              아래 서랍에서 메뉴로 올렸다 (2026-10-29 사용자 지시) */}
           <button
             className={'stab' + (showKeep ? ' on' : '')}
             title="날짜 없이 넣어둔 목록 — 들어가서 바로 체크·추가"
             onClick={() => goTo('keep')}
           >
             <span className="stab-ic">{ICONS.keep}</span>보관
-            {keepLeft > 0 && <span className="stab-n">{keepLeft}</span>}
           </button>
           {/* 위는 "매일 쓰는 화면"(메모·루틴·보관)만. 휴지통과 도구(백업·가져오기)는 아래에
               아이콘 한 줄로 — 폰 상단 줄과 같은 문법. 계정도 로그아웃 옆으로 (2026-08-11 사용자 지시) */}
@@ -441,8 +425,9 @@ export default function App() {
             </div>
             <nav className="ptabs">
               {[
-                ['routine', ICONS.routine, '루틴', routineLeft, showRoutine, () => goTo('routine')],
-                ['keep', ICONS.keep, '보관', keepLeft, showKeep, () => goTo('keep')],
+                // 숫자는 휴지통만 (루틴·보관 숫자는 2026-11-09 없앴다)
+                ['routine', ICONS.routine, '루틴', 0, showRoutine, () => goTo('routine')],
+                ['keep', ICONS.keep, '보관', 0, showKeep, () => goTo('keep')],
                 ['trash', ICONS.trash, '휴지통', trash.length, showTrash, () => goTo('trash')],
               ].map(([key, icon, label, n, on, go]) => (
                 <button

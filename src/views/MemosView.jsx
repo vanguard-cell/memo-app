@@ -1,10 +1,11 @@
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import CalendarView from './CalendarView'
 import { memoStatus, fmtDate, fmtPeriod, diffDays, STATUS_LABEL } from '../derive'
 import { completeMemo, reopenMemo, updateMemo, setDayOrder, alarmItems, addMemo } from '../store'
 import { todayStr, parse } from '../parser'
 import useIsNarrow from '../useIsNarrow'
-import { AREAS, AREA_LABEL } from '../areas'
+import { AREA_LABEL } from '../areas'
+import { ICONS } from '../icons'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -760,24 +761,77 @@ function TimelineView({ memos, dayOrder, onOpen, renderDetail }) {
 
 // ---------- 메모탭 ----------
 
-// 분야 거르기 (2026-11-06) — 보드·달력·표·타임라인이 다 같이 걸러진다. '업무만' = 개인을 뺀 전부.
-const AREA_FILTERS = [['', '전체'], ['work', '업무만'], ...AREAS, ['none', '미분류']]
-const readAreaF = () => {
-  try {
-    const v = localStorage.getItem('memo-area') || ''
-    return AREA_FILTERS.some(([id]) => id === v) ? v : ''
-  } catch {
-    return ''
-  }
-}
-const areaPass = (f, a) => (!f ? true : f === 'work' ? a !== 'personal' : f === 'none' ? !a : a === f)
+// 분야 거르기 칸("전체 분야")은 2026-11-09 사용자 요청으로 없앴다 — 분야로 보고 싶으면 검색칸에
+// 분야 이름("소방")을 치면 된다(검색이 분야 이름도 본다). 재도입 금지.
 
 const VIEWS = [
-  ['board', '보드'],
-  ['calendar', '달력'],
-  ['table', '표'],
-  ['timeline', '타임라인'],
+  ['board', '보드', ICONS.board],
+  ['calendar', '달력', ICONS.calendar],
+  ['table', '표', ICONS.table],
+  ['timeline', '타임라인', ICONS.timeline],
 ]
+
+// 보기 고르기 (2026-11-09, 사용자: "보드/달력/표/타임라인을 아이콘 하나로 줄인 다음에 클릭하면
+// 고르는 화면이 나오게"). 아이콘은 **지금 보기의 그림**이라 어느 보기인지 바로 보인다. 누르면 그 밑에
+// 작은 목록이 붙는다(화면을 덮는 창이 아니다). 바깥을 누르거나 Esc면 닫힌다.
+function ViewPicker({ view, onPick }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    // Esc는 목록만 닫는다 — 열린 상세까지 같이 닫히지 않게 먼저 받아서 멈춘다
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [open])
+  const cur = VIEWS.find(([id]) => id === view) || VIEWS[0]
+  return (
+    <div className="mv-view" ref={ref}>
+      <button
+        type="button"
+        className={'mv-view-btn' + (open ? ' on' : '')}
+        title={`보기 바꾸기 — 지금: ${cur[1]}`}
+        aria-label={`보기 바꾸기 (지금: ${cur[1]})`}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {cur[2]}
+      </button>
+      {open && (
+        <div className="mv-view-menu" role="menu">
+          {VIEWS.map(([id, label, icon]) => (
+            <button
+              key={id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={view === id}
+              className={'mv-view-item' + (view === id ? ' on' : '')}
+              onClick={() => {
+                onPick(id)
+                setOpen(false)
+              }}
+            >
+              <span className="mv-view-ic">{icon}</span>
+              {label}
+              {view === id && <span className="mv-view-check">{ICONS.check}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // 검색칸에 친 글로 새 메모를 만들 때의 제목·날짜 (2026-11-05).
 // 날짜는 제목에서 뗀다(핵심 컨셉 1 — migrate()와 같은 규칙): "11/20 우미린 잔금" → 11/20 · "우미린 잔금",
@@ -807,15 +861,12 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
   )
   const today = todayStr()
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  const [areaF, setAreaF] = useState(readAreaF)
   // 루틴 회차는 루틴의 분야를 따른다 (store의 areaOf와 같은 규칙 — 여기선 받은 routines로 본다)
   const areaByRule = new Map(routines.map((r) => [r.id, r.area || null]))
   const aOf = (m) => (m.routineId ? areaByRule.get(m.routineId) || null : m.area || null)
-  const shownRoutines = areaF ? routines.filter((r) => areaPass(areaF, r.area || null)) : routines
 
   // 검색만 적용된 목록 — 달력 보기는 타일(시간) 필터를 무시한다 (달력 자체가 시간 화면이라 겹치면 텅 비어 보임)
   const searchList = memos.filter((m) => {
-    if (areaF && !areaPass(areaF, aOf(m))) return false
     if (!words.length) return true
     // 시각도 검색에 걸리게 — 제목 앞의 "11:00"을 시간 칸으로 옮긴 뒤에도 "11:00"으로 찾아진다.
     // 분야 이름도 걸리게 — "소방"으로 치면 제목에 소방이 없어도 소방 분야 메모가 나온다 (2026-11-06)
@@ -851,36 +902,9 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
 
   return (
     <div className="view">
-      {/* 위쪽: 보기전환 탭(왼쪽) + 검색(오른쪽) 한 줄 — 밑줄 탭 바 (2026-07-30 시안).
-          새 메모는 보드 칸의 + 로 만든다 (던지기 입력은 2026-07-24 제거) */}
+      {/* 위쪽 한 줄: 검색칸(= 새 메모 칸) + 보기 고르기 아이콘 (2026-11-09 — 그전엔 왼쪽에 밑줄 탭 넷과
+          분야 거르기 칸이 있었다) */}
       <div className="mv-head">
-        <div className="mv-toggle">
-          {VIEWS.map(([id, label]) => (
-            <button key={id} className={'pill' + (view === id ? ' on' : '')} onClick={() => pick(id)}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <select
-          className={'mv-area' + (areaF ? ' on' : '')}
-          value={areaF}
-          title="분야로 거르기 — 보드·달력·표·타임라인이 같이 걸러집니다"
-          aria-label="분야로 거르기"
-          onChange={(e) => {
-            setAreaF(e.target.value)
-            try {
-              localStorage.setItem('memo-area', e.target.value)
-            } catch {
-              /* 저장이 막힌 브라우저 — 이번만 적용 */
-            }
-          }}
-        >
-          {AREA_FILTERS.map(([id, label]) => (
-            <option key={id || 'all'} value={id}>
-              {id ? label : '전체 분야'}
-            </option>
-          ))}
-        </select>
         {/* 검색칸 오른쪽 × — 한 번에 지운다. 폰은 한 글자씩 지우기가 특히 번거롭다 (2026-08-07).
             지운 뒤에도 커서를 칸에 남겨둬서 키보드가 닫히지 않고 바로 다시 칠 수 있다.
             Enter = 새 메모는 form 제출로 받는다 (2026-11-09, 사용자: "엔터치면 바로 저장되게").
@@ -926,6 +950,7 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
             </button>
           )}
         </form>
+        <ViewPicker view={view} onPick={pick} />
       </div>
       {draft && (
         <button className="mv-new" onClick={addFromSearch}>
@@ -937,16 +962,15 @@ export default function MemosView({ memos, routines = [], dayOrder, onOpen, onCo
           </span>
         </button>
       )}
-      {view === 'board' && <BoardView memos={list} routines={shownRoutines} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
+      {view === 'board' && <BoardView memos={list} routines={routines} dayOrder={dayOrder} onOpen={onOpen} onCompose={onCompose} renderDetail={renderDetail} />}
       {view === 'calendar' && (
         <CalendarView
           memos={searchList}
-          routines={shownRoutines}
+          routines={routines}
           dayOrder={dayOrder}
           onOpen={onOpen}
           renderDetail={renderDetail}
           filtered={words.length > 0}
-          hideMacro={!!areaF}
         />
       )}
       {view === 'table' && (
