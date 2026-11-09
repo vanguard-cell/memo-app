@@ -2992,18 +2992,12 @@ main {
   padding: 6px 10px;
 }
 
-/* 일정 칸 안에 들어간 안내 줄(루틴이 잡은 날·"매달 ○일로?") — 날짜 줄 밑에 같은 상자의 한 줄로 (2026-11-09) */
+/* 일정 칸 안에 들어간 안내 줄(루틴이 잡은 날·"매달 ○일로?") — 펼쳤을 때만, 날짜 줄 밑에 (2026-11-09) */
 .sched .meta-ask,
 .sched .sched-tent {
-  margin: 0 8px 8px;
+  margin: 8px;
   padding: 6px 10px;
   border-radius: 8px;
-  background: var(--card);
-}
-
-.sched.open .meta-ask,
-.sched.open .sched-tent {
-  margin: 8px;
   background: var(--blue-bg);
 }
 

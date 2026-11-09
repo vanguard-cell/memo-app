@@ -271,8 +271,8 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
                 일정
                 {ddBadge && <span className={'kb-badge ' + ddBadge[0]}>{ddBadge[1]}</span>}
               </div>
-              {/* 루틴이 잡은 날 확정·"매달 ○일로?" 질문은 일정 칸 안, 날짜 줄 바로 밑에 (2026-11-09,
-                  사용자: "따로 나오게 하지 말고 같은 곳에 묶어") */}
+              {/* 루틴이 잡은 날 확정·"매달 ○일로?" 질문은 일정 칸 안 — 펼쳤을 때만 보인다 (2026-11-09,
+                  사용자: "따로 나오게 하지 말고 같은 곳에 묶어", "숨겨질 때 같이 숨겨줘") */}
               <ScheduleBlock memo={memo}>
                 {/* 루틴이 자동으로 찍어둔 날짜 — 날짜를 옮기면 저절로 확정되지만,
                     자동 날짜가 마침 맞을 때를 위해 "이 날 맞다"만 누르는 길을 둔다 (2026-08-13) */}

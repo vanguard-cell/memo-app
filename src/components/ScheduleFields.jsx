@@ -168,7 +168,8 @@ function TimeField({ value, onChange, onClear, label }) {
   )
 }
 
-// children = 일정에 딸린 안내(루틴이 잡은 날 확정, "매달 ○일로?" 질문) — 날짜 줄 바로 밑, 접혀 있어도 보인다
+// children = 일정에 딸린 안내(루틴이 잡은 날 확정, "매달 ○일로?" 질문) — 펼쳤을 때만, 날짜 줄 바로 밑에.
+// 접혀 있을 땐 숨긴다 (2026-11-09, 사용자: "루틴인 건 제목 앞 [ ]로 이미 아니까 숨겨질 때 같이 숨겨줘")
 export function ScheduleBlock({ memo, children }) {
   const today = todayStr()
   const rt = memo.routineId ? routineOf(memo.routineId) : null
@@ -282,7 +283,7 @@ export function ScheduleBlock({ memo, children }) {
         </span>
         <span className="sched-chev">{ICONS.chevronR}</span>
       </button>
-      {children}
+      {open && children}
       {open && (
         <>
           <div className="sched-row">
