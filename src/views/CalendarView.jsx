@@ -305,39 +305,8 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     setDayOrder(date, ids)
   }
 
-  // 폰은 드래그가 안 되므로 줄마다 ▲▼로 한 칸씩 옮긴다 (보드의 상태 버튼과 같은 취지).
-  // 목록이 상태(진행중 → 할일 → 완료)로 먼저 갈리므로 **같은 상태의 이웃**하고만 바꾼다 —
-  // 다른 상태와 바꿔봐야 정렬이 도로 제자리로 돌려놓는다. (2026-08-26 사용자: "폰으로 순서 안 바뀐다")
-  function swapRow(date, evs, id, dir) {
-    const list = orderedEvents(date, evs)
-    const ids = [...new Set(list.map((x) => x.m.id))]
-    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
-    const stOf = (mid) => {
-      const x = list.find((y) => y.m.id === mid)
-      return stRank(x.m) + (timeOf(x) ? ':t' : '')
-    }
-    const i = ids.indexOf(id)
-    const j = i + dir
-    if (i === -1 || j < 0 || j >= ids.length || stOf(ids[i]) !== stOf(ids[j])) return
-    const next = [...ids]
-    next[i] = ids[j]
-    next[j] = ids[i]
-    setDayOrder(date, next)
-  }
-
-  // 그 줄이 위·아래로 갈 수 있나 (같은 상태의 이웃이 있나)
-  function canSwap(date, evs, id, dir) {
-    const list = orderedEvents(date, evs)
-    const ids = [...new Set(list.map((x) => x.m.id))]
-    // 시간 정한 줄은 시각 순으로 고정이라 하루 종일 줄과는 자리를 못 바꾼다
-    const stOf = (mid) => {
-      const x = list.find((y) => y.m.id === mid)
-      return stRank(x.m) + (timeOf(x) ? ':t' : '')
-    }
-    const i = ids.indexOf(id)
-    const j = i + dir
-    return i !== -1 && j >= 0 && j < ids.length && stOf(ids[i]) === stOf(ids[j])
-  }
+  // 폰의 ▲▼(한 칸씩 옮기기, 2026-08-26)는 2026-11-09 없앴다 — 사용자: "눌러서 드래그로 순서 바꾸면 되니까 필요없어".
+  // 폰도 줄을 길게 눌러 끄는 위 reorder를 쓴다. 재도입 금지.
 
   function onDrop(targetDate, e) {
     e.preventDefault()
@@ -963,24 +932,6 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
                 {e.text}
               </span>
               <span className="row-move" onClick={(ev) => ev.stopPropagation()}>
-                {narrow && (
-                  <>
-                  <button
-                    aria-label="위로"
-                    disabled={!canSwap(sel, events[sel] || [], e.m.id, -1)}
-                    onClick={() => swapRow(sel, events[sel] || [], e.m.id, -1)}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    aria-label="아래로"
-                    disabled={!canSwap(sel, events[sel] || [], e.m.id, 1)}
-                    onClick={() => swapRow(sel, events[sel] || [], e.m.id, 1)}
-                  >
-                    ▼
-                  </button>
-                  </>
-                )}
                 {/* 바로 완료 — 상세를 열지 않고 줄에서 끝낸다. 완료된 줄은 다시 누르면 되돌린다 */}
                 <button
                   className={'row-done' + (memoStatus(e.m) === 'done' ? ' on' : '')}

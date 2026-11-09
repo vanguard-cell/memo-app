@@ -5127,8 +5127,8 @@ main {
   color: var(--faint);
 }
 
-/* 달력 날짜 목록의 순서 바꾸기 ▲▼ — 폰은 드래그가 안 되므로 (2026-08-26).
-   PC에는 아예 안 그려진다(드래그가 있다). 목록이 길어지지 않게 줄 안에 붙인다. */
+/* 달력 날짜 목록 줄 오른쪽 버튼 자리 — 지금은 바로 완료(✓) 하나.
+   (폰 ▲▼는 2026-11-09 없앴다 — 순서는 길게 눌러 끌기) */
 .row-move {
   display: flex;
   gap: 4px;
@@ -5136,7 +5136,7 @@ main {
   margin-left: auto;
 }
 
-/* 세로로 쌓으면 줄이 두 배로 높아진다 — 가로로 나란히, 손가락에 맞게 36px */
+/* 손가락에 맞게 36px */
 .row-move button {
   width: 36px;
   height: 36px;
@@ -5173,11 +5173,6 @@ main {
     width: 26px;
     height: 26px;
   }
-}
-
-.row-move button:disabled {
-  opacity: 0.3;
-  cursor: default;
 }
 
 /* 날짜 목록 제목 옆 "오늘" 표시 */
