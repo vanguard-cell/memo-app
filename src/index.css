@@ -3315,85 +3315,81 @@ main {
   color: var(--red);
 }
 
-/* 액션 아이콘 버튼 (2026-07-31 전부 아이콘 확정) — 마우스를 올리면 즉시 설명 말풍선 */
-.pa-ic {
+/* 제목 왼쪽 완료 동그라미 (2026-11-09 — 아이폰 미리 알림처럼). 버튼은 누르기 좋게 넉넉히, 동그라미는 안쪽 tc-dot.
+   마우스를 올리면 흐린 체크가 비치고, 완료면 초록으로 찬다 */
+.title-check {
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 2px;
+  padding: 0;
   border: none;
   background: none;
-  padding: 6px 9px;
-  border-radius: 6px;
-  color: var(--muted);
-  line-height: 1;
 }
 
-.pa-ic:hover {
-  background: var(--fill);
-  color: var(--text);
+.tc-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-hover);
+  border-radius: 50%;
+  background: var(--card);
+  color: transparent;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.tc-dot svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+
+.title-check:hover .tc-dot {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.title-check.on .tc-dot {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+/* 맨 아래 한 줄 — 보관 · 삭제(가끔 쓰는 것) + 오른쪽 작성일 (2026-11-09) */
+.panel-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.foot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
   border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-sm);
 }
 
-/* 아이콘 옆 이름 — PC는 마우스를 올리면 말풍선이 뜨므로 숨긴다. 폰에서만 보인다 (2026-08-05) */
-.pa-tx {
-  display: none;
-}
-
-.pa-ic.on {
+.foot-btn:hover {
   background: var(--fill);
   color: var(--text);
 }
 
-/* 완료 처리 — 파란 채움, 흰 체크 */
-.pa-ic.pa-done {
-  background: var(--blue);
-  color: #fff;
-  padding: 6px 12px;
-}
-
-.pa-ic.pa-done:hover {
-  background: var(--blue-strong);
-  color: #fff;
-}
-
-.pa-ic.pa-danger {
-  color: var(--red);
-}
-
-.pa-ic.pa-danger:hover {
+.foot-danger:hover {
   background: var(--red-bg);
   color: var(--red);
-}
-
-/* 자주 쓰는 것 | 가끔 쓰는 것 사이 세로 구분선 */
-.pa-div {
-  width: 1px;
-  height: 16px;
-  background: var(--border);
-  margin: 0 7px;
-  flex-shrink: 0;
-}
-
-/* 즉시 뜨는 설명 말풍선 — 브라우저 기본 title은 1초 기다려야 해서 CSS로 (팝업 아님, hover 전용) */
-.panel-actions [data-tip] {
-  position: relative;
-}
-
-.panel-actions [data-tip]:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 7px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--text);
-  color: #fff;
-  font-size: var(--fs-sm);
-  font-weight: 400;
-  padding: 4px 9px;
-  border-radius: 5px;
-  white-space: nowrap;
-  z-index: 60;
-  pointer-events: none;
 }
 
 .btn-done {
@@ -3472,19 +3468,7 @@ main {
   margin-top: 22px;
 }
 
-/* 분야 — 작업 설명 위 한 줄 (2026-11-06) */
-.panel-area {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 22px;
-}
-
-.panel-area .panel-sec-label {
-  margin-bottom: 0;
-}
-
-/* 완료하면 N년마다 루틴이 되는 메모 — 분야 아래 한 줄 */
+/* 완료하면 N년마다 루틴이 되는 메모 — 일정 아래 한 줄 */
 .panel-years {
   display: flex;
   align-items: center;
@@ -4768,12 +4752,12 @@ main {
 }
 
 /* 작성·완료일 — 기한 줄 오른쪽 끝에서 한눈에 */
-/* 작성일·완료일 — 상세 맨 아래 오른쪽에 작게 (2026-11-09, 그전엔 일정 칸 밑) */
+/* 작성일·완료일 — 맨 아래 줄 오른쪽에 작게 (2026-11-09, 그전엔 일정 칸 밑) */
 .panel-created {
-  margin-top: 22px;
-  text-align: right;
+  margin-left: auto;
   font-size: var(--fs-sm);
   color: var(--faint);
+  white-space: nowrap;
 }
 
 @media (max-width: 560px) {
@@ -5209,12 +5193,6 @@ main {
     font-size: 16px;
   }
 
-  /* 분야 칸 — 클래스 글씨 크기가 위 select 규칙을 이기므로 따로 16px (2026-11-06) */
-  .panel-area .area-select {
-    font-size: 16px;
-    min-height: 40px;
-  }
-
   /* 일정 칸 — 손가락 크기, 이름표를 줄이고 선택 뒤 칸은 들여쓰지 않는다 */
   .sched-row {
     min-height: 46px;
@@ -5401,38 +5379,26 @@ main {
   }
 
   /* ---------- ③ 상세 ---------- */
-  /* 마우스를 올릴 수 없으니 아이콘 옆에 이름을 같이 쓴다 (PC는 말풍선이라 글자 숨김) */
-  .pa-tx {
-    display: inline;
-    margin-left: 5px;
-    font-size: var(--fs-sm);
+  /* 완료 동그라미·맨 아래 보관/삭제 — 손가락 크기 (2026-11-09) */
+  .title-check {
+    width: 40px;
+    height: 40px;
+    margin: -2px -4px 0 -6px;
   }
 
-  .panel-actions {
-    gap: 2px;
-    row-gap: 4px;
-    padding: 10px 0;
+  .tc-dot {
+    width: 26px;
+    height: 26px;
   }
 
-  /* .panel-actions button (0,1,1) 보다 세게 잡아야 패딩이 먹는다 */
-  .panel-actions .pa-ic {
-    padding: 9px 11px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-
-  .panel-actions .pa-ic.pa-done {
-    padding: 9px 13px;
-    border-color: var(--blue);
+  .foot-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: var(--fs-base);
   }
 
   .panel-meta .linkish {
     padding: 7px 6px;
-  }
-
-  /* 구분선은 PC만 — 폰에선 줄바꿈만 헝클어뜨린다 */
-  .pa-div {
-    display: none;
   }
 
   /* 기록 줄의 × 는 PC에선 마우스를 올려야 나오는데, 폰은 올릴 수가 없어

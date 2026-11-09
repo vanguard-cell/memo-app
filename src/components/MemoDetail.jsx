@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { addHistory, toggleHistory, updateHistory, removeHistory, updateMemo, completeMemo, reopenMemo, deleteMemo, confirmDate, routineOf, cycleDue, ymDiff, adoptCycleDay } from '../store'
-import { memoStatus, STATUS_LABEL, fmtDate, dueBadge } from '../derive'
-import { todayStr, addDays } from '../parser'
+import { STATUS_LABEL, fmtDate, dueBadge } from '../derive'
+import { todayStr } from '../parser'
 import Timeline from './Timeline'
 import { useTagSuggest, TagList } from './TagSuggest'
 import { ScheduleBlock } from './ScheduleFields'
 import { splitTime } from '../schedule'
 import SendToDateBtn from './SendToDateBtn'
 import FileSection from './FileSection'
-import { attachFile, detachFile, setArea, areaOf } from '../store'
-import { AREAS } from '../areas'
+import { attachFile, detachFile } from '../store'
 import { ICONS } from '../icons'
 import useIsNarrow from '../useIsNarrow'
 
-// 상세 버튼 줄은 고정 순서: 완료 · 미루기 | 보관 · 삭제 (2026-11-09 정리 — 날짜 지정 버튼과
-// 아이콘 끌어서 순서 바꾸기는 없앴다. 날짜는 위 일정 칸에서 바로 고친다)
+// 상세의 버튼 자리 (2026-11-09 다시 정리, 사용자: "완료/보관/휴지통 위치도 적절한 곳으로"):
+// 완료 = 제목 왼쪽 동그라미(아이폰 미리 알림처럼) · 보관·삭제 = 맨 아래 작성일 옆.
+// 버튼 줄(완료·미루기·날짜 지정·보관·삭제)과 하루 미루기는 없앴다 — 날짜는 일정 칸에서 바로 고친다.
 
 const REPEAT_LABEL = { weekly: '매주', monthly: '매달', yearly: '매년' }
 
@@ -62,7 +62,6 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
       }, kind === 'reg' ? 1000 : 450)
     })
   }
-  const st = memoStatus(memo)
   const today = todayStr()
   const ddBadge = dueBadge(memo, today)
   const narrow = useIsNarrow()
@@ -167,17 +166,14 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   const ruleNow = rt ? `${(Number(rt.dueShift) || 0) ? '다음 달 ' : ''}${Number(rt.dueDay) || 5}일` : ''
   const ruleNew = `${askShift === 1 ? '다음 달 ' : askShift > 1 ? `${askShift}달 뒤 ` : ''}${askDay}일`
 
-  // 미루기: 하루짜리는 그 날짜로, 끝 날짜가 오늘이거나 지난 기간은 끝 날짜를 옮긴다.
-  // 아직 안 끝난 기간에는 버튼이 안 나온다 — 예전엔 "그날까지 숨김"(snoozeUntil)을 적었는데 그 값을
-  // 읽던 오늘/마감·만기 타일(2026-07-24 삭제)이 없어져서, 눌러도 아무 일도 안 일어났다 (2026-11-09).
-  const tomorrow = addDays(today, 1)
-  const endPassed = !memo.due && !!memo.period && memo.period.end <= today
+  // 하루 미루기는 2026-11-09 없앴다(사용자: "필요없다") — 날짜는 일정 칸의 시작 날짜로 옮긴다
   const openPlain = memo.status !== 'done' && !memo.keep
-  const canPostpone = openPlain && (!!memo.due || endPassed)
-  function postpone(d) {
-    if (memo.due) return updateMemo(memo.id, { due: d })
-    const start = memo.period.start <= d ? memo.period.start : d
-    updateMemo(memo.id, { period: { start, end: d } })
+  const done = memo.status === 'done'
+  function remove() {
+    if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
+      deleteMemo(memo.id)
+      onClose()
+    }
   }
 
   return (
@@ -188,9 +184,28 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
       onClick={(e) => e.stopPropagation()}
     >
         <div className="panel-head">
-          {/* 상태 고르기(PC 드롭다운·폰 버튼 줄)는 2026-11-09 없앴다 — 완료는 아래 ✓ 버튼, 진행중은
-              체크하면 저절로(보드에서 끌어도 된다). 완료·보관인 메모만 무엇인지 작게 표시한다 */}
-          {(st === 'done' || st === 'keep') && <span className={'badge st-' + st}>{STATUS_LABEL[st]}</span>}
+          {/* 완료 = 제목 왼쪽 동그라미 (아이폰 미리 알림처럼). 누르면 완료, 완료된 메모는 다시 누르면 되살린다.
+              보관 메모는 완료 개념 밖이라 "보관" 표시만. (상태 고르기는 2026-11-09 없앴다 — 진행중은 체크하면 저절로) */}
+          {memo.keep && !done ? (
+            <span className="badge st-keep">{STATUS_LABEL.keep}</span>
+          ) : (
+            <button
+              type="button"
+              className={'title-check' + (done ? ' on' : '')}
+              title={
+                done
+                  ? '다시 열기'
+                  : memo.repeat && memo.due
+                    ? `이번 회차 완료 — 다음 ${REPEAT_LABEL[memo.repeat] || ''} 예정으로`
+                    : '완료'
+              }
+              aria-label={done ? '다시 열기' : '완료'}
+              aria-pressed={done}
+              onClick={() => (done ? reopenMemo(memo.id) : completeMemo(memo.id))}
+            >
+              <span className="tc-dot">{ICONS.check}</span>
+            </button>
+          )}
           {/* 말머리([전표]·[회의록]…)는 "["를 치면 그 자리에서 고른다 (2026-10-07) */}
           <div className="tag-wrap">
           <textarea
@@ -306,96 +321,21 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
             </button>
           )}
         </div>
-        {/* 액션 줄 — 아이콘 + 마우스 설명. 완료 · 미루기 | 보관 · 삭제 (2026-11-09 고정 순서, 폰도 같다).
-            보관·삭제 아이콘은 왼쪽 메뉴의 보관·휴지통과 같은 그림 — 누르면 어디로 가는지 그림이 말해준다.
-            보관 메모만 [오늘 할 일로 꺼내기]·[날짜 지정] 글자 버튼 (보류의 "날짜 지정"도 2026-10-29 여기로 합쳤다). */}
-        <div className="panel-actions">
-          {memo.status !== 'done' && memo.keep && (
-            <>
-              <button
-                className="btn-done"
-                title="보관에서 꺼내 오늘 할 일로 보냅니다"
-                onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
-              >
-                오늘 할 일로 꺼내기
-              </button>
-              <SendToDateBtn
-                label="날짜 지정"
-                min={todayStr()}
-                onPick={(d) => updateMemo(memo.id, { keep: false, due: d })}
-              />
-            </>
-          )}
-          {!memo.keep &&
-            (memo.status !== 'done' ? (
-              <button
-                className="pa-ic pa-done"
-                data-tip={memo.repeat && memo.due ? `이번 회차 완료 — 다음 ${REPEAT_LABEL[memo.repeat] || ''} 예정으로` : '완료 처리'}
-                onClick={() => completeMemo(memo.id)}
-              >
-                {ICONS.check}
-                <span className="pa-tx">완료</span>
-              </button>
-            ) : (
-              <button className="pa-ic" data-tip="다시 열기" onClick={() => reopenMemo(memo.id)}>
-                {ICONS.undo}
-                <span className="pa-tx">다시 열기</span>
-              </button>
-            ))}
-          {canPostpone && (
+        {/* 보관 메모만 — 꺼내는 버튼 두 개 (보류의 "날짜 지정"도 2026-10-29 여기로 합쳤다) */}
+        {memo.keep && !done && (
+          <div className="panel-actions">
             <button
-              className="pa-ic"
-              data-tip={memo.due && memo.due > today ? '하루 미루기 — 하루 뒤로' : endPassed ? '하루 미루기 — 마감일을 내일로' : '하루 미루기 — 내일로'}
-              onClick={() => postpone(memo.due && memo.due > today ? addDays(memo.due, 1) : tomorrow)}
+              className="btn-done"
+              title="보관에서 꺼내 오늘 할 일로 보냅니다"
+              onClick={() => updateMemo(memo.id, { keep: false, due: todayStr() })}
             >
-              {ICONS.next}
-              <span className="pa-tx">미루기</span>
+              오늘 할 일로 꺼내기
             </button>
-          )}
-          {openPlain && <span className="pa-div" />}
-          {openPlain && (
-            <button
-              className="pa-ic"
-              data-tip="보관 — 날짜를 떼고 보관으로 (달력·보드에서 빠짐)"
-              onClick={() => updateMemo(memo.id, { keep: true, due: null, period: null, snoozeUntil: null })}
-            >
-              {ICONS.keep}
-              <span className="pa-tx">보관</span>
-            </button>
-          )}
-          <button
-            className="pa-ic pa-danger"
-            data-tip="삭제 — 휴지통으로 (30일 보관)"
-            onClick={() => {
-              if (window.confirm('휴지통으로 옮길까요? 30일 안에는 휴지통에서 복구할 수 있습니다.')) {
-                deleteMemo(memo.id)
-                onClose()
-              }
-            }}
-          >
-            {ICONS.trash}
-            <span className="pa-tx">삭제</span>
-          </button>
-        </div>
-        {/* 분야 (2026-11-06) — 보고서·대장·연간실적을 묶는 기준. 새 메모는 비슷한 옛 메모를 보고
-            앱이 정해 두고("자동"), 고르면 내가 정한 것이 된다. 루틴 회차는 루틴의 분야를 바꾼다 */}
-        <div className="panel-area">
-          <span className="panel-sec-label">분야</span>
-          <select
-            className="sched-select area-select"
-            value={areaOf(memo) || ''}
-            onChange={(e) => setArea(memo, e.target.value)}
-          >
-            <option value="">미분류</option>
-            {AREAS.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-          {memo.areaAuto && !memo.routineId && <span className="sched-muted">자동</span>}
-          {memo.routineId && <span className="sched-muted">루틴 전체에 적용</span>}
-        </div>
+            <SendToDateBtn label="날짜 지정" min={todayStr()} onPick={(d) => updateMemo(memo.id, { keep: false, due: d })} />
+          </div>
+        )}
+        {/* 분야 칸은 2026-11-09 사용자 요청으로 상세에서 뺐다 — 분야는 앱이 계속 저절로 정해 두고
+            (보고서·대장의 기준, 검색에도 걸림), 고치는 자리가 다시 필요하면 대장·보고서 화면에 둔다 */}
         {/* 완료하면 N년마다 루틴이 되는 메모 (2026-11-06) — 아직 한 번도 안 한 법정 조사 */}
         {Number(memo.repeatYears) > 1 && !memo.routineId && memo.status !== 'done' && (
           <div className="panel-years">
@@ -449,10 +389,27 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
           onAttach={(f) => attachFile(memo.id, f)}
           onRemove={(p) => detachFile(memo.id, p)}
         />
-        {/* 작성일·완료일 — 맨 아래에 작게 (2026-11-09, 그전엔 일정 칸 밑) */}
-        <div className="panel-created">
-          작성 {fmtDate(memo.createdAt.slice(0, 10))}
-          {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
+        {/* 맨 아래 한 줄: 보관 · 삭제(가끔 쓰는 것) + 작성일·완료일 (2026-11-09) */}
+        <div className="panel-foot">
+          {openPlain && (
+            <button
+              type="button"
+              className="foot-btn"
+              title="날짜를 떼고 보관으로 (달력·보드에서 빠짐)"
+              onClick={() => updateMemo(memo.id, { keep: true, due: null, period: null, snoozeUntil: null })}
+            >
+              {ICONS.keep}
+              보관
+            </button>
+          )}
+          <button type="button" className="foot-btn foot-danger" title="휴지통으로 (30일 보관)" onClick={remove}>
+            {ICONS.trash}
+            삭제
+          </button>
+          <span className="panel-created">
+            작성 {fmtDate(memo.createdAt.slice(0, 10))}
+            {memo.completedAt && ` · 완료 ${fmtDate(memo.completedAt.slice(0, 10))}`}
+          </span>
         </div>
     </aside>
     </>
