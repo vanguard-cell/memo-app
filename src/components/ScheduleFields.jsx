@@ -24,7 +24,8 @@ const longDate = (d, today) =>
 
 // 미리 알림 고르기 — 루틴 수정 폼도 같이 쓴다.
 // 내용(그날 할 일)은 필수: 비어 있으면 저장하지 않고 안내만 띄운다 (사용자 확정).
-export function AlarmField({ alarm, onChange }) {
+// label을 주면 이름표와 선택 칸을 한 덩어리로 묶는다 — 좁을 때 "미리 알림"과 칸이 다른 줄로 갈라지지 않게
+export function AlarmField({ alarm, onChange, label }) {
   const [mode, setMode] = useState(() => alarmMode(alarm))
   const [draft, setDraft] = useState(() => (alarm ? { ...alarm } : { n: 1, unit: 'w', daily: false, text: '' }))
   const [err, setErr] = useState(false)
@@ -65,17 +66,28 @@ export function AlarmField({ alarm, onChange }) {
     if (save) commit(next, mode)
   }
 
+  const select = (
+    <select className="sched-select" value={mode} onChange={(e) => pick(e.target.value)}>
+      <option value="0">안 함</option>
+      {ALARM_PRESETS.map(([k, text]) => (
+        <option key={k} value={k}>
+          {text}
+        </option>
+      ))}
+      <option value="custom">사용자화…</option>
+    </select>
+  )
+
   return (
     <>
-      <select className="sched-select" value={mode} onChange={(e) => pick(e.target.value)}>
-        <option value="0">안 함</option>
-        {ALARM_PRESETS.map(([k, label]) => (
-          <option key={k} value={k}>
-            {label}
-          </option>
-        ))}
-        <option value="custom">사용자화…</option>
-      </select>
+      {label ? (
+        <span className="sched-inl">
+          <span className="sched-k sched-k2">{label}</span>
+          {select}
+        </span>
+      ) : (
+        select
+      )}
       {mode !== '0' && (
         <div className="sched-sub">
           {mode === 'custom' && (
@@ -156,7 +168,8 @@ function TimeField({ value, onChange, onClear, label }) {
   )
 }
 
-export function ScheduleBlock({ memo }) {
+// children = 일정에 딸린 안내(루틴이 잡은 날 확정, "매달 ○일로?" 질문) — 날짜 줄 바로 밑, 접혀 있어도 보인다
+export function ScheduleBlock({ memo, children }) {
   const today = todayStr()
   const rt = memo.routineId ? routineOf(memo.routineId) : null
   const nextYm = memo.ym ? shiftYm(memo.ym, 1) : null
@@ -269,6 +282,7 @@ export function ScheduleBlock({ memo }) {
         </span>
         <span className="sched-chev">{ICONS.chevronR}</span>
       </button>
+      {children}
       {open && (
         <>
           <div className="sched-row">
@@ -333,8 +347,7 @@ export function ScheduleBlock({ memo }) {
                 <option value={1}>다음 달</option>
               </select>
             )}
-            <span className="sched-k sched-k2">미리 알림</span>
-            <AlarmField alarm={alarm} onChange={onAlarm} />
+            <AlarmField label="미리 알림" alarm={alarm} onChange={onAlarm} />
             {msg && <span className="sched-err">{msg}</span>}
           </div>
           {(rtLive || kind === 'weekly') && (

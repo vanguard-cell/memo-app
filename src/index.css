@@ -2992,6 +2992,21 @@ main {
   padding: 6px 10px;
 }
 
+/* 일정 칸 안에 들어간 안내 줄(루틴이 잡은 날·"매달 ○일로?") — 날짜 줄 밑에 같은 상자의 한 줄로 (2026-11-09) */
+.sched .meta-ask,
+.sched .sched-tent {
+  margin: 0 8px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.sched.open .meta-ask,
+.sched.open .sched-tent {
+  margin: 8px;
+  background: var(--blue-bg);
+}
+
 /* 반복 표시 칩 — 완료하면 다음 주기로 굴러가는 메모 (2026-07-31) */
 .meta-repeat {
   font-size: var(--fs-label);
@@ -3177,7 +3192,14 @@ main {
   color: var(--text);
 }
 
-/* 반복 · 미리 알림 한 줄 (2026-11-09) — 미리 알림 이름표는 폭을 글자만큼, 앞에 틈 */
+/* 반복 · 미리 알림 한 줄 (2026-11-09) — 미리 알림 이름표는 폭을 글자만큼, 앞에 틈.
+   이름표와 칸은 .sched-inl로 묶여 좁으면 같이 다음 줄로 간다 */
+.sched-inl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sched-pair .sched-k2 {
   width: auto;
   margin-left: 14px;
