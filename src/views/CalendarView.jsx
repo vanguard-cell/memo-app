@@ -9,7 +9,6 @@ import {
 } from '../store'
 import { holiday, holidayLabel } from '../holidays'
 import MemoDetail from '../components/MemoDetail'
-import { useTagSuggest, TagList } from '../components/TagSuggest'
 import useIsNarrow from '../useIsNarrow'
 import { subscribeMacro, getMacro, macroByDate } from '../macro'
 import { weeklyAhead } from '../schedule'
@@ -65,7 +64,6 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
   const [sel, setSel] = useState(() =>
     window.matchMedia('(max-width: 899px)').matches ? todayStr() : null
   )
-  const [qtext, setQtext] = useState('')
   // 년월 고르기 — 제목을 누르면 그 아래에 펼쳐진다 (몇 달·몇 년 떨어진 달로 한 번에)
   const [pick, setPick] = useState(null) // 열려 있으면 { y } (고르는 중인 연도)
   const [dropTarget, setDropTarget] = useState(null)
@@ -352,19 +350,6 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
     }
     const m = memos.find((x) => x.id === data.id)
     moveEvent(m, data.type, data.date, targetDate)
-  }
-
-  // 빠른 추가 칸의 말머리 고르기 ("[" → 지금까지 쓴 말머리)
-  const qRef = useRef(null)
-  const qTag = useTagSuggest((next) => setQtext(next), qRef)
-
-  function quickAdd() {
-    const txt = qtext.trim()
-    if (!txt || !sel) return
-    // 날짜 칸을 클릭해 추가하는 맥락 — 글 속 날짜("7/20 메일참고" 같은 참고 표기)는
-    // 파싱하지 않고, 클릭한 날짜를 그대로 기한으로 쓴다
-    addMemo({ title: txt, due: sel })
-    setQtext('')
   }
 
   const events = useMemo(() => {
@@ -915,27 +900,8 @@ export default function CalendarView({ memos, routines = [], dayOrder, onOpen, r
             {holiday(sel) && <span className="cal-hol-tag">{holidayLabel(sel)}</span>}
             {sel === today && <span className="ag-now">오늘</span>}
           </div>
-          <div className="cal-add">
-            {/* 말머리([전표]·[회의록]…)는 "["를 치면 그 자리에서 고른다 (2026-10-07) */}
-            <div className="tag-wrap">
-              <input
-                ref={qRef}
-                value={qtext}
-                placeholder={`${fmtDate(sel)}에 바로 추가 (Enter)`}
-                onChange={(e) => {
-                  setQtext(e.target.value)
-                  qTag.read(e.target)
-                }}
-                onBlur={qTag.close}
-                onKeyDown={(e) => {
-                  if (qTag.onKeyDown(e)) return
-                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) quickAdd()
-                }}
-              />
-              <TagList ctl={qTag} />
-            </div>
-            <button onClick={quickAdd}>추가</button>
-          </div>
+          {/* 날짜 목록 위의 "바로 추가" 칸은 2026-11-09 없앴다 — 메모 화면 맨 위 검색칸이 새 메모 칸이다
+              ("11/20 우미린 잔금" Enter). PC 칸의 + 는 그대로. 재도입 금지 */}
           {(events[sel] || []).length === 0 && longSpanning(sel).length === 0 && !(alarms[sel] || []).length &&
             !(weekly[sel] || []).length && !(ghosts[sel] || []).length && (
             <div className="empty small">이 날짜에 걸린 기록이 없습니다</div>

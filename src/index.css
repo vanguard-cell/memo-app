@@ -2639,19 +2639,6 @@ main {
   margin-bottom: 10px;
 }
 
-.cal-add {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-.cal-add input {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--fs-base);
-  padding: 7px 10px;
-}
-
 .detail {
   background: var(--card);
   border: 1px solid var(--border);
@@ -5319,7 +5306,6 @@ main {
   .tl-input,
   .meta-date-input,
   .sched-input,
-  .cal-add input,
   .edit-form input,
   .work-form-grid input {
     font-size: 16px;
@@ -5433,7 +5419,6 @@ main {
   }
 
   .cal-head button,
-  .cal-add button,
   .tl-editing button {
     min-height: 40px;
     padding: 6px 13px;
@@ -5452,10 +5437,6 @@ main {
   .cal-pick-yr button {
     min-height: 40px;
     min-width: 52px;
-  }
-
-  .cal-add input {
-    min-height: 40px;
   }
 
   /* 진행기록 입력 — 한 줄에 날짜+글+버튼을 밀어넣으면 글칸이 손톱만 해진다.
