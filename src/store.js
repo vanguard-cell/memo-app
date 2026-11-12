@@ -8,11 +8,12 @@ const KEY = 'hds-memo-data-v1'
 
 function migrate(memos) {
   return memos.map((raw) => {
+    // 진행 기록에서 빼는 건 첫 버전 전 시안이 저절로 남기던 "완료 처리"·"다시 열음" 줄뿐이다.
+    // ⚠️ type:'log' 줄을 통째로 빼지 말 것 — 문서 접수대장 가져오기(importRoutineCycles)가 차수마다
+    // 남기는 기록이 type:'log'다. 예전엔 여기서 다 빼서 가져온 차수 기록이 앱을 다시 열면 사라졌다 (2026-11-12).
     const m = {
       ...raw,
-      history: (raw.history || []).filter(
-        (h) => h.type !== 'log' && h.text !== '완료 처리' && h.text !== '다시 열음'
-      ),
+      history: (raw.history || []).filter((h) => h.text !== '완료 처리' && h.text !== '다시 열음'),
     }
     delete m.category
     // 마감 기능은 2026-09-15 없앴다 — 마감 메모는 마감일 하루짜리 일정으로 바꾼다.
@@ -181,15 +182,21 @@ const findRow = (id) =>
 // 서버 줄을 이 기기 모양으로 — 메모만 옛 모양 고치기(migrate)를 거친다
 const fromServer = (d) => (d.type === 'work' || d.type === 'routine' ? d : migrate([d])[0])
 
+// 접수대장 기록 줄 되찾기 (2026-11-12) — 예전 migrate가 이 기기 사본에서 type:'log' 줄을 지웠지만
+// 고친 시각(updatedAt)은 그대로라, 그 뒤로 안 고친 회차는 서버에 그 줄이 남아 있다. 고친 시각이 같은데
+// 서버 쪽에 그 줄이 더 많으면 서버 것을 쓴다 — 둘은 그 줄 말고는 같은 사본이다. 한 번 받으면 같아진다.
+const logCount = (m) => (m.history || []).filter((h) => h.type === 'log').length
+
 // 한 줄 맞추기 — [쓸 것, 서버에 올려야 하나]
 //  · 서버에 없다 → 내 것을 올린다
+//  · 고친 시각이 같다 → 그대로 (서버에만 남은 접수대장 기록 줄이 있으면 서버 것)
 //  · 둘 다 내가 마지막으로 본 뒤에 바뀌었다(두 기기에서 따로 고침) → 합쳐서 올린다
 //  · 아니면 나중에 고친 쪽 (같으면 서버 것)
 function reconcile(local, srv) {
   if (!srv) return [local, true]
   const lu = local.updatedAt || ''
   const su = srv.updatedAt || ''
-  if (lu === su) return [local, false]
+  if (lu === su) return [logCount(srv) > logCount(local) ? srv : local, false]
   const base = seen.get(local.id)
   if (base && lu !== (base.updatedAt || '') && su !== (base.updatedAt || '')) {
     return [merge3(base, local, srv), true]
