@@ -9,15 +9,12 @@ const KEY = 'hds-memo-data-v1'
 
 function migrate(memos) {
   return memos.map((raw) => {
+    // 진행 기록에서 빼는 건 첫 버전 전 시안이 저절로 남기던 "완료 처리"·"다시 열음" 줄뿐이다.
+    // ⚠️ type:'log' 줄을 통째로 빼지 말 것 — 문서 접수대장 가져오기(importRoutineCycles)가 차수마다
+    // 남기는 기록이 type:'log'다. 예전엔 여기서 다 빼서 가져온 차수 기록이 앱을 다시 열면 사라졌다 (2026-11-12).
     const m = {
       ...raw,
-      // 예전 자동 기록 줄("완료 처리" 같은 것 — 자동 로그 금지)을 지운다. ⚠️ 루틴 회차의 type:'log' 줄은
-      // 엑셀 문서 접수대장에서 가져온 차수별 접수 기록이라 남긴다 — 예전엔 type:'log'를 전부 지워서,
-      // 가져온 줄이 앱을 다시 열면 사라졌다 (2026-08-13 ~ 2026-11-12). 옛 자동 기록은 루틴(2026-08-11)
-      // 전의 메모에만 있었고 그것들은 그때 이미 지워졌다.
-      history: (raw.history || []).filter(
-        (h) => (h.type !== 'log' || raw.routineId) && h.text !== '완료 처리' && h.text !== '다시 열음'
-      ),
+      history: (raw.history || []).filter((h) => h.text !== '완료 처리' && h.text !== '다시 열음'),
     }
     delete m.category
     // 마감 기능은 2026-09-15 없앴다 — 마감 메모는 마감일 하루짜리 일정으로 바꾼다.
@@ -186,15 +183,21 @@ const findRow = (id) =>
 // 서버 줄을 이 기기 모양으로 — 메모만 옛 모양 고치기(migrate)를 거친다
 const fromServer = (d) => (d.type === 'work' || d.type === 'routine' ? d : migrate([d])[0])
 
+// 접수대장 기록 줄 되찾기 (2026-11-12) — 예전 migrate가 이 기기 사본에서 type:'log' 줄을 지웠지만
+// 고친 시각(updatedAt)은 그대로라, 그 뒤로 안 고친 회차는 서버에 그 줄이 남아 있다. 고친 시각이 같은데
+// 서버 쪽에 그 줄이 더 많으면 서버 것을 쓴다 — 둘은 그 줄 말고는 같은 사본이다. 한 번 받으면 같아진다.
+const logCount = (m) => (m.history || []).filter((h) => h.type === 'log').length
+
 // 한 줄 맞추기 — [쓸 것, 서버에 올려야 하나]
 //  · 서버에 없다 → 내 것을 올린다
+//  · 고친 시각이 같다 → 그대로 (서버에만 남은 접수대장 기록 줄이 있으면 서버 것)
 //  · 둘 다 내가 마지막으로 본 뒤에 바뀌었다(두 기기에서 따로 고침) → 합쳐서 올린다
 //  · 아니면 나중에 고친 쪽 (같으면 서버 것)
 function reconcile(local, srv) {
   if (!srv) return [local, true]
   const lu = local.updatedAt || ''
   const su = srv.updatedAt || ''
-  if (lu === su) return [local, false]
+  if (lu === su) return [logCount(srv) > logCount(local) ? srv : local, false]
   // 완전 삭제는 되돌릴 수 없다 — 한쪽이라도 완전 삭제했으면 합치지 않고 그 표식을 쓴다
   // (합치면 지운 메모에 다른 기기의 옛 칸이 섞여 빈 제목 메모로 되살아날 수 있다)
   if (srv.purged || local.purged) return srv.purged ? [srv, false] : [local, true]
@@ -298,32 +301,6 @@ async function fetchRows(since) {
   }
 }
 
-// 접수대장 줄 되살리기 (한 번만, 2026-11-12) — 예전 migrate가 이 기기에서 지운 줄이 서버엔 남아 있을 수 있다.
-// 서버와 같은 판(고친 시각이 같음)인데 서버에만 그 줄이 있으면 서버 것을 쓴다. 지운 뒤 다시 고쳐 올린
-// 회차는 서버에서도 지워졌으니 엑셀을 다시 가져오는 수밖에 없다(같은 날짜·글은 두 번 안 들어간다).
-const RESTORE_LOG_KEY = 'hds-restore-log-2026-11'
-const hasLog = (m) => (m.history || []).some((h) => h.type === 'log')
-let logsRestored = (() => {
-  try {
-    return !!localStorage.getItem(RESTORE_LOG_KEY)
-  } catch {
-    return true
-  }
-})()
-function restoreLogs(local, srv) {
-  if (logsRestored || !srv || !local.routineId || (local.updatedAt || '') !== (srv.updatedAt || '')) return null
-  return hasLog(srv) && !hasLog(local) ? [srv, false] : null
-}
-function markLogsRestored() {
-  if (logsRestored) return
-  logsRestored = true
-  try {
-    localStorage.setItem(RESTORE_LOG_KEY, '1')
-  } catch {
-    // 저장 공간이 꽉 찼으면 다음에 한 번 더 돌 뿐이다
-  }
-}
-
 // ---------- 첨부 파일 치우기 (2026-11-12) ----------
 // 예전엔 휴지통에서 완전 삭제해도(그리고 30일 지나 아주 지워져도) 메모만 지워지고 파일은 서버에 남아
 // 저장 공간(무료 1GB)을 계속 차지했다.
@@ -383,7 +360,7 @@ async function syncFromServer({ recent = false } = {}) {
         serverById.delete(local.id)
         // 최근 것만 받을 땐 "서버에 없다" = "안 바뀌었다"라서 올리지 않는다
         if (!srv && recent) return local
-        const [v, push] = (!recent && restoreLogs(local, srv)) || reconcile(local, srv)
+        const [v, push] = reconcile(local, srv)
         if (push) toPush.push(v)
         else if (srv) seen.set(v.id, v)
         if (v !== local) changed = true
@@ -432,7 +409,6 @@ async function syncFromServer({ recent = false } = {}) {
     dropFiles(oldTombs) // 30일 지나 아주 지우는 메모의 첨부 파일도 같이
     remotePushState()
     setAuth({ syncError: false, synced: true })
-    markLogsRestored()
     sweepOrphanFiles()
   } catch (e) {
     console.error('서버 동기화 실패', e)
