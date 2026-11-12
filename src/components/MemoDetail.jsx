@@ -152,6 +152,26 @@ export default function MemoDetail({ memo, works = [], onOpen, onClose, inline, 
   // (여기서 등록이 일어나면 패널은 사라지지만 달력 번쩍임은 그대로 뜬다 — 그게 맞다)
   useEffect(() => () => { saveTitle(); saveDesc(); alive.current = false; clearTimeout(flashTimer.current) }, [])
 
+  // 다른 기기에서 고친 제목·설명이 들어오면(켜 둔 동안 1분마다 받아온다) 열린 칸도 따라 바꾼다 —
+  // 안 그러면 옛 글자 위에 이어 써서 다른 기기에서 고친 걸 덮는다. 단 지금 고치는 중이면
+  // (저장 안 된 글자가 있으면) 내가 쓰던 걸 그대로 둔다. (2026-11-12)
+  useEffect(() => {
+    const v = memo.desc || ''
+    if (v === savedRef.current || latestRef.current.trim() !== savedRef.current) return
+    setDesc(v)
+    latestRef.current = v
+    savedRef.current = v
+    descBase.current = v
+  }, [memo.desc])
+  useEffect(() => {
+    const v = memo.title || ''
+    if (v === titleSaved.current || titleLatest.current.trim() !== titleSaved.current) return
+    setTitle(v)
+    titleLatest.current = v
+    titleSaved.current = v
+    titleBase.current = v
+  }, [memo.title])
+
   // 루틴 회차를 실제로 한 날로 옮겼을 때 — 규칙(예정일)까지 바꿀지 그 자리에서 묻는다.
   // 휴일·출장으로 한 달만 밀린 것은 안 누르면 그만이고, 눌러야 다음 달부터 그 날로 온다.
   // (2026-08-20 사용자: "다음달에도 18일로 반영이 되는지?")

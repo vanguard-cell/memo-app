@@ -2,6 +2,7 @@ import { todayStr, parse, addDays } from './parser'
 import { supabase, hasSupabase } from './supabase'
 import { alarmStart, alarmDays, alarmSpanMonths, splitTime, isWeeklyLive, weeklyAhead } from './schedule'
 import { guessArea, areaSample, isArea } from './areas'
+import { merge3 } from './merge'
 
 const KEY = 'hds-memo-data-v1'
 
@@ -127,17 +128,27 @@ function setAuth(patch) {
   notify()
 }
 
+// 이 기기에 저장이 안 된 적이 있나 — 브라우저 저장 공간(약 5MB)이 꽉 찬 것. 진단 화면에 보인다.
+let storageFailed = false
+
 function commit(next) {
   state = withVisible(next)
-  localStorage.setItem(
-    KEY,
-    JSON.stringify({
-      memos: state.memos,
-      works: state.works,
-      routines: state.routines,
-      dayOrder: state.dayOrder,
-    })
-  )
+  // 저장 공간이 꽉 차 이 기기에 못 적어도 화면 반영과 서버 올리기는 그대로 간다 (2026-11-12).
+  // 예전엔 여기서 오류가 나 화면도 안 바뀌고 서버에도 안 올라가서, 눌러도 반응이 없는 것처럼 보였다.
+  try {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        memos: state.memos,
+        works: state.works,
+        routines: state.routines,
+        dayOrder: state.dayOrder,
+      })
+    )
+  } catch (e) {
+    console.error('이 기기에 저장 실패 (저장 공간 부족?)', e)
+    storageFailed = true
+  }
   notify()
 }
 
@@ -157,18 +168,91 @@ export const getAuth = () => authSnap
 
 // ---------- 서버 동기화 ----------
 
-async function pushMemoRows(memos) {
-  const rows = memos.map((m) => ({ id: m.id, data: m, updated_at: m.updatedAt }))
-  const { error } = await supabase.from('memos').upsert(rows)
-  if (error) throw error
+// 서버에서 마지막으로 본 모양 (id → 그 줄). 두 기기가 같은 메모를 따로 고쳤을 때 "누가 무엇을
+// 바꿨나"를 가르는 기준이다 (src/merge.js). 앱을 열 때는 이 기기의 사본으로 시작한다.
+const seen = new Map()
+for (const x of [...state.memos, ...state.works, ...state.routines]) seen.set(x.id, x)
+
+const findRow = (id) =>
+  state.memos.find((m) => m.id === id) ||
+  state.works.find((w) => w.id === id) ||
+  state.routines.find((r) => r.id === id)
+
+// 서버 줄을 이 기기 모양으로 — 메모만 옛 모양 고치기(migrate)를 거친다
+const fromServer = (d) => (d.type === 'work' || d.type === 'routine' ? d : migrate([d])[0])
+
+// 한 줄 맞추기 — [쓸 것, 서버에 올려야 하나]
+//  · 서버에 없다 → 내 것을 올린다
+//  · 둘 다 내가 마지막으로 본 뒤에 바뀌었다(두 기기에서 따로 고침) → 합쳐서 올린다
+//  · 아니면 나중에 고친 쪽 (같으면 서버 것)
+function reconcile(local, srv) {
+  if (!srv) return [local, true]
+  const lu = local.updatedAt || ''
+  const su = srv.updatedAt || ''
+  if (lu === su) return [local, false]
+  const base = seen.get(local.id)
+  if (base && lu !== (base.updatedAt || '') && su !== (base.updatedAt || '')) {
+    return [merge3(base, local, srv), true]
+  }
+  return su >= lu ? [srv, false] : [local, true]
+}
+
+// 맞춰보다 바뀐 줄을 이 기기 상태에 넣는다 (서버에 다시 올리지는 않는다)
+function replaceRows(rows) {
+  if (!rows.length) return
+  const by = new Map(rows.map((x) => [x.id, x]))
+  const swap = (arr) => arr.map((x) => by.get(x.id) || x)
+  commit({ ...state, memos: swap(state.memos), works: swap(state.works), routines: swap(state.routines) })
+}
+
+// 그대로 덮어쓰기 — 방금 서버와 맞춰본 것(syncFromServer)과 완전 삭제 표식에만 쓴다
+async function upsertRows(list) {
+  for (let i = 0; i < list.length; i += 500) {
+    const rows = list.slice(i, i + 500).map((m) => ({ id: m.id, data: m, updated_at: m.updatedAt }))
+    const { error } = await supabase.from('memos').upsert(rows)
+    if (error) throw error
+  }
+  for (const x of list) seen.set(x.id, x)
+}
+
+// 서버에 올리기 (2026-11-12 바꿈) — 올리기 직전에 서버 것을 다시 보고, 내가 마지막으로 본 뒤
+// 다른 기기가 고쳤으면 덮지 않고 합쳐서 올린다(합친 것은 이 기기 화면에도 넣는다).
+// 한 줄로 세워 차례로 보낸다 — 같은 메모를 연달아 고쳐도 앞뒤가 꼬이지 않게.
+// 줄마다 지금 이 기기의 최신 것을 다시 읽어서 올린다(줄 서 있는 사이 또 고쳤을 수 있다).
+let pushChain = Promise.resolve()
+function pushMemoRows(items) {
+  const ids = [...new Set(items.map((x) => x.id))]
+  const run = pushChain.then(() => pushNow(ids))
+  pushChain = run.catch(() => {})
+  return run
+}
+
+async function pushNow(ids) {
+  // 100개씩 — 서버에 묻는 주소에 id가 다 들어가므로 너무 길어지지 않게
+  for (let i = 0; i < ids.length; i += 100) {
+    const part = ids.slice(i, i + 100)
+    const { data: rows, error } = await supabase.from('memos').select('id,data').in('id', part)
+    if (error) throw error
+    const srv = new Map(rows.filter((r) => r.data).map((r) => [r.id, fromServer(r.data)]))
+    const changed = []
+    const up = []
+    for (const id of part) {
+      const local = findRow(id)
+      if (!local) continue
+      const s = srv.get(id)
+      const [v, push] = reconcile(local, s)
+      if (v !== local) changed.push(v)
+      if (push) up.push(v)
+      else if (s) seen.set(id, v)
+    }
+    replaceRows(changed)
+    if (up.length) await upsertRows(up)
+  }
 }
 
 function remoteUpsert(id) {
   if (!hasSupabase || !session) return
-  const memo =
-    state.memos.find((m) => m.id === id) ||
-    state.works.find((w) => w.id === id) ||
-    state.routines.find((r) => r.id === id)
+  const memo = findRow(id)
   if (!memo) return
   pushMemoRows([memo])
     .then(() => setAuth({ syncError: false }))
@@ -189,46 +273,77 @@ function remotePushState() {
     })
 }
 
-async function syncFromServer() {
-  try {
-    const { data: rows, error } = await supabase.from('memos').select('id,data,updated_at')
+// 서버에서 줄을 받아온다 — ⚠️ 서버는 한 번에 1,000줄까지만 돌려주고 나머지는 말없이 뺀다(2026-11-12).
+// 그대로 두면 1,000줄이 넘는 순간 새 기기엔 일부 메모가 안 보이고, 받지 못한 줄을 "서버에 없네" 하고
+// 옛 사본으로 다시 올려 다른 기기에서 고친 내용을 덮는다. 그래서 전체 개수를 같이 물어 끝까지 나눠 받는다.
+// since를 주면 그 뒤에 고친 줄만.
+const PAGE = 1000
+async function fetchRows(since) {
+  const rows = []
+  for (;;) {
+    let q = supabase.from('memos').select('id,data,updated_at', { count: 'exact' })
+    if (since) q = q.gt('updated_at', since)
+    const { data, error, count } = await q.order('id').range(rows.length, rows.length + PAGE - 1)
     if (error) throw error
-    const serverById = new Map(rows.map((r) => [r.id, r]))
+    rows.push(...data)
+    if (!data.length || (count != null ? rows.length >= count : data.length < PAGE)) return rows
+  }
+}
+
+// 서버와 맞추기. recent = 최근에 바뀐 줄만 받아온다(켜 둔 동안 1분마다 — 아래 setInterval).
+// 전부 받는 건 로그인할 때와 창으로 돌아올 때(requestSync).
+let syncing = false
+let newestMs = 0 // 받아온 줄 중 가장 늦게 고친 시각 — "그 뒤로 바뀐 것만" 물을 때 기준
+async function syncFromServer({ recent = false } = {}) {
+  if (syncing) return
+  syncing = true
+  try {
+    // 기기마다 시계가 조금씩 달라서 10분 겹쳐 묻는다
+    const since = recent && newestMs ? new Date(newestMs - 10 * 60000).toISOString() : null
+    if (recent && !since) return
+    const rows = await fetchRows(since)
+    const st = recent ? null : (await supabase.from('app_state').select('day_order').maybeSingle()).data
+    for (const r of rows) newestMs = Math.max(newestMs, Date.parse(r.updated_at) || 0)
+
+    // ⚠️ 받아오는 동안에도 이 기기에서 고칠 수 있다 — 다 받은 뒤, 지금 상태와 한 번에(기다림 없이) 맞춘다.
+    // (예전엔 맞춘 다음 app_state를 또 기다렸다가 저장해서, 그 사이 만든 메모가 화면에서 사라졌다)
+    const serverById = new Map(rows.filter((r) => r.data).map((r) => [r.id, fromServer(r.data)]))
     const toPush = []
-    // 로컬 목록과 서버를 updatedAt 기준 병합. isWork에 따라 memos/works로 나뉜다.
-    const mergeList = (locals, isWork) => {
-      const merged = []
-      for (const local of locals) {
+    let changed = false
+    const pick = (locals) =>
+      locals.map((local) => {
         const srv = serverById.get(local.id)
-        if (!srv) {
-          merged.push(local)
-          toPush.push(local)
-        } else {
-          serverById.delete(local.id)
-          if ((srv.data.updatedAt || '') >= (local.updatedAt || '')) {
-            merged.push(isWork ? srv.data : migrate([srv.data])[0])
-          } else {
-            merged.push(local)
-            toPush.push(local)
-          }
-        }
-      }
-      return merged
-    }
-    const memos = mergeList(state.memos, false)
-    const works = mergeList(state.works, true)
+        serverById.delete(local.id)
+        // 최근 것만 받을 땐 "서버에 없다" = "안 바뀌었다"라서 올리지 않는다
+        if (!srv && recent) return local
+        const [v, push] = reconcile(local, srv)
+        if (push) toPush.push(v)
+        else if (srv) seen.set(v.id, v)
+        if (v !== local) changed = true
+        return v
+      })
+    const memos = pick(state.memos)
+    const works = pick(state.works)
     // 루틴 정의도 같은 memos 테이블에 type:'routine' 행으로 산다 (works와 같은 방식 — 서버 스키마 그대로)
-    const routines = mergeList(state.routines, true)
+    const routines = pick(state.routines)
     // 서버에만 있는 행
-    for (const [, srv] of serverById) {
-      if (srv.data && srv.data.type === 'work') works.push(srv.data)
-      else if (srv.data && srv.data.type === 'routine') routines.push(srv.data)
-      else memos.push(migrate([srv.data])[0])
+    for (const [, d] of serverById) {
+      changed = true
+      seen.set(d.id, d)
+      if (d.type === 'work') works.push(d)
+      else if (d.type === 'routine') routines.push(d)
+      else memos.push(d)
     }
     works.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     routines.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
-    const { data: st } = await supabase.from('app_state').select('day_order').maybeSingle()
+    if (recent) {
+      if (changed) commit({ ...state, memos, works, routines })
+      if (toPush.length) await upsertRows(toPush)
+      if (authSnap.syncError) setAuth({ syncError: false }) // 바뀐 게 없으면 화면을 다시 그리지 않는다
+      return
+    }
+
     const dayOrder = { ...((st && st.day_order) || {}), ...state.dayOrder }
 
     // 30일 지난 삭제 표식은 이번 동기화에서 실제로 지운다 (모든 기기에 전파된 뒤)
@@ -242,14 +357,19 @@ async function syncFromServer() {
       routines: routines.filter((x) => !isOldTomb(x)),
       dayOrder,
     })
-    if (toPush.length) await pushMemoRows(toPush.filter((x) => !isOldTomb(x)))
-    if (tombIds.length) await supabase.from('memos').delete().in('id', tombIds)
+    if (toPush.length) await upsertRows(toPush.filter((x) => !isOldTomb(x)))
+    for (let i = 0; i < tombIds.length; i += 100) {
+      await supabase.from('memos').delete().in('id', tombIds.slice(i, i + 100))
+    }
     remotePushState()
     setAuth({ syncError: false, synced: true })
   } catch (e) {
     console.error('서버 동기화 실패', e)
     // 인터넷이 없어도 이번 달 회차는 만들어져야 한다 — 받아오기를 시도했다는 것까지가 synced
-    setAuth({ syncError: true, synced: true })
+    if (recent) setAuth({ syncError: true })
+    else setAuth({ syncError: true, synced: true })
+  } finally {
+    syncing = false
   }
 }
 
@@ -284,6 +404,11 @@ if (hasSupabase) {
     if (document.visibilityState === 'visible') requestSync()
   })
   window.addEventListener('online', requestSync)
+  // 켜 둔 동안 1분마다 최근에 바뀐 것만 받아온다 (2026-11-12) — 회사 PC에 띄워 둔 앱에, 폰에서 고친 것이
+  // 창을 바꾸지 않아도 넘어오게. 화면이 안 보이는 동안(다른 탭·최소화)은 쉰다.
+  setInterval(() => {
+    if (session && authSnap.synced && document.visibilityState === 'visible') syncFromServer({ recent: true })
+  }, 60000)
 }
 
 export async function signInWithGoogle() {
@@ -306,6 +431,26 @@ export async function signOut() {
   await supabase.auth.signOut()
 }
 
+// 이 기기 저장 공간 — 브라우저는 사이트 하나에 약 5MB만 준다(같은 github.io 주소의 다른 페이지와 나눠 씀).
+// 글자 하나를 2바이트로 센다 — 가장 빡빡하게 세는 브라우저(아이폰 사파리) 기준이라 실제로는 이보다 여유 있다.
+function storageLine() {
+  try {
+    let chars = 0
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      chars += k.length + (localStorage.getItem(k) || '').length
+    }
+    const mb = (chars * 2) / 1048576
+    const pct = Math.round((mb / 5) * 100)
+    return (
+      `이 기기 저장 공간: ${mb.toFixed(1)}MB 사용 (한도 약 5MB의 ${pct}%)` +
+      (storageFailed ? ' — ⚠️ 꽉 차서 이 기기에 저장이 안 된 적 있음 (서버에는 올라감)' : '')
+    )
+  } catch (e) {
+    return '이 기기 저장 공간: 확인 실패 (' + (e.message || e) + ')'
+  }
+}
+
 // 자가 진단 — 화면의 이메일을 탭하면 실행. 폰에서 "왜 안 보이는지"를 그 자리에서 알려준다.
 export async function runDiagnostics() {
   const lines = []
@@ -324,6 +469,7 @@ export async function runDiagnostics() {
     lines.push('서버 연결 실패: ' + (e.message || e))
   }
   lines.push(`이 기기에 보이는 메모: ${state.visible.length}건 (점검 ${state.works.length}건)`)
+  lines.push(storageLine())
   lines.push(`동기화 오류 표시: ${authSnap.syncError ? '있음' : '없음'}`)
   lines.push(`앱 버전(빌드 시각): ${typeof __BUILD__ !== 'undefined' ? __BUILD__ : '개발 모드'}`)
   lines.push(`브라우저: ${navigator.userAgent.slice(0, 80)}`)
@@ -798,7 +944,8 @@ export function purgeMemos(ids) {
   if (!tombs.length) return
   commit({ ...state, memos })
   if (!hasSupabase || !session) return
-  pushMemoRows(tombs)
+  // 합치지 않고 그대로 덮는다 — 지운 것에 다른 기기의 옛 내용이 도로 붙으면 안 된다
+  upsertRows(tombs)
     .then(() => setAuth({ syncError: false }))
     .catch((e) => {
       console.error('완전 삭제 동기화 실패', e)
