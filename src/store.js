@@ -3,6 +3,7 @@ import { supabase, hasSupabase } from './supabase'
 import { alarmStart, alarmDays, alarmSpanMonths, splitTime, isWeeklyLive, weeklyAhead } from './schedule'
 import { guessArea, areaSample, isArea } from './areas'
 import { merge3 } from './merge'
+import { listStoredFiles, removeStoredFiles } from './files'
 
 const KEY = 'hds-memo-data-v1'
 
@@ -10,8 +11,12 @@ function migrate(memos) {
   return memos.map((raw) => {
     const m = {
       ...raw,
+      // 예전 자동 기록 줄("완료 처리" 같은 것 — 자동 로그 금지)을 지운다. ⚠️ 루틴 회차의 type:'log' 줄은
+      // 엑셀 문서 접수대장에서 가져온 차수별 접수 기록이라 남긴다 — 예전엔 type:'log'를 전부 지워서,
+      // 가져온 줄이 앱을 다시 열면 사라졌다 (2026-08-13 ~ 2026-11-12). 옛 자동 기록은 루틴(2026-08-11)
+      // 전의 메모에만 있었고 그것들은 그때 이미 지워졌다.
       history: (raw.history || []).filter(
-        (h) => h.type !== 'log' && h.text !== '완료 처리' && h.text !== '다시 열음'
+        (h) => (h.type !== 'log' || raw.routineId) && h.text !== '완료 처리' && h.text !== '다시 열음'
       ),
     }
     delete m.category
@@ -190,6 +195,9 @@ function reconcile(local, srv) {
   const lu = local.updatedAt || ''
   const su = srv.updatedAt || ''
   if (lu === su) return [local, false]
+  // 완전 삭제는 되돌릴 수 없다 — 한쪽이라도 완전 삭제했으면 합치지 않고 그 표식을 쓴다
+  // (합치면 지운 메모에 다른 기기의 옛 칸이 섞여 빈 제목 메모로 되살아날 수 있다)
+  if (srv.purged || local.purged) return srv.purged ? [srv, false] : [local, true]
   const base = seen.get(local.id)
   if (base && lu !== (base.updatedAt || '') && su !== (base.updatedAt || '')) {
     return [merge3(base, local, srv), true]
@@ -290,6 +298,65 @@ async function fetchRows(since) {
   }
 }
 
+// 접수대장 줄 되살리기 (한 번만, 2026-11-12) — 예전 migrate가 이 기기에서 지운 줄이 서버엔 남아 있을 수 있다.
+// 서버와 같은 판(고친 시각이 같음)인데 서버에만 그 줄이 있으면 서버 것을 쓴다. 지운 뒤 다시 고쳐 올린
+// 회차는 서버에서도 지워졌으니 엑셀을 다시 가져오는 수밖에 없다(같은 날짜·글은 두 번 안 들어간다).
+const RESTORE_LOG_KEY = 'hds-restore-log-2026-11'
+const hasLog = (m) => (m.history || []).some((h) => h.type === 'log')
+let logsRestored = (() => {
+  try {
+    return !!localStorage.getItem(RESTORE_LOG_KEY)
+  } catch {
+    return true
+  }
+})()
+function restoreLogs(local, srv) {
+  if (logsRestored || !srv || !local.routineId || (local.updatedAt || '') !== (srv.updatedAt || '')) return null
+  return hasLog(srv) && !hasLog(local) ? [srv, false] : null
+}
+function markLogsRestored() {
+  if (logsRestored) return
+  logsRestored = true
+  try {
+    localStorage.setItem(RESTORE_LOG_KEY, '1')
+  } catch {
+    // 저장 공간이 꽉 찼으면 다음에 한 번 더 돌 뿐이다
+  }
+}
+
+// ---------- 첨부 파일 치우기 (2026-11-12) ----------
+// 예전엔 휴지통에서 완전 삭제해도(그리고 30일 지나 아주 지워져도) 메모만 지워지고 파일은 서버에 남아
+// 저장 공간(무료 1GB)을 계속 차지했다.
+const filePaths = (rows) => rows.flatMap((r) => (r.files || []).map((f) => f && f.path)).filter(Boolean)
+
+// 지운 메모들의 파일을 서버에서 지운다 — 다른 메모가 아직 쓰는 파일은 남긴다
+function dropFiles(goneRows) {
+  if (!hasSupabase || !session) return
+  const used = new Set(filePaths([...state.memos, ...state.works, ...state.routines]))
+  const paths = [...new Set(filePaths(goneRows))].filter((p) => !used.has(p))
+  if (paths.length) removeStoredFiles(paths).catch((e) => console.error('첨부 파일 지우기 실패', e))
+}
+
+// 주인 없는 파일 치우기 — 이번 수정 전에 완전 삭제한 메모들이 남긴 파일. 일주일에 한 번, 서버와 다 맞춘 뒤.
+// 어느 메모(휴지통 포함)도 안 쓰고 올린 지 30일이 지난 파일만 지운다 — 다른 기기에서 막 올리고
+// 아직 메모가 서버에 안 올라간 파일을 지우지 않게.
+const SWEEP_KEY = 'hds-file-sweep'
+async function sweepOrphanFiles() {
+  try {
+    if (Date.now() - Number(localStorage.getItem(SWEEP_KEY) || 0) < 7 * 86400000) return
+    const used = new Set(filePaths([...state.memos, ...state.works, ...state.routines]))
+    const stored = await listStoredFiles()
+    // 쓰는 파일이 하나도 없다고 나오면 뭔가 잘못 읽은 것 — 아무것도 지우지 않는다
+    if (!used.size && stored.length) return
+    const cutoff = Date.now() - 30 * 86400000
+    const orphans = stored.filter((f) => !used.has(f.path) && (Date.parse(f.createdAt) || Date.now()) < cutoff)
+    if (orphans.length) await removeStoredFiles(orphans.map((f) => f.path))
+    localStorage.setItem(SWEEP_KEY, String(Date.now()))
+  } catch (e) {
+    console.error('주인 없는 파일 치우기 실패', e)
+  }
+}
+
 // 서버와 맞추기. recent = 최근에 바뀐 줄만 받아온다(켜 둔 동안 1분마다 — 아래 setInterval).
 // 전부 받는 건 로그인할 때와 창으로 돌아올 때(requestSync).
 let syncing = false
@@ -316,7 +383,7 @@ async function syncFromServer({ recent = false } = {}) {
         serverById.delete(local.id)
         // 최근 것만 받을 땐 "서버에 없다" = "안 바뀌었다"라서 올리지 않는다
         if (!srv && recent) return local
-        const [v, push] = reconcile(local, srv)
+        const [v, push] = (!recent && restoreLogs(local, srv)) || reconcile(local, srv)
         if (push) toPush.push(v)
         else if (srv) seen.set(v.id, v)
         if (v !== local) changed = true
@@ -349,7 +416,8 @@ async function syncFromServer({ recent = false } = {}) {
     // 30일 지난 삭제 표식은 이번 동기화에서 실제로 지운다 (모든 기기에 전파된 뒤)
     const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
     const isOldTomb = (x) => x.deleted && (x.updatedAt || '') < cutoff
-    const tombIds = [...memos, ...works, ...routines].filter(isOldTomb).map((x) => x.id)
+    const oldTombs = [...memos, ...works, ...routines].filter(isOldTomb)
+    const tombIds = oldTombs.map((x) => x.id)
 
     commit({
       memos: memos.filter((x) => !isOldTomb(x)),
@@ -361,8 +429,11 @@ async function syncFromServer({ recent = false } = {}) {
     for (let i = 0; i < tombIds.length; i += 100) {
       await supabase.from('memos').delete().in('id', tombIds.slice(i, i + 100))
     }
+    dropFiles(oldTombs) // 30일 지나 아주 지우는 메모의 첨부 파일도 같이
     remotePushState()
     setAuth({ syncError: false, synced: true })
+    markLogsRestored()
+    sweepOrphanFiles()
   } catch (e) {
     console.error('서버 동기화 실패', e)
     // 인터넷이 없어도 이번 달 회차는 만들어져야 한다 — 받아오기를 시도했다는 것까지가 synced
@@ -443,7 +514,7 @@ function storageLine() {
     const mb = (chars * 2) / 1048576
     const pct = Math.round((mb / 5) * 100)
     return (
-      `이 기기 저장 공간: ${mb.toFixed(1)}MB 사용 (한도 약 5MB의 ${pct}%)` +
+      `이 기기 저장 공간: ${mb.toFixed(1)}MB 씀 · 약 ${Math.max(0, 5 - mb).toFixed(1)}MB 남음 (5MB 중 ${pct}% 사용)` +
       (storageFailed ? ' — ⚠️ 꽉 차서 이 기기에 저장이 안 된 적 있음 (서버에는 올라감)' : '')
     )
   } catch (e) {
@@ -470,6 +541,16 @@ export async function runDiagnostics() {
   }
   lines.push(`이 기기에 보이는 메모: ${state.visible.length}건 (점검 ${state.works.length}건)`)
   lines.push(storageLine())
+  try {
+    const fs = await listStoredFiles()
+    const mb = fs.reduce((a, f) => a + f.size, 0) / 1048576
+    const pct = (mb / 1024) * 100
+    lines.push(
+      `서버 첨부 파일: ${fs.length}개 · ${mb.toFixed(1)}MB (무료 한도 1GB 중 ${pct < 1 ? '1% 미만' : Math.round(pct) + '%'} 사용)`
+    )
+  } catch (e) {
+    lines.push('서버 첨부 파일: 확인 실패 (' + (e.message || e) + ')')
+  }
   lines.push(`동기화 오류 표시: ${authSnap.syncError ? '있음' : '없음'}`)
   lines.push(`앱 버전(빌드 시각): ${typeof __BUILD__ !== 'undefined' ? __BUILD__ : '개발 모드'}`)
   lines.push(`브라우저: ${navigator.userAgent.slice(0, 80)}`)
@@ -942,7 +1023,9 @@ export function purgeMemos(ids) {
     return tomb
   })
   if (!tombs.length) return
+  const gone = state.memos.filter((m) => idSet.has(m.id))
   commit({ ...state, memos })
+  dropFiles(gone)
   if (!hasSupabase || !session) return
   // 합치지 않고 그대로 덮는다 — 지운 것에 다른 기기의 옛 내용이 도로 붙으면 안 된다
   upsertRows(tombs)

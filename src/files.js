@@ -67,6 +67,32 @@ export async function removeStoredFile(path) {
   await supabase.storage.from('files').remove([path])
 }
 
+// 여러 개 한 번에 지우기 — 휴지통 완전 삭제·30일 지난 표식 정리·주인 없는 파일 치우기 (2026-11-12)
+export async function removeStoredFiles(paths) {
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await supabase.storage.from('files').remove(paths.slice(i, i + 100))
+    if (error) throw error
+  }
+}
+
+// 서버에 올라가 있는 내 첨부 파일 전부 — [{ path, size, createdAt }] (2026-11-12).
+// 진단 창의 "서버 첨부 파일" 줄과 주인 없는 파일 치우기가 쓴다. 1,000개씩 끝까지 받는다.
+export async function listStoredFiles() {
+  const { data } = await supabase.auth.getSession()
+  const uid = data.session && data.session.user.id
+  if (!uid) return []
+  const out = []
+  for (let offset = 0; ; offset += 1000) {
+    const { data: items, error } = await supabase.storage.from('files').list(uid, { limit: 1000, offset })
+    if (error) throw error
+    for (const f of items) {
+      // id가 없는 것은 폴더
+      if (f.id) out.push({ path: `${uid}/${f.name}`, size: (f.metadata && f.metadata.size) || 0, createdAt: f.created_at })
+    }
+    if (items.length < 1000) return out
+  }
+}
+
 // 이미지 여부 — 썸네일 미리보기 대상 판별. type이 없는 옛 첨부는 확장자로 판단.
 export const isImageFile = (f) =>
   (f.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.path)

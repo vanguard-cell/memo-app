@@ -63,6 +63,34 @@ function useUpdateReady() {
   return ready
 }
 
+// 날짜 바뀜 알아채기 (2026-11-12) — 회사 PC에 앱을 띄워 둔 채 자정·달이 넘어가면 새로고침 전까지
+// "오늘"·D-day·이번 달 루틴 회차가 어제 그대로였다(이번 달 회차는 앱을 열 때만 만들었다).
+// 1분마다, 그리고 화면으로 돌아올 때 날짜를 보고, 바뀌었으면 today가 바뀐다 — 화면을 새로 그리고
+// 이번 달 회차·미리 알림 회차를 다시 챙긴다. 글을 쓰는 중이면(글자가 든 칸에 커서) 다음 확인으로 미룬다.
+function useToday() {
+  const [today, setToday] = useState(todayStr)
+  useEffect(() => {
+    const check = () => {
+      if (todayStr() === today) return
+      const a = document.activeElement
+      if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.value) return
+      setToday(todayStr())
+    }
+    const onVis = () => {
+      if (document.visibilityState === 'visible') check()
+    }
+    const iv = setInterval(check, 60000)
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', onVis)
+    return () => {
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', onVis)
+    }
+  }, [today])
+  return today
+}
+
 export default function App() {
   const memos = useSyncExternalStore(subscribe, getMemos)
   const trash = useSyncExternalStore(subscribe, getTrash)
@@ -80,6 +108,7 @@ export default function App() {
   // 루틴·보관 메뉴 옆 숫자(안 끝난 루틴 수·남은 체크 수)는 2026-11-09 사용자 요청으로 없앴다 — 재도입 금지
   const narrow = useIsNarrow()
   const updateReady = useUpdateReady()
+  const today = useToday()
   const open = memos.find((m) => m.id === openId)
   // 지금 보고 있는 화면 — 화면별 안전장치(ErrorBoundary)의 key로 쓴다.
   // 다른 화면으로 옮기면 key가 바뀌어 오류 상태가 저절로 풀린다.
@@ -153,7 +182,7 @@ export default function App() {
   useEffect(() => {
     if (!auth.ready || !auth.synced || !routines.length) return
     alignTentative()
-  }, [auth.ready, auth.synced, routines.length])
+  }, [auth.ready, auth.synced, routines.length, today])
 
   // 이번 달 회차를 채운다 — 루틴에 걸린 일이 오늘 화면·달력에 뜨려면 그 달 메모가 있어야 한다.
   // 지난 달은 자동으로 만들지 않는다(안 한 달이 우르르 살아나 화면을 덮는다). (2026-08-11)
@@ -168,7 +197,8 @@ export default function App() {
     dedupeCycles()
     ensureThisMonth()
     ensureAlarmCycles()
-  }, [auth.ready, auth.synced, routines.length, alarmKey])
+    // today: 켜 둔 채 날짜가 바뀌면 다시 — 새 달 회차, 알림 날이 온 회차 (2026-11-12)
+  }, [auth.ready, auth.synced, routines.length, alarmKey, today])
 
   // 예전 반복 메모(매달·매년)를 루틴으로 옮긴다 — 서버와 맞춘 뒤 앱을 열 때 한 번 (2026-09-15)
   const convertedOnce = useRef(false)
@@ -454,7 +484,8 @@ export default function App() {
         )}
         {/* 화면마다 안전장치 — 한 화면이 잘못돼도 왼쪽 메뉴는 살아 있어 다른 화면으로 갈 수 있다.
             key가 바뀌면(=다른 화면으로 옮기면) 오류 상태가 저절로 풀린다 (2026-08-11) */}
-        <ErrorBoundary key={screen}>
+        {/* 날짜가 바뀌면(today) 화면을 새로 그린다 — 달력의 이번 달·오늘 선택, D-day 계산이 전부 새 날짜로 */}
+        <ErrorBoundary key={screen + ':' + today}>
         {showTrash ? (
           <TrashView memos={trash} onClose={() => setShowTrash(false)} />
         ) : showRoutine ? (
